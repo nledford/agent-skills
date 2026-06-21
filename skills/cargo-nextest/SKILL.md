@@ -1,7 +1,4 @@
 ---
-created: 2025-12-16
-modified: 2026-06-21
-reviewed: 2026-06-21
 name: cargo-nextest
 description: >
   Rust cargo-nextest guidance. Use when selecting, running, filtering,
@@ -9,7 +6,6 @@ description: >
   profiles, retries, partitions, or configuration. Do not use for doctests;
   nextest does not run Rustdoc examples.
 user-invocable: false
-allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # cargo-nextest

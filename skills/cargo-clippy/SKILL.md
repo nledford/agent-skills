@@ -1,7 +1,4 @@
 ---
-created: 2026-06-02
-modified: 2026-06-21
-reviewed: 2026-06-21
 name: cargo-clippy
 description: >
   Rust Clippy guidance through cargo clippy. Use when Rust linting, Clippy
@@ -9,7 +6,6 @@ description: >
   requires choosing, running, interpreting, or documenting targeted Clippy
   checks.
 user-invocable: false
-allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Cargo Clippy

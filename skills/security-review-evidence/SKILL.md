@@ -5,7 +5,6 @@ description: >
   behavior, documentation, or command-surface changes to keep findings sanitized,
   scoped, and tied to repository policy when one exists.
 user-invocable: false
-allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # Security Review Evidence
