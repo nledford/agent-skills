@@ -22,7 +22,8 @@ unloaded templates.
   files. First-party resources must be linked from `SKILL.md` and must not
   contain broken local links.
 - **Validation:** `tools/skills_manager.py validate` checks metadata, first-party
-  local links, and reachable resource files.
+  local links, reachable resource files, and this document's current
+  first-party inventory.
 
 ## Taxonomy
 
@@ -72,48 +73,44 @@ unloaded templates.
 
 Prefer one focused practice over several shallow ones.
 
-## Inventory Decisions
+## Current First-Party Inventory
 
-| Skill | Decision | Rationale |
+| Skill | Purpose And Trigger | Audit Decision |
 | --- | --- | --- |
-| `behavior-driven-development` | Keep | Clear boundary for behavior examples and acceptance criteria. |
-| `bun-javascript-workflows` | Add | Extracted project-neutral Bun package/script/test/lockfile guidance from Chidori's local Bun workflow skill. |
-| `brainstorming` | Keep | Useful for ambiguous engineering choices; non-goals are explicit. |
-| `cargo-clippy` | Merge into `rust-testing-quality` | Clippy is one Rust quality gate, not a standalone durable workflow. |
-| `cargo-nextest` | Merge into `rust-testing-quality` | Nextest belongs with Rust testing strategy, filtering, and reporting. |
-| `code-review` | Update | General review owns finding format and severity; specialist skills add Rust, PostgreSQL/SQLite/SQL, Python, Bun, browser, security, and workflow lenses. |
-| `context7-docs` | Keep | Covers current third-party docs lookup without replacing repo inspection. |
-| `create-agent-skill` | Keep | Canonical authoring workflow for new or updated skills. |
-| `domain-driven-design` | Keep | Clear domain modeling boundary and anti-ceremony guidance. |
-| `gherkin` | Keep | Focused syntax and quality guidance for `.feature` and scenario writing. |
-| `git-commit` | Keep | Broad but coherent commit-quality workflow. |
-| `justfiles` | Keep | Detailed because Justfile syntax and safety rules are operationally sharp. |
-| `playwright-e2e` | Keep | Distinct from browser automation; owns checked-in Playwright tests. |
-| `postgresql-sql-engineering` | Add | Extracted generic PostgreSQL schema, SQL review, performance, migration, transaction, RLS, and privilege guidance from Chidori's PostgreSQL skills and removed that overlap from Rust persistence. |
-| `python-engineering` | Add | Extracted Python typing, async, error-handling, pytest fixture, parametrization, mocking, and review gates from Chidori's Python review skills; added project-neutral `uv` and packaging workflow. |
-| `review-verification-protocol` | Keep | Required evidence gate for review findings. |
-| `root-cause-analysis` | Keep | Postmortem and recurrence-prevention workflow remains distinct from active debugging. |
-| `rust-async-web` | Add | Covers Tokio, Axum, Leptos, Axum-Leptos, SSR/hydration, WASM, and full-stack boundaries. |
-| `rust-code-review` | Rewrite | Review now routes to concise Rust workflow skills instead of a large reference library. |
-| `rust-engineering` | Add | Covers core Rust implementation, setup, refactoring, design patterns, and macros. |
-| `rust-persistence-sql` | Update | Covers SQLx, SeaQuery, SQLite adapter work, dynamic SQL construction, Rust database adapters, and persistence boundaries; delegates database-native PostgreSQL and SQLite design to data skills. |
-| `rust-testing-quality` | Add | Consolidates Rust testing, Rustdoc tests, Clippy, nextest, and CI evidence. |
-| `rustdoc-guidance` | Merge into `rust-testing-quality` | Rustdoc examples and doctests are part of test and API quality workflow. |
-| `security-review-evidence` | Keep | Sanitized evidence checklist for security-sensitive changes. |
-| `sqlite-sql-engineering` | Add | Fills the project-neutral SQLite gap: schema, constraints, PRAGMAs, transactions, locking, temp database tests, and SQLite-vs-PostgreSQL correctness boundaries. |
-| `suggest-lucide-icons` | Keep | Focused icon-selection workflow. |
-| `systematic-debugging` | Keep | Strong active-failure workflow; clear handoff to RCA. |
-| `test-driven-development` | Keep | Concise and directly actionable for behavior/test changes. |
+| `behavior-driven-development` | Behavior examples, acceptance criteria, workflows, and executable specifications. | Keep. Focused method skill; overlaps with `gherkin` only at the formal syntax boundary. |
+| `brainstorming` | Structured option generation for ambiguous engineering choices before implementation. | Keep. Useful only when multiple credible paths exist; non-goals are explicit. |
+| `bun-javascript-workflows` | Bun runtime, package, script, test, workspace, dependency, and JS/TS workflow guidance. | Keep. Framework-neutral and non-overlapping with checked-in Playwright test design. |
+| `code-review` | General repository-local audit and review workflow, severity, and finding format. | Keep. Owns review reporting; specialist skills add narrow lenses. |
+| `context7-docs` | Current third-party library, framework, SDK, API, CLI, and tool documentation lookup. | Keep. External-docs skill; does not replace repository inspection. |
+| `create-agent-skill` | Creating, updating, validating, and maintaining reusable `SKILL.md` skills. | Keep. Canonical skill-authoring workflow. |
+| `domain-driven-design` | Domain modeling, bounded contexts, invariants, repositories, services, events, and language. | Keep. Focused on domain boundaries and anti-ceremony guidance. |
+| `gherkin` | Writing or editing `.feature` files and durable Given/When/Then artifacts. | Keep. Syntax-focused companion to BDD, not a replacement for BDD thinking. |
+| `git-commit` | Atomic commits, logical grouping, staged diff review, and commit messages. | Keep. Broad but coherent workflow with explicit authorization guardrails. |
+| `justfiles` | Designing, refactoring, auditing, and validating Justfiles and `just` workflows. | Keep. Long but justified by version-sensitive syntax and safety concerns. |
+| `playwright-e2e` | Checked-in Playwright tests, configs, helpers, traces, lanes, and browser-visible behavior. | Keep. Distinct from generic browser automation and lower-level domain tests. |
+| `postgresql-sql-engineering` | PostgreSQL schema, migrations, SQL, transactions, indexes, RLS, privileges, plans, and review. | Keep. Language-independent data skill; delegates Rust adapter details to `rust-persistence-sql`. |
+| `python-engineering` | Python code, tests, typing, packaging, dependency management, `uv`, Ruff, and review. | Keep. Covers Python broadly while delegating database-native behavior to data skills. |
+| `review-verification-protocol` | Evidence gates for review findings and specialist review lenses. | Keep. Hidden support skill required by `code-review`; prevents speculative findings. |
+| `root-cause-analysis` | Recurring failures, incidents, regressions, control gaps, and prevention work. | Keep. Clear handoff from active debugging after direct cause is understood. |
+| `rust-async-web` | Tokio, async tasks, channels, cancellation, Axum, Leptos, Axum-Leptos, SSR, hydration, and WASM. | Keep. Focused runtime/web skill; delegates SQL and cargo lanes. |
+| `rust-code-review` | Rust-specific review lens for ownership, APIs, async, persistence, macros, unsafe, and performance. | Keep. Specialist review skill that routes to implementation and data skills. |
+| `rust-engineering` | Core Rust implementation, crates, modules, APIs, ownership, traits, errors, features, refactors, and macros. | Keep. Primary Rust implementation skill; specialist work is delegated. |
+| `rust-persistence-sql` | Rust SQLx, SeaQuery, pools, transactions, offline metadata, database adapters, dynamic SQL, and persistence boundaries. | Keep. Owns Rust adapter/query-builder choices and delegates database-native design. |
+| `rust-testing-quality` | Rust tests, doctests, nextest, Clippy, formatting, cargo checks, TDD/BDD loops, and CI evidence. | Keep. Consolidates cargo quality gates that were too narrow as standalone skills. |
+| `security-review-evidence` | Sanitized evidence checklist for security-sensitive changes and reviews. | Keep. Hidden support skill for trust-boundary and secret-handling work. |
+| `sqlite-sql-engineering` | SQLite schema, migrations, PRAGMAs, transactions, locking, temporary DB tests, and query review. | Keep. Fills database-specific gap without duplicating PostgreSQL or Rust adapter guidance. |
+| `suggest-lucide-icons` | Verified Lucide icon name selection for UI concepts and placements. | Keep. Small, focused workflow with concrete verification rules. |
+| `systematic-debugging` | Active failures, regressions, crashes, flakes, performance issues, build failures, and evidence-driven fixes. | Keep. Broad but internally consistent; RCA handles recurrence prevention. |
+| `test-driven-development` | Red-Green-Refactor, regression tests, test-level selection, and behavior-first implementation. | Keep. Concise method skill used by language and workflow skills. |
 
-## Chidori Extraction Decisions
+## Retired, Merged, Or Third-Party Skills
 
-| Chidori Source | Global Decision | Rationale |
-| --- | --- | --- |
-| `bun-workflows` | Extract into `bun-javascript-workflows` | Kept reusable Bun install/script/test/lockfile/CLI translation guidance; removed Chidori paths, Playwright recipe names, pinned versions, and Rust/Leptos topology. |
-| `python-code-review`, `pytest-code-review` | Extract into `python-engineering` | Kept typing, async, exception, fixture, parametrization, mocking, and review false-positive gates; removed narrow review-only structure and copied examples. |
-| `postgresql-code-review`, `postgresql-table-design`, `postgresql-optimization` | Extract into `postgresql-sql-engineering` | Kept constraints, FK index reminders, data type judgment, JSONB/range/full-text/index guidance, safe migrations, RLS/privilege checks, and plan-based review; removed project schema fragments, version pinning, and heavy tutorials. |
-| `rust-best-practices`, `rust-refactor`, `rust-project-setup`, `rust-testing`, `rust-async-patterns`, `tokio-async-code-review`, `axum-code-review`, `leptos-guide`, `macros-code-review`, `serde-code-review`, `rust-wasm`, `sqlx-code-review` | Absorb into existing Rust skills | Current global Rust skills already cover these domains. Reusable bits were folded into boundaries and checklists where needed instead of adding narrow duplicate skills. |
-| `rust-fullstack`, `sqlx-postgres`, `chidori-impeccable`, `leptos-mcp-server`, `utoipa-axum`, `impeccable` resources | Do not globalize | These contain Chidori-specific architecture, local MCP/tooling, exact schema workflow, UI policy, OpenAPI stack choices, or large specialized resources not justified as first-party global skills. |
+| Name Or Group | Decision |
+| --- | --- |
+| `cargo-clippy`, `cargo-nextest`, `rustdoc-guidance` | Merged into `rust-testing-quality`; they are quality gates, not independent workflows. |
+| Narrow Rust topic skills such as async review, Axum review, Leptos guidance, project setup, refactoring, macros, WASM, and SQLx review | Merged into the five Rust skills so activation is by durable workflow rather than library fragment. |
+| Chidori project-specific skills and resources | Not part of the global taxonomy. Reusable project-neutral guidance has already been folded into Bun, Python, PostgreSQL, and Rust skills; local paths, schema details, architecture, and workflow names remain local. |
+| `agent-browser`, `anti-ai-slop-writing`, `find-skills`, `playwright-cli` | Third-party or ignored runtime installs. They may exist under `skills/` locally, but repository-owned audits should not edit them. |
 
 ## Acceptance Criteria
 
@@ -203,6 +200,14 @@ Scenario: Rust review uses the specialist lens
   When it identifies Rust-specific risk
   Then it loads rust-code-review with code-review and review-verification-protocol
   And reports only verified behavior, contract, safety, performance, or maintainability findings
+```
+
+```gherkin
+Scenario: First-party taxonomy inventory stays current
+  Given a first-party skill is added, removed, or renamed
+  When repository validation runs
+  Then docs/skill-taxonomy.md lists exactly the current first-party skills
+  And ignored or lockfile-owned third-party installs are not listed as first-party
 ```
 
 ```gherkin

@@ -27,6 +27,25 @@ def create_repo(root: Path) -> Path:
     return repo
 
 
+def write_taxonomy(repo: Path, names: list[str]) -> Path:
+    docs = repo / "docs"
+    docs.mkdir()
+    rows = "\n".join(
+        f"| `{name}` | Test purpose. | Keep. |"
+        for name in names
+    )
+    path = docs / "skill-taxonomy.md"
+    path.write_text(
+        "# Skill Taxonomy\n\n"
+        "## Current First-Party Inventory\n\n"
+        "| Skill | Purpose | Decision |\n"
+        "| --- | --- | --- |\n"
+        f"{rows}\n",
+        encoding="utf-8",
+    )
+    return path
+
+
 class SkillRegistryTests(unittest.TestCase):
     def test_lists_first_party_and_third_party_skills(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -102,6 +121,7 @@ class SkillRegistryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = create_repo(Path(temp_dir))
             skill = write_skill(repo / "skills", "resource-skill")
+            write_taxonomy(repo, ["resource-skill"])
             references = skill / "references"
             references.mkdir()
             (skill / "SKILL.md").write_text(
@@ -127,6 +147,7 @@ class SkillRegistryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = create_repo(Path(temp_dir))
             skill = write_skill(repo / "skills", "asset-skill")
+            write_taxonomy(repo, ["asset-skill"])
             assets = skill / "assets"
             assets.mkdir()
             (assets / "sample.svg").write_text("<svg />\n", encoding="utf-8")
@@ -148,6 +169,7 @@ class SkillRegistryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = create_repo(Path(temp_dir))
             skill = write_skill(repo / "skills", "space-skill")
+            write_taxonomy(repo, ["space-skill"])
             references = skill / "references"
             references.mkdir()
             (references / "two words.md").write_text("# Details\n", encoding="utf-8")
@@ -193,6 +215,60 @@ class SkillRegistryTests(unittest.TestCase):
                 "missing-skill: third-party skill is listed in .skill-lock.json but missing",
                 result.errors,
             )
+
+    def test_first_party_validation_rejects_missing_taxonomy_inventory_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "alpha")
+            write_skill(repo / "skills", "beta")
+            write_taxonomy(repo, ["alpha"])
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "docs/skill-taxonomy.md: first-party skill missing from inventory: beta",
+                result.errors,
+            )
+
+    def test_first_party_validation_rejects_extra_taxonomy_inventory_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "alpha")
+            write_taxonomy(repo, ["alpha", "ghost"])
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "docs/skill-taxonomy.md: inventory lists non-first-party skill: ghost",
+                result.errors,
+            )
+
+    def test_first_party_validation_rejects_duplicate_taxonomy_inventory_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "alpha")
+            write_taxonomy(repo, ["alpha", "alpha"])
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "docs/skill-taxonomy.md: duplicate first-party inventory entry: alpha",
+                result.errors,
+            )
+
+    def test_first_party_validation_accepts_matching_taxonomy_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "alpha")
+            write_skill(repo / "skills", "beta")
+            write_taxonomy(repo, ["alpha", "beta"])
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertTrue(result.ok)
 
     def test_validation_result_combines_errors_and_warnings(self) -> None:
         combined = ValidationResult.combine(

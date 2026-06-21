@@ -81,6 +81,7 @@ Validation checks the repository's actual skill format:
 - the front matter `name` matches the directory name
 - first-party local Markdown links resolve to existing files
 - first-party resource files are reachable from `SKILL.md`
+- first-party skills are listed in `docs/skill-taxonomy.md`
 - every lockfile-listed third-party skill is present locally
 
 Helper behavior is covered by `python3 -m unittest discover -s tests -v`.

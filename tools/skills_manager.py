@@ -19,6 +19,9 @@ SKILLS_DIR_NAME = "skills"
 LOCKFILE_NAME = ".skill-lock.json"
 REQUIRED_SKILL_METADATA = ("name", "description")
 LOCAL_LINK_RE = re.compile(r"(?<![A-Za-z0-9_`])!?\[[^\]]+\]\(([^)]+)\)")
+TAXONOMY_DOC = Path("docs") / "skill-taxonomy.md"
+TAXONOMY_INVENTORY_HEADING = "## Current First-Party Inventory"
+TAXONOMY_INVENTORY_ROW_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|")
 
 
 @dataclass(frozen=True)
@@ -134,6 +137,7 @@ class SkillRegistry:
             [
                 self._validate_lockfile(),
                 self._validate_skills(self.all(), label="skill"),
+                self._validate_taxonomy_inventory(),
                 self._validate_locked_installs(),
                 self._validate_non_empty(),
             ]
@@ -143,6 +147,7 @@ class SkillRegistry:
         return ValidationResult.combine(
             [
                 self._validate_skills(self.first_party(), label="first-party skill"),
+                self._validate_taxonomy_inventory(),
                 self._validate_non_empty(kind="first-party"),
             ]
         )
@@ -180,6 +185,31 @@ class SkillRegistry:
     def _validate_skills(self, skills: Sequence[Skill], *, label: str) -> ValidationResult:
         results = [validate_skill(skill, label=label) for skill in skills]
         return ValidationResult.combine(results)
+
+    def _validate_taxonomy_inventory(self) -> ValidationResult:
+        first_party_names = {skill.name for skill in self.first_party()}
+        if not first_party_names:
+            return ValidationResult()
+
+        taxonomy_path = self.repo_root / TAXONOMY_DOC
+        if not taxonomy_path.is_file():
+            return ValidationResult(errors=[f"{TAXONOMY_DOC}: missing taxonomy document"])
+
+        inventory_names, error = _read_taxonomy_inventory_names(taxonomy_path)
+        if error is not None:
+            return ValidationResult(errors=[error])
+
+        missing = sorted(first_party_names - inventory_names)
+        extra = sorted(inventory_names - first_party_names)
+        errors = [
+            f"{TAXONOMY_DOC}: first-party skill missing from inventory: {name}"
+            for name in missing
+        ]
+        errors.extend(
+            f"{TAXONOMY_DOC}: inventory lists non-first-party skill: {name}"
+            for name in extra
+        )
+        return ValidationResult(errors=errors)
 
 
 class GlobalInstallService:
@@ -480,6 +510,29 @@ def _read_skill_metadata(path: Path) -> tuple[dict[str, str], str | None]:
         if key:
             metadata[key] = value.strip().strip("\"'")
     return metadata, None
+
+
+def _read_taxonomy_inventory_names(path: Path) -> tuple[set[str], str | None]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    try:
+        start_index = lines.index(TAXONOMY_INVENTORY_HEADING)
+    except ValueError:
+        return set(), f"{TAXONOMY_DOC}: missing {TAXONOMY_INVENTORY_HEADING!r} section"
+
+    inventory: set[str] = set()
+    for line in lines[start_index + 1 :]:
+        if line.startswith("## "):
+            break
+        match = TAXONOMY_INVENTORY_ROW_RE.match(line)
+        if match:
+            name = match.group(1)
+            if name in inventory:
+                return set(), f"{TAXONOMY_DOC}: duplicate first-party inventory entry: {name}"
+            inventory.add(name)
+
+    if not inventory:
+        return set(), f"{TAXONOMY_DOC}: current first-party inventory is empty"
+    return inventory, None
 
 
 def print_skills(skills: Sequence[Skill]) -> int:
