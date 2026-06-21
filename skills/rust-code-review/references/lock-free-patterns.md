@@ -1,6 +1,10 @@
 # Lock-Free Patterns: Hand-Rolled Concurrency Review
 
-For high-level primitive selection (Mutex vs RwLock vs Atomics) and `Send`/`Sync` bounds, see [concurrency-primitives.md](concurrency-primitives.md). For deep dives on `Ordering` and happens-before reasoning, see [memory-ordering.md](memory-ordering.md). For verifying hand-rolled primitives with `loom` and Miri, see [../../rust-testing-code-review/references/concurrency-testing.md](../../rust-testing-code-review/references/concurrency-testing.md).
+For high-level primitive selection (Mutex vs RwLock vs Atomics) and
+`Send`/`Sync` bounds, see [concurrency-primitives.md](concurrency-primitives.md).
+For deep dives on `Ordering` and happens-before reasoning, see
+[memory-ordering.md](memory-ordering.md). Verify hand-rolled primitives with the
+repository's own Loom and Miri recipes when available.
 
 This reference distills Chapters 4–9 of Mara Bos's *Rust Atomics and Locks* into reviewer-actionable patterns for spinlocks, channels, `Arc`, CAS loops, seqlocks, mutexes, and condvars.
 
@@ -31,7 +35,12 @@ The first review question for any hand-rolled concurrency primitive is **"why is
 - "I wanted to learn how it works" in production code — implement it in a scratch crate, link tests, then use the upstream crate.
 - "Our code is simple enough that we don't need `crossbeam-epoch`" — pointer-based lock-free code without reclamation is almost always wrong.
 
-**Loud rule**: hand-rolling concurrency without `loom` interleavings *and* `cargo +nightly miri test` is a reviewer-blocker. The bug rate on hand-rolled atomics is high enough that "it passes `cargo test` on x86" is not evidence of correctness. See [../../rust-testing-code-review/references/concurrency-testing.md](../../rust-testing-code-review/references/concurrency-testing.md) for the required test harness.
+**Loud rule**: hand-rolling concurrency without `loom` interleavings *and*
+`cargo +nightly miri test` is a reviewer-blocker when the repository can support
+those tools. The bug rate on hand-rolled atomics is high enough that "it passes
+`cargo test` on x86" is not evidence of correctness. If the repository lacks
+the harness, report that as a risk and recommend adding one before trusting the
+primitive.
 
 - `[FILE:LINE] HAND_ROLLED_LOCK_NO_JUSTIFICATION` — `unsafe impl Sync` on a struct wrapping `AtomicBool` + `UnsafeCell` (or `AtomicPtr` + custom drop) with no comment naming the specific upstream primitive considered and rejected.
 - `[FILE:LINE] HAND_ROLLED_LOCK_NO_LOOM` — Hand-rolled lock-free type with no `cfg(loom)` test module.

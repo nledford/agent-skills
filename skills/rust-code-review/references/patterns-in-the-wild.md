@@ -1,6 +1,11 @@
 # Patterns in the Wild
 
-Patterns Jon Gjengset highlights in mature Rust crates (Ch 13, *Rust for Rustaceans*). Reviewers should recognize these patterns when they appear correctly and flag misuse — especially typos that silently disable them (`let _ = guard`), index-pointer aliasing after `swap_remove`, extension traits used where direct `impl` would work, and prelude bloat that becomes a SemVer hazard. For dev-side authoring guidance see [../../rust-best-practices/references/coding-idioms.md](../../rust-best-practices/references/coding-idioms.md) and [../../rust-best-practices/references/ecosystem-patterns.md](../../rust-best-practices/references/ecosystem-patterns.md).
+Patterns Jon Gjengset highlights in mature Rust crates (Ch 13, *Rust for
+Rustaceans*). Reviewers should recognize these patterns when they appear
+correctly and flag misuse, especially typos that silently disable guards
+(`let _ = guard`), index-pointer aliasing after `swap_remove`, extension traits
+used where a direct `impl` would work, and prelude bloat that becomes a SemVer
+hazard.
 
 ## Index Pointers
 

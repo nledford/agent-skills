@@ -1,264 +1,149 @@
 ---
 name: code-review
-description: Perform high-quality repository-local code reviews. Use for requested audits, pull-request-style reviews, final focused review after implementation, before marking non-trivial plans complete, or whenever changes affect production code, APIs, domain boundaries, tests, data, security, workflows, dependencies, CI, or agent instructions.
+description: Perform repository-local code reviews. Use for requested audits, pull-request-style reviews, final focused review after implementation, or changes that affect behavior, APIs, domain boundaries, tests, security, workflows, dependencies, CI, documentation, or agent instructions.
 ---
 
 # Code Review
 
-Use this skill to review repository changes with maintainer-level rigor. A
-review is not a style pass. It protects long-term maintainability, correctness, domain
-integrity, test quality, security, reliability, and architectural consistency.
-Good reviews catch regressions, hidden coupling, unclear behavior, weak tests,
-and erosion of domain boundaries before work is merged, handed off, or marked
-complete.
+Use this skill to review repository changes for correctness, maintainability,
+security, reliability, domain integrity, test quality, and operational fit. A
+review is not a style pass; report only issues with evidence and impact.
 
-Pair this skill with the narrowest specialist review skill when the diff has a
-specialized surface, such as web framework code, database access, async runtime
-code, serialization, tests, macros, scripts, or security-sensitive behavior.
-Before reporting findings, load or manually apply
-[`review-verification-protocol`](../review-verification-protocol/SKILL.md) so
-each finding has objective evidence.
+Before reporting findings, apply
+[`review-verification-protocol`](../review-verification-protocol/SKILL.md).
+Load specialist skills only when they match the changed surface. For Rust code,
+pair this skill with [`rust-code-review`](../rust-code-review/SKILL.md).
 
-## Review modes
+## Use When
 
-- **Requested audit or PR-style review:** Review the supplied diff, branch, file,
-  or behavior. Report verified findings and validation status; do not implement
-  fixes unless asked.
-- **Final focused review after implementation:** Use after meaningful changes and
-  targeted validation, before final response or handoff.
-- **Plan/delegation completion review:** Use before marking non-trivial plan work,
-  delegated implementation, or high-risk changes complete.
-- **Re-review:** Verify previously reported fixes only unless the user asks for a
-  fresh full review.
+- The user asks for a review, audit, PR review, risk pass, or final check.
+- You made meaningful repository changes and need a focused review before
+  handoff.
+- The diff touches production behavior, public interfaces, data contracts,
+  architecture, tests, security, dependencies, build, CI, release, docs, or agent
+  instructions.
+- A prior review needs re-checking after fixes.
 
-## When review is expected
+## Skip Only When
 
-Perform a focused code review for meaningful repository changes, including:
+Skip review only for changes that are clearly low risk, such as typo-only,
+formatting-only, or generated mechanical updates with no behavior, workflow,
+security, contract, or instruction impact. If skipped, say why and still report
+the validation that ran.
 
-- Production code changes.
-- Public API, interface, generated contract, or boundary changes.
-- Domain model, service, use-case, policy, boundary, or architecture changes.
-- Database, migration, persistence, schema, query, or serialization changes.
-- Authentication, authorization, permissions, privacy, or security-sensitive
-  changes.
-- Error handling, retry, concurrency, async, caching, resource-management, or
-  performance-sensitive changes.
-- Test strategy changes, including adding, removing, splitting, merging,
-  disabling, broad snapshotting, or weakening tests.
-- Build, CI, deployment, packaging, toolchain, release, or dependency changes.
-- Refactors that alter ownership, responsibilities, boundaries, naming, module
-  structure, or coupling.
-- Documentation changes that affect agent behavior, developer workflow, product
-  behavior, operational expectations, validation, or security posture.
+Never skip review for security-sensitive work, API/schema changes, domain model
+changes, test weakening, dependency/toolchain changes, CI changes, or work where
+impact is uncertain.
 
-For security-sensitive work, use any available repository security process and
-the `security-review-evidence` skill when present. Do not treat this skill as a
-substitute for sanitized security evidence.
+## Review Workflow
 
-## When review may be skipped
+1. **Understand intent.**
+   - Identify the request, issue, acceptance criteria, regression, or plan step.
+   - Separate intended behavior from implementation choices.
 
-Skipping review should be rare and intentional. It may be permissible only for
-changes that are clearly low-risk and do not affect runtime behavior,
-architecture, tests, security, workflows, or agent instructions.
+2. **Map affected surfaces.**
+   - Name touched modules, domain concepts, public APIs, storage, workflows,
+     generated artifacts, docs, commands, CI, and security boundaries.
 
-Examples that may qualify:
+3. **Choose lenses.**
+   - Use this general review lens first.
+   - Add narrow specialist skills for Rust, browser tests, security evidence,
+     Justfiles, Rustdoc, or other surfaces only when they apply.
 
-- Typo-only changes in comments or non-authoritative documentation.
-- Formatting-only changes with no semantic effect.
-- Small, predictable mechanical updates generated by a trusted tool.
-- Temporary exploratory work that will not be merged, shipped, or used as a basis
-  for further implementation.
+4. **Review tests and behavior.**
+   - Check whether tests or examples specify observable behavior and meaningful
+     edge cases.
+   - Confirm tests are not brittle implementation snapshots unless the
+     implementation detail is the contract.
 
-Do **not** skip review for:
+5. **Review implementation.**
+   - Verify the change satisfies intent, preserves invariants, keeps
+     responsibilities in the right place, and avoids avoidable coupling.
 
-- Security, authentication, authorization, permissions, privacy, secrets, CORS,
-  CSP, CSRF, sessions, tokens, certificates, or trust-boundary validation.
-- Dependency, build, CI, deployment, packaging, release, or toolchain changes.
-- Public API, schema, serialization, migration, generated contract, or data-model
-  changes.
-- Domain model, boundary, service, ownership, responsibility, or architecture
-  changes.
-- Test deletion, weakening, disabling, broad snapshot updates, or major test
-  restructuring.
-- Bug fixes without a clear regression test or validation strategy.
-- Any change where the agent is uncertain about impact.
+6. **Review failure modes.**
+   - Check validation, authorization, error mapping, retries, cleanup,
+     cancellation, transactions, resource limits, logging, metrics, and rollback
+     where relevant.
 
-If review is skipped, state why skipping is safe and what validation was still
-performed. Do not silently omit review when one would normally be expected.
+7. **Review contracts and operations.**
+   - Check docs, recipes, environment examples, generated artifacts, migrations,
+     CI, release surfaces, and runbooks when changed behavior affects operators,
+     developers, users, or agents.
 
-## Review process
+8. **Confirm validation.**
+   - Required checks should pass, or failures must be clearly unrelated,
+     environmental, pre-existing, or intentionally out of scope.
 
-Follow this sequence. Prefer targeted validation first; run long-running
-repository-wide commands only when required by repo convention or justified by
-the risk profile.
+9. **Report verified findings only.**
+   - Omit speculation and style preferences.
+   - Downgrade uncertain issues to questions when evidence is incomplete.
 
-1. **Understand intent before details.** Identify the user request, issue,
-   acceptance criteria, plan step, or regression being addressed. Separate the
-   intended behavior from implementation choices.
-2. **Map affected concepts and surfaces.** Name domain concepts, use cases,
-   boundaries, invariants, data flows, public interfaces, storage, operations,
-   and security-sensitive surfaces touched by the change.
-3. **Select review lenses.** Use this skill for the general review, then stack
-   only the specialist review skills that truly match the diff.
-4. **Review tests first where possible.** Check whether tests, examples, feature
-   files, or scenarios specify observable behavior and important edge cases.
-5. **Review implementation.** Verify it matches the intended behavior, preserves
-   invariants, avoids unnecessary coupling, and keeps responsibilities in the
-   right modules or services.
-6. **Review failure modes.** Look for missing validation, authorization,
-   transactionality, cleanup, cancellation, retries, error mapping, logging,
-   metrics, resource limits, and rollback behavior.
-7. **Review contracts and operations.** Check docs, recipes, env examples,
-   generated artifacts, migrations, CI, Compose, release surfaces, and runbooks
-   when the change affects how people or agents operate the system.
-8. **Check test quality.** Confirm tests are meaningful, behavior-oriented,
-   stable, and not overly coupled to implementation details.
-9. **Confirm checks are clean.** Failing tests, lints, compilation errors,
-   formatting drift, broken drift checks, or required validation failures must be
-   fixed before work is complete, or explicitly called out when outside scope.
-10. **Report only verified findings.** Apply `review-verification-protocol` per
-    finding; omit, downgrade, or ask a question when evidence is insufficient.
+## BDD, DDD, and TDD Lenses
 
-## BDD, DDD, and TDD lenses
+- **BDD:** User-visible behavior should be described as observable outcomes,
+  scenarios, acceptance criteria, or behavior-oriented tests.
+- **DDD:** Domain names, boundaries, responsibilities, policies, and invariants
+  should match the repository language and avoid leaking infrastructure inward.
+- **TDD:** New behavior and bug fixes should have meaningful tests where
+  practical. Refactors should preserve behavior through existing or added safety
+  nets.
 
-- **BDD:** Review behavior from the user, system, or business perspective. Tests,
-  examples, feature files, and docs should describe observable outcomes,
-  meaningful scenarios, acceptance criteria, and important edge cases rather than
-  only implementation mechanics.
-- **DDD:** Check that domain concepts are modeled clearly, names reflect the
-  repository's ubiquitous language, responsibilities sit in the right modules or
-  services, invariants are protected, and infrastructure/UI/persistence/transport
-  concerns do not blur domain boundaries.
-- **TDD:** Prefer changes that are driven or protected by tests. Bug fixes should
-  include a regression test where practical. New behavior should have tests that
-  would fail before implementation and pass after it. Refactors that preserve
-  behavior should have characterization or safety-net tests when behavior is
-  important or hard to inspect manually.
+## Finding Severity
 
-## Review checklist
+- **Blocking:** Must be fixed before merge or handoff: security vulnerability,
+  data corruption, compile failure, broken required checks, severe regression, or
+  unsupported public contract break.
+- **High:** Significant correctness, security, reliability, maintainability,
+  architectural, domain, persistence, or serialization risk.
+- **Medium:** Meaningful edge-case gap, weak test for important behavior,
+  unclear contract, avoidable coupling, missing changed-behavior docs, or
+  operational drift.
+- **Low:** Local clarity, minor docs/test improvement, or low-risk cleanup.
+- **Question:** A narrow clarification is needed before judging acceptability.
+- **Praise:** Optional, specific positive feedback worth preserving.
 
-Use this as a coverage map; not every item applies to every change.
+## Finding Format
 
-- [ ] **Correctness and behavior:** intent is satisfied; observable behavior is
-      specified; invariants hold; no regressions in adjacent flows.
-- [ ] **Domain modeling and boundaries:** names, responsibilities, policies, and
-      boundaries match the domain; infrastructure details do not leak inward.
-- [ ] **Test coverage and quality:** tests cover happy path, edge cases, failure
-      modes, and regression risk; tests are behavior-oriented and stable.
-- [ ] **API contracts:** public interfaces, generated contracts, schema,
-      serialization, and compatibility expectations are deliberate and documented.
-- [ ] **Error handling and edge cases:** validation, retries, cleanup, rollback,
-      cancellation, unavailable dependencies, and user/operator feedback are
-      handled appropriately.
-- [ ] **Security and privacy:** authorization, authentication, secrets, CORS/CSP,
-      CSRF, data exposure, trust boundaries, logging, and redaction are correct;
-      security-sensitive changes use the repo security process.
-- [ ] **Performance and scalability:** hot paths, query plans, allocations,
-      caching, backpressure, batching, and resource limits fit expected scale.
-- [ ] **Concurrency and resources:** async cancellation, task lifetimes, locks,
-      transactions, pools, files, handles, and cleanup are safe.
-- [ ] **Observability and diagnostics:** errors, logs, metrics, traces, and
-      operator messages are actionable without exposing secrets.
-- [ ] **Maintainability and readability:** code is cohesive, appropriately
-      located, named clearly, and avoids unnecessary abstraction or coupling.
-- [ ] **Documentation and agent guidance:** durable docs, examples, runbooks, and
-      skill/agent instructions match changed behavior without duplicating the
-      canonical source of truth.
-- [ ] **Build, lint, formatting, and CI:** strongest relevant targeted checks
-      pass; broader checks are used when risk justifies them.
-
-## Findings format
-
-Start with a brief verdict, then list findings by severity. If there are no
-verified findings, say so directly and mention the review scope and validation.
-
-Severity labels:
-
-- **Blocking:** Must be fixed before merge, handoff, or plan completion.
-- **High:** Significant correctness, maintainability, security, reliability,
-  domain, or architectural concern.
-- **Medium:** Should be fixed unless there is a strong reason not to.
-- **Low:** Minor improvement, clarity issue, localized maintainability concern,
-  or non-blocking cleanup.
-- **Question:** Clarification needed before deciding whether the change is
-  acceptable.
-- **Praise:** Optional positive feedback for changes worth preserving.
-
-Use this format for actionable findings:
+Put findings first, ordered by severity:
 
 ```text
-[Severity] path/to/file.rs:123 — Short issue title
-Problem: What is wrong, tied to the affected function/module/test/behavior.
-Why it matters: Concrete correctness, domain, test, security, operational, or
+[Severity] path/to/file.ext:123 - Short issue title
+Problem: What is wrong, tied to the affected behavior or code.
+Why it matters: Concrete correctness, domain, security, test, workflow, or
 maintainability impact.
-Recommended fix: Specific next step or implementation direction.
-Evidence: File/line, search result, command output, or relevant absence.
+Recommended fix: Specific next step.
+Evidence: File/line, command output, search result, or verified absence.
 ```
 
-Each finding must include the affected file/function/module/test/migration/recipe
-or behavior, the problem, why it matters, and a concrete recommended fix or next
-step. For `Question`, ask the narrow question and explain what decision depends
-on the answer. For `Praise`, keep it short and specific.
+If there are no verified findings, say so directly and name the review scope,
+validation performed, and residual risks.
 
-## Severity calibration
+## Review Checklist
 
-- **Blocking:** Demonstrated security vulnerability, auth/privacy bypass, data
-  corruption, broken required checks, compile failure, severe regression,
-  unsupported public API/schema break, or violation of non-negotiable repo rules.
-- **High:** Plausible production correctness bug, significant maintainability or
-  architectural erosion, important domain invariant gap, risky persistence or
-  serialization issue, meaningful reliability problem, or security concern that
-  does not clearly meet Blocking.
-- **Medium:** Meaningful edge-case gap, unclear contract, weak test for an
-  important path, avoidable coupling, missing docs for changed behavior, or
-  operational drift.
-- **Low:** Local clarity/readability issue, minor docs/test improvement, small
-  cleanup, or low-risk maintainability concern.
-- **Question:** Intent or constraint is ambiguous after reasonable inspection.
-- **Praise:** A specific choice improves clarity, testability, domain alignment,
-  security posture, operational safety, or maintainability.
+- Correctness and observable behavior match the request.
+- Domain names, boundaries, ownership, and invariants remain clear.
+- Tests cover the important success path, failure path, edge case, or regression.
+- Public APIs, schemas, serialization, docs, and generated contracts are
+  deliberate and synchronized.
+- Error handling, retries, cleanup, transactions, cancellation, and resource
+  limits fit the affected workflow.
+- Security and privacy boundaries are preserved and evidence is sanitized.
+- Performance, scalability, concurrency, and resource usage are acceptable for
+  the touched path.
+- Logs, metrics, traces, and user/operator messages are useful without exposing
+  secrets.
+- Documentation, recipes, CI, release, and agent guidance match changed behavior.
+- Formatting, linting, type checking, tests, and required validation are clean or
+  accurately reported.
 
-Do not flag style preferences where both approaches are valid. Do not treat
-requests for unrelated net-new code, new dependencies, broad rewrites, or future
-architecture ideas as actionable blockers.
+## Reporting Rules
 
-## Rust Review References
-
-For Rust-specific concerns, use available specialist review skills first when
-they match the changed surface. For general Rust review details, load these
-references only when needed:
-
-| Issue type | Reference |
-| --- | --- |
-| Ownership, borrowing, lifetimes, clone traps, iterators | [references/ownership-borrowing.md](references/ownership-borrowing.md) |
-| Lifetime variance and memory regions | [references/lifetime-variance.md](references/lifetime-variance.md) |
-| Result/Option handling and error contracts | [references/error-handling.md](references/error-handling.md) |
-| Async pitfalls, poll contract, Pin, cancellation | [references/async-concurrency.md](references/async-concurrency.md) |
-| Send/Sync, atomics, locks | [references/concurrency-primitives.md](references/concurrency-primitives.md) |
-| Memory ordering and fences | [references/memory-ordering.md](references/memory-ordering.md) |
-| Lock-free and hand-rolled concurrency patterns | [references/lock-free-patterns.md](references/lock-free-patterns.md) |
-| Concurrency model selection | [references/concurrency-models.md](references/concurrency-models.md) |
-| Type layout, repr, PhantomData, auto-traits | [references/types-layout.md](references/types-layout.md) |
-| Traits, object safety, hidden API contracts | [references/interface-design.md](references/interface-design.md) |
-| Drop guards, index pointers, extension traits, preludes | [references/patterns-in-the-wild.md](references/patterns-in-the-wild.md) |
-| Unsafe code, validity, provenance, panic safety | [references/unsafe-deep.md](references/unsafe-deep.md) |
-| Common Rust mistakes and clippy patterns | [references/common-mistakes.md](references/common-mistakes.md) |
-
-## Before submitting a review
-
-Final checks:
-
-1. The review scope and intent are clear.
-2. Specialist review skills were used only where relevant.
-3. Every finding passed `review-verification-protocol` and has evidence.
-4. Findings are prioritized by severity and are specific enough to act on.
-5. No finding is merely style preference, unverified speculation, or unrelated
-   future work.
-6. Security-sensitive findings or approvals reference the applicable security
-   process when one exists and never expose secrets.
-7. Validation status is accurate: say what passed, what failed, what was not run,
-   and why.
-8. Re-reviews only verify previous fixes unless a fresh full review was requested.
-
-If a potential issue remains uncertain, read more context, ask a `Question`,
-downgrade the severity, or remove it.
+- Lead with findings. Keep summaries secondary.
+- Do not report unverified speculation, taste preferences, or unrelated future
+  work as defects.
+- Do not ask for broad rewrites when a targeted fix addresses the issue.
+- For security-sensitive findings, follow repository policy and avoid exposing
+  secrets, private paths, raw tokens, cookies, credentialed URLs, or sensitive
+  payloads.
+- For re-reviews, verify previous fixes only unless the user asks for a fresh
+  full review.

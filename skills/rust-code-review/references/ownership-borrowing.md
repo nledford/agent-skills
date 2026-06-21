@@ -1,6 +1,8 @@
 # Ownership and Borrowing
 
-For pointer type selection, Copy trait guidance, Cow patterns, and iterator idioms, see the `rust-best-practices` skill.
+For pointer type selection, `Copy` guidance, `Cow` patterns, and iterator idioms,
+prefer the repository's Rust style guide when one exists; otherwise use this
+reference as the review baseline.
 
 ## Critical Anti-Patterns
 

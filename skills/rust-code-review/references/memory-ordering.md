@@ -1,6 +1,11 @@
 # Memory Ordering
 
-For general atomics/lock/`Send`-`Sync` background, see [concurrency-primitives.md](concurrency-primitives.md). For hand-rolled spinlocks, channels, and `Arc` patterns, see [lock-free-patterns.md](lock-free-patterns.md). For loom/Miri test patterns, see [../../rust-testing-code-review/references/concurrency-testing.md](../../rust-testing-code-review/references/concurrency-testing.md).
+For general atomics/lock/`Send`-`Sync` background, see
+[concurrency-primitives.md](concurrency-primitives.md). For hand-rolled
+spinlocks, channels, and `Arc` patterns, see
+[lock-free-patterns.md](lock-free-patterns.md). For hand-rolled atomics,
+prefer repository-owned Loom and Miri test harnesses when they exist; otherwise
+report the missing concurrency evidence as residual risk.
 
 The single highest-value reviewer instinct: **every atomic operation should be paired in your mind with the happens-before relationship it participates in.** If you cannot name the relationship in one sentence, the ordering is probably wrong, or `SeqCst` is being used as a fig leaf.
 
@@ -309,7 +314,9 @@ Most real memory-ordering bugs hide on weakly-ordered platforms. x86-64's strong
 - **`loom`** is a model checker that explores possible thread interleavings. Replace `std::sync::{Arc, Mutex, atomic::*}`, `std::thread`, and `std::cell::UnsafeCell` with `loom::sync::*`, `loom::thread`, and `loom::cell::UnsafeCell` under `#[cfg(loom)]`. Loom under-approximates `Relaxed` reordering — pair with Miri's `-Zmiri-many-seeds` for `Relaxed`-heavy code.
 - **`-Zmiri-tree-borrows`** opts into the newer Tree Borrows aliasing model, which catches more subtle pointer-aliasing bugs in `unsafe` code.
 
-See [../../rust-testing-code-review/references/concurrency-testing.md](../../rust-testing-code-review/references/concurrency-testing.md) for loom and Miri test patterns.
+Use the repository's own Loom and Miri recipes when available. If none exist for
+hand-rolled atomics or `UnsafeCell` synchronization, report that missing
+evidence instead of treating ordinary `cargo test` on one architecture as proof.
 
 `[FILE:LINE] CONCURRENT_UNSAFE_NO_MIRI` — `unsafe` block touching atomics or `UnsafeCell` in a crate without `cargo +nightly miri test` in CI.
 

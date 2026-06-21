@@ -1,6 +1,14 @@
 # Concurrency Models
 
-Concurrency is a design decision, not a tactical choice. Pick the model — shared memory, worker pool, or actor — *before* reaching for primitives, then let the model dictate which primitives belong. Jon Gjengset's framing: most concurrency bugs come from accidentally mixing two models in one design. This file covers model selection and the review hazards specific to each. For primitive-level review (Mutex vs RwLock, atomics, UnsafeCell, OnceLock/LazyLock), see [concurrency-primitives.md](concurrency-primitives.md). For ordering semantics, see [memory-ordering.md](memory-ordering.md). For async-specific patterns, see [async-concurrency.md](async-concurrency.md) and [../../tokio-async-code-review/SKILL.md](../../tokio-async-code-review/SKILL.md).
+Concurrency is a design decision, not a tactical choice. Pick the model —
+shared memory, worker pool, or actor — *before* reaching for primitives, then
+let the model dictate which primitives belong. Jon Gjengset's framing: most
+concurrency bugs come from accidentally mixing two models in one design. This
+file covers model selection and the review hazards specific to each. For
+primitive-level review (Mutex vs RwLock, atomics, UnsafeCell,
+OnceLock/LazyLock), see [concurrency-primitives.md](concurrency-primitives.md).
+For ordering semantics, see [memory-ordering.md](memory-ordering.md). For
+async-specific patterns, see [async-concurrency.md](async-concurrency.md).
 
 ## Shared memory model
 

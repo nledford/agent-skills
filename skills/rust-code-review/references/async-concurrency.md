@@ -76,7 +76,9 @@ async fn process(shared: &Mutex<Vec<Item>>) {
 
 Exception: `std::sync::Mutex` is fine when the critical section is very short (no async operations, just field access) because it avoids the overhead of tokio's async mutex. The tokio docs themselves recommend this pattern.
 
-> For a detailed comparison of `tokio::sync::Mutex` vs `std::sync::Mutex` and other sync primitives (`RwLock`, `Semaphore`, `Notify`), see `tokio-async-code-review` (references/sync-primitives.md).
+> For a detailed comparison of `tokio::sync::Mutex` vs `std::sync::Mutex` and
+> other sync primitives (`RwLock`, `Semaphore`, `Notify`), inspect local runtime
+> usage and Tokio docs that match the repository version.
 
 ### 4. Spawning Tasks Without Join Handles
 
@@ -167,13 +169,15 @@ When reviewing, check whether `async-trait` usage can be replaced with native sy
 
 Choose channels based on communication shape: `mpsc` for back-pressure, `broadcast` for fan-out, `oneshot` for request-response, `watch` for latest-value. Ensure bounded channels are sized to avoid OOM risks with unbounded alternatives.
 
-> For detailed channel patterns, usage examples, and pitfalls, see `tokio-async-code-review` (references/channels.md).
+> For channel patterns, usage examples, and pitfalls, inspect the local runtime
+> version and existing channel wrappers before recommending changes.
 
 ## Graceful Shutdown
 
 Use `CancellationToken` from `tokio_util` with child tokens for hierarchical shutdown. Combine with `tokio::select!` to listen for cancellation alongside work.
 
-> For full shutdown patterns and cancellation token usage, see `tokio-async-code-review` (references/task-management.md).
+> For shutdown patterns and cancellation token usage, inspect existing local
+> task-management helpers before introducing a new pattern.
 
 ## Review Questions
 
@@ -250,7 +254,13 @@ Cancel-safety taxonomy for review:
 - **Cancel-safe**: futures that hold no "I started but didn't finish" state across `.await`. Examples: `mpsc::Receiver::recv`, `broadcast::Receiver::recv`, `tokio::time::sleep`, `Mutex::lock`, `read` (returns whatever arrived), `accept`.
 - **Cancel-unsafe**: futures with internal partial-buffer state that gets dropped. Examples: `AsyncReadExt::read_exact`, `read_to_end`, `read_line`, `AsyncWriteExt::write_all`, HTTP body reads from `reqwest`/`hyper`, anything with a per-call invariant spanning multiple polls.
 
-Defensive pattern for cancel-unsafe work: spawn it onto a detached task and `.await` the `JoinHandle`. The `JoinHandle` future is cancel-safe; the work behind it runs to a clean checkpoint even if the awaiter is cancelled. See [../../tokio-async-code-review/references/pinning-cancellation.md](../../tokio-async-code-review/references/pinning-cancellation.md) for tokio-specific cancellation primitives and [concurrency-models.md](concurrency-models.md) for choosing between channel-driven supervisors and direct spawn.
+Defensive pattern for cancel-unsafe work: spawn it onto a detached task and
+`.await` the `JoinHandle`. The `JoinHandle` future is cancel-safe; the work
+behind it runs to a clean checkpoint even if the awaiter is cancelled. For Tokio
+code, inspect `CancellationToken`, `JoinSet`, `select!` semantics, and
+`spawn_blocking` usage directly in the repository. See
+[concurrency-models.md](concurrency-models.md) for choosing between
+channel-driven supervisors and direct spawn.
 
 ## Send Propagation Through `.await`
 
@@ -302,4 +312,6 @@ A leaf future built against tokio's reactor (e.g. `tokio::net::TcpStream::read`,
 
 - [concurrency-primitives.md](concurrency-primitives.md) — `Arc`, atomic ordering, and the synchronization primitives that underpin `Waker` storage and cross-task handoff.
 - [concurrency-models.md](concurrency-models.md) — choosing between actor/supervisor models, channel-driven concurrency, and shared-state mutexes for cancel-safe designs.
-- [../../tokio-async-code-review/references/pinning-cancellation.md](../../tokio-async-code-review/references/pinning-cancellation.md) — tokio-specific cancellation primitives (`CancellationToken`, `JoinSet`, `select!` semantics, `spawn_blocking` bridge).
+- Inspect local Tokio usage for cancellation primitives (`CancellationToken`,
+  `JoinSet`, `select!` semantics, `spawn_blocking`) before relying on generic
+  async assumptions.

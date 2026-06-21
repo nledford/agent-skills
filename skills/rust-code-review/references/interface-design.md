@@ -1,6 +1,11 @@
 # Interface Design
 
-The four high-level principles — unsurprising, flexible, obvious, constrained — are summarized in [api-design.md](../../rust-best-practices/references/api-design.md) along with the builder pattern, sealed-trait introduction, `#[non_exhaustive]`, and generic SemVer rules. This file is reviewer-actionable depth: the exact mechanics that turn each principle into a finding, in the format `[FILE:LINE] ISSUE_TITLE — short description and the fix.` See also [types-layout.md](types-layout.md) for `Send`/`Sync`/`PhantomData` mechanics, and [error-handling.md](error-handling.md) for `Error` trait expectations referenced by destructor and fallibility checks.
+Use four high-level API review principles: unsurprising, flexible, obvious, and
+constrained. This file turns those principles into reviewer-actionable checks in
+the format `[FILE:LINE] ISSUE_TITLE — short description and the fix.` See
+[types-layout.md](types-layout.md) for `Send`/`Sync`/`PhantomData` mechanics and
+[error-handling.md](error-handling.md) for `Error` trait expectations referenced
+by destructor and fallibility checks.
 
 ## Object Safety Mechanics
 
@@ -236,7 +241,10 @@ Practical rule for reviewers: prefer `impl Trait` in argument position for simpl
 
 ## Review Checks
 
-Format: `[FILE:LINE] ISSUE_TITLE — short description and the fix.` See [api-design.md](../../rust-best-practices/references/api-design.md) for higher-level SemVer rules referenced below.
+Format: `[FILE:LINE] ISSUE_TITLE — short description and the fix.` For SemVer
+judgment, prefer the repository's public API policy when one exists; otherwise
+flag only changes that plausibly break documented callers or established
+downstream usage.
 
 Object safety:
 

@@ -1,6 +1,7 @@
 # Unsafe Code, API Design, and Derive Patterns
 
-> For performance, pointer types, clippy config, iterators, generics, and documentation guidance, see the `rust-best-practices` skill.
+> For performance, pointer types, Clippy config, iterators, generics, and
+> documentation guidance, prefer repository-local Rust docs when they exist.
 
 ## Unsafe Code
 
