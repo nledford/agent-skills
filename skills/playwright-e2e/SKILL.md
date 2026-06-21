@@ -1,207 +1,165 @@
 ---
 name: playwright-e2e
-description: "Chidori Playwright browser E2E guidance through Bun and root Just recipes. Use when adding, updating, running, or debugging e2e/*.spec.ts, playwright.config.ts, browser test support helpers, targeted Playwright runs, traces/reports, or Leptos/Axum browser-visible behavior. Do not use for non-browser domain logic, Rust-only tests, or generic browser MCP automation."
+description: "Playwright browser E2E guidance. Use when adding, updating, running, or debugging checked-in Playwright tests, playwright.config files, browser test helpers, targeted test runs, traces, reports, cross-browser projects, or browser-visible behavior. Do not use for non-browser domain logic or generic manual browser automation."
 ---
 
-# Chidori Playwright E2E
+# Playwright E2E
 
 ## Purpose
 
-Use this skill for checked-in Playwright browser tests in Chidori. The goal is
-fast, targeted, behavior-readable evidence for the Rust/Leptos frontend served by
-the root Axum application, with same-origin `/api` calls and synthetic test data.
+Use this skill for checked-in Playwright browser tests. The goal is fast,
+targeted, behavior-readable evidence for browser-visible workflows, not broad
+manual exploration or proof of backend/domain invariants.
 
-## When to use
+## When to Use
 
-- Adding, updating, splitting, moving, or deleting `e2e/**/*.spec.ts` tests.
+- Adding, updating, splitting, moving, or deleting Playwright specs.
 - Debugging Playwright failures, flakes, traces, reports, browser projects, or
-  Playwright web-server startup.
-- Choosing between default Chromium, explicit SSR/CSR/hydrate, cross-browser,
-  responsive smoke, and live onboarding lanes.
+  web-server startup.
+- Choosing between targeted, full-suite, cross-browser, mobile/responsive, and
+  live-backend lanes.
 - Testing browser-visible behavior: routing, forms, keyboard/focus behavior,
-  visible validation/errors, accessibility-visible state, hydration, responsive
-  shell behavior, and same-origin browser API calls.
+  visible validation/errors, accessibility-visible state, hydration/rendering,
+  responsive layout, and browser API calls.
 
-## When not to use
+## When Not to Use
 
-- Domain invariants, SQL, backend route/security contracts, config validation, or
-  pure Leptos state that can be tested faster in Rust.
+- Domain invariants, SQL/storage contracts, backend route/security contracts,
+  config parsing, or pure state logic that can be tested faster below the
+  browser.
 - Ad hoc manual browser exploration, screenshots, or DOM inspection outside the
-  checked-in Playwright test suite; use `docs/agents/browser-mcp.md` and the
-  selected browser MCP workflow instead.
-- Generic Playwright tutorial work that ignores Chidori's Bun scripts, root Axum
-  topology, mock API helpers, and artifact-safety rules.
+  checked-in Playwright test suite; use the appropriate browser automation skill
+  or tool instead.
+- Generic Playwright tutorial work that ignores the repository's package
+  manager, scripts, config, support helpers, and artifact-safety rules.
 
-## Required repo inspection before acting
+## Required Repository Inspection
 
-Before editing or recommending commands, inspect the current repository state:
+Before editing or recommending commands, inspect the current repository:
 
-- `package.json` for Bun-backed Playwright scripts and argument forwarding.
-- `playwright.config.ts` for projects, serve modes, ports, artifact directories,
-  reporters, retries, workers, and web-server commands.
-- `just/test-web.just` and `just/setup.just` for supported root lanes.
-- `e2e/**/*.spec.ts` and nearby specs for existing user-language coverage.
-- `e2e/support/mock-api.ts`, `e2e/support/api-routes.ts`,
-  `e2e/support/api-contract.ts`, `e2e/support/component-fixtures.ts`, and
-  `e2e/support/artifact-safety.ts` before adding helpers or mocks.
-- `docs/agents/frontend.md`, `docs/agents/testing.md`,
-  `docs/agents/validation.md`, `docs/agents/browser-mcp.md`, and
-  `docs/agents/dependencies.md` for current topology, test-layer, artifact, and
-  Bun policy.
+- package-manager files such as `package.json`, lockfiles, or workspace config;
+- Playwright config files such as `playwright.config.ts` or
+  `playwright.config.js`;
+- command surfaces such as `just --list`, `make help`, package scripts, or CI
+  workflows;
+- existing spec directories such as `e2e/`, `tests/e2e/`, or
+  `playwright/tests/`;
+- support helpers, fixtures, route mocks, authentication setup, storage-state
+  files, artifact-cleanup scripts, and test data builders;
+- docs that explain test layers, browser support, package-manager policy,
+  artifact handling, or live-backend restrictions.
 
-Use `just --list` to confirm recipe names before documenting commands.
+Use discovered repository commands for setup and final evidence. Use direct
+Playwright CLI commands for narrow local iteration when they match local config.
 
-## Test organization and boundaries
+## Test Organization and Boundaries
 
-- Specs live under `e2e/`; workspace-specific specs live under `e2e/workspace/`.
-- Shared same-origin API mocks and route assertions live in `e2e/support/`.
-- Default browser E2E uses mocked same-origin APIs rather than a seeded backend
-  database. Live onboarding is the opt-in exception.
-- Keep Playwright tests BDD-shaped: test names should describe observable user or
-  workflow behavior, not private Rust modules or implementation fixes.
-- Keep DDD boundaries clear: domain rules and persistence belong in Rust/domain or
-  backend tests; Playwright proves browser journeys and frontend/backend seams.
+- Keep Playwright tests BDD-shaped: test titles should describe observable user
+  or workflow behavior, not private implementation details.
+- Prefer deterministic route mocks, fixtures, and seeded data for routine browser
+  tests. Use live-backend tests only when the behavior cannot be proven with
+  deterministic support helpers.
+- Keep DDD boundaries clear: domain rules and persistence belong in lower-level
+  tests; Playwright proves browser journeys and integration seams visible to the
+  browser.
 - Apply TDD when changing browser behavior: add or update the narrow failing spec
   first when practical, then implement the smallest source change.
 
-## Common commands and workflows
+## Command Strategy
 
-Run from the repository root.
+Run from the repository root unless local docs specify otherwise.
 
-### Setup
+Use the package manager and scripts already present. Common patterns include:
 
-```bash
-just setup-web-e2e
-just setup-web-e2e-cross-browser
+```sh
+npm run test:e2e -- <spec-or-filter>
+pnpm test:e2e <spec-or-filter>
+yarn test:e2e <spec-or-filter>
+bun run test:e2e <spec-or-filter>
+npx playwright test <spec-or-filter>
 ```
 
-The setup recipes run `bun install --frozen-lockfile` and install the required
-Playwright browsers. Use the cross-browser setup only when Firefox/WebKit lanes
-are in scope.
+Useful focused options:
 
-### Fast targeted development
-
-Use direct Bun scripts for focused iteration after dependencies/browsers are
-available:
-
-```bash
-bun install --frozen-lockfile
-bun run test:web:e2e e2e/login.spec.ts
-bun run test:web:e2e e2e/login.spec.ts:209
-bun run test:web:e2e e2e/login.spec.ts --grep "failed login shows generic error"
+```sh
+npx playwright test path/to/spec.ts
+npx playwright test path/to/spec.ts:123
+npx playwright test --grep "visible behavior title"
+npx playwright test --project=chromium
+npx playwright test --headed
+npx playwright test --debug
+npx playwright test --ui
 ```
 
-Use `CHIDORI_FRONTEND_PORT=<loopback-port>` when avoiding a local port conflict.
-Use `--workers=1`, `--headed`, `--debug`, or `--ui` only for focused debugging,
-not routine handoff evidence.
+Use `--headed`, `--debug`, or `--ui` only for focused local diagnosis, not as
+routine handoff evidence.
 
-### Supported lane selection
+## Lane Selection
 
-| Need | Command |
-| --- | --- |
-| Full mocked same-origin suite on desktop Chromium | `just test-web-e2e` |
-| Explicit SSR/Axum browser lane | `just test-web-e2e-ssr` |
-| Explicit browser-only CSR/static Trunk lane | `just test-web-e2e-csr` |
-| Packaged hydrate asset lane | `just test-web-e2e-hydrate` |
-| Curated desktop Chromium/Firefox/WebKit subset | `just test-web-e2e-desktop-cross-browser` |
-| Responsive route smoke across desktop engines and mobile Chromium | `just test-web-e2e-responsive-cross-browser-smoke` |
-| Live onboarding with isolated DB/runtime source root | `just test-web-e2e-live-onboarding` |
+Choose the narrowest lane that proves the behavior:
 
-Default `playwright.config.ts` values are SSR serve mode, project set `default`,
-host `127.0.0.1`, port `3000`, traces/screenshots/videos off, list reporter,
-and artifacts under `target/playwright/artifacts`. `CHIDORI_FRONTEND_HOST` must
-be `127.0.0.1` or `localhost`. `CHIDORI_PLAYWRIGHT_SKIP_WEBSERVER=1` is only for
-an intentionally managed server, such as the live onboarding helper.
+- **Targeted spec/filter** for iteration and regression reproduction.
+- **Full default browser suite** before handoff when browser behavior changed.
+- **Cross-browser lane** when changes touch browser APIs, rendering, downloads,
+  media, storage, focus, dialogs, or compatibility-sensitive code.
+- **Responsive/mobile lane** when layout, viewport, pointer/touch, or navigation
+  shell behavior changed.
+- **Live-backend lane** only when mocks cannot prove the contract and the
+  repository documents setup, cleanup, and data isolation.
 
-### Project and mode selectors
+Prefer the repository's named recipe or CI lane for final evidence.
 
-Use selectors only when they match the risk:
+## Debugging, Traces, and Reports
 
-```bash
-CHIDORI_PLAYWRIGHT_SERVE_MODE=hydrate bun run test:web:e2e e2e/ssr-hydration.spec.ts
-CHIDORI_PLAYWRIGHT_PROJECT_SET=responsive-smoke bun run test:web:e2e e2e/responsive-cross-browser-smoke.spec.ts
-CHIDORI_PLAYWRIGHT_PROJECT_SET=desktop-cross-browser bun run test:web:e2e e2e/login.spec.ts --project=firefox
-```
-
-Prefer the corresponding `just` recipe for final lane evidence.
-
-## Debugging, traces, and reports
-
-1. Re-run the smallest failing filter first: spec path, `file:line`, or
-   `--grep` title regex.
-2. Use `--list` to confirm a filter before starting browsers.
+1. Re-run the smallest failing filter first: spec path, `file:line`, or `--grep`.
+2. Use `--list` to confirm a filter before starting browsers when supported.
 3. Use `--workers=1` or `--repeat-each <N>` to diagnose ordering or flake
    hypotheses without broadening the suite.
-4. Use `--headed`, `--debug`, or `--ui` only for local interactive diagnosis.
-5. Enable traces only as a narrow opt-in, for example
-   `bun run test:web:e2e e2e/login.spec.ts --trace=retain-on-failure`.
-6. Inspect traces with Playwright's trace CLI when needed, for example
-   `bun --bun node_modules/.bin/playwright trace open <trace.zip>`.
-7. If you generate an HTML report, keep it in an ignored local target directory:
-   `PLAYWRIGHT_HTML_OUTPUT_DIR=target/playwright/report PLAYWRIGHT_HTML_OPEN=never bun run test:web:e2e e2e/login.spec.ts --reporter=html`.
-   Review it with
-   `bun --bun node_modules/.bin/playwright show-report target/playwright/report`.
+4. Enable traces only as a narrow opt-in, for example
+   `npx playwright test path/to/spec.ts --trace=retain-on-failure`.
+5. Inspect traces with Playwright's trace CLI when needed.
+6. Keep HTML reports, screenshots, videos, traces, and downloads in ignored local
+   artifact directories unless the repository explicitly publishes sanitized
+   artifacts.
 
-The package script runs `e2e/support/artifact-safety.ts` after Playwright. If you
-invoke `node_modules/.bin/playwright` directly, run
-`bun e2e/support/artifact-safety.ts` before sharing any browser-derived evidence.
 Do not retain or share raw screenshots, videos, traces, network dumps, storage
 state, cookies, CSRF/session values, credentialed URLs, local paths, `.env`
 contents, or live data.
 
-## Testing and verification guidance
+## Verification Guidance
 
-- Browser source or spec change: run the narrowest targeted Bun script first,
-  then the strongest relevant `just test-web-e2e*` lane before handoff.
-- Playwright config or helper-script topology change: run `just test-python-scripts`
-  for config/helper contracts plus a targeted Playwright lane.
-- Hydrate/packaged asset risk: run `just test-web-e2e-hydrate` or a targeted
-  `CHIDORI_PLAYWRIGHT_SERVE_MODE=hydrate bun run ...` check while iterating.
+- Browser source or spec change: run the narrowest targeted script first, then
+  the strongest relevant repository Playwright lane before handoff.
+- Playwright config or helper-script change: run tests that cover config/helper
+  contracts plus a targeted browser lane.
 - Cross-browser or responsive risk: run the curated cross-browser or responsive
-  smoke lane, not the entire suite on every engine.
-- Documentation-only E2E guidance changes: run `just drift-docs`; use
-  `just drift-tests` only when test inventory or feature ownership changes.
+  lane instead of every browser combination by default.
+- Documentation-only E2E guidance changes: run the repository's docs or drift
+  checks if they exist; otherwise validate links and examples manually.
 
-## Failure triage
+## Failure Triage
 
-- Missing browser executable: run `just setup-web-e2e` or
-  `just setup-web-e2e-cross-browser`.
-- Web server cannot start: check `CHIDORI_FRONTEND_PORT`, host restrictions, and
-  whether an old loopback server is occupying the port. The config intentionally
-  does not reuse stale servers.
-- Unexpected API call: update or extend `e2e/support/mock-api.ts` and route
-  assertions only if the browser behavior is intentionally changing; otherwise
-  fix the frontend API call.
-- Hydration failure: prefer `e2e/ssr-hydration.spec.ts`, hydrate mode, and
-  console diagnostics before broad browser matrices.
+- Missing browser executable: run the repository's browser install/setup command
+  or `npx playwright install` with the package manager used by the project.
+- Web server cannot start: check configured host, port, base URL, reuse-server
+  policy, required env, and stale local processes.
+- Unexpected API call: update route mocks or fixtures only if browser behavior is
+  intentionally changing; otherwise fix the application call.
+- Hydration/rendering failure: prefer a focused spec, console diagnostics, and a
+  targeted render mode before broad browser matrices.
 - Flake suspicion: use `--workers=1`, `--repeat-each`, and focused specs; do not
-  hide nondeterminism with retries unless the lane's CI policy already owns them.
+  hide nondeterminism with retries unless the lane's policy already owns them.
 
-## Common mistakes to avoid
+## Common Mistakes to Avoid
 
-- Do not use Playwright as the only proof for domain invariants, SQL constraints,
-  auth/session security controls, CORS/CSRF policy, or config parsing.
-- Do not add live-backend or database setup to mocked specs when support helpers
-  can express the same browser contract deterministically.
-- Do not promote CSR, hydrate, cross-browser, responsive, or live-onboarding lanes
-  into default checks without explicit approval.
-- Do not leave `test.only`, retained traces, screenshots, videos, HTML reports, or
-  raw browser artifacts in handoff evidence.
-- Do not use `npx playwright`; use Bun scripts,
-  `bun --bun node_modules/.bin/playwright ...`, or root `just` recipes.
-
-## References
-
-- `package.json`
-- `playwright.config.ts`
-- `just/setup.just`
-- `just/test-web.just`
-- `e2e/`
-- `e2e/support/`
-- `scripts/just/test_playwright_config_contract.py`
-- `scripts/just/web_e2e_live_onboarding.py`
-- `docs/agents/frontend.md`
-- `docs/agents/testing.md`
-- `docs/agents/validation.md`
-- `docs/agents/browser-mcp.md`
-- `docs/agents/dependencies.md`
+- Do not use Playwright as the only proof for domain invariants, storage
+  constraints, auth/session security controls, CORS/CSRF policy, or config
+  parsing.
+- Do not add live-backend setup to deterministic mocked specs when support
+  helpers can express the same browser contract.
+- Do not promote cross-browser, responsive, live-backend, or slow visual lanes
+  into default checks without explicit need or repository policy.
+- Do not leave `test.only`, retained traces, screenshots, videos, HTML reports,
+  or raw browser artifacts in handoff evidence.
+- Do not assume `npx`, `npm`, `pnpm`, `yarn`, or `bun`; inspect the repository's
+  package manager and scripts first.
