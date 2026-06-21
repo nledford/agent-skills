@@ -13,7 +13,7 @@ default:
 help:
     @just --list
 
-# Create ~/.agents/skills as a symlink to this repository.
+# Create ~/.agents/skills as a symlink to this repository's skills/ directory.
 [group('bootstrap')]
 setup:
     @{{python}} {{manager}} setup
@@ -23,7 +23,7 @@ setup:
 setup-dry-run:
     @{{python}} {{manager}} setup --dry-run
 
-# Verify ~/.agents/skills points to this repository and exposes skills.
+# Verify ~/.agents/skills points to skills/ and exposes skills.
 [group('bootstrap')]
 verify:
     @{{python}} {{manager}} verify

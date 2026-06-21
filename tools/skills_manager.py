@@ -13,6 +13,7 @@ from typing import Iterable, Sequence
 
 
 GLOBAL_SKILLS_PATH = Path.home() / ".agents" / "skills"
+SKILLS_DIR_NAME = "skills"
 LOCKFILE_NAME = ".skill-lock.json"
 REQUIRED_SKILL_METADATA = ("name", "description")
 
@@ -59,13 +60,15 @@ class OperationResult:
 class SkillRegistry:
     def __init__(
         self,
-        root: Path,
+        repo_root: Path,
+        skill_root: Path,
         skills: Sequence[Skill],
         locked_skills: dict[str, dict],
         ignored_skill_names: set[str],
         lockfile_error: str | None = None,
     ) -> None:
-        self.root = root
+        self.repo_root = repo_root
+        self.root = skill_root
         self.skills = tuple(sorted(skills, key=lambda skill: skill.name))
         self.locked_skills = locked_skills
         self.ignored_skill_names = ignored_skill_names
@@ -74,11 +77,15 @@ class SkillRegistry:
     @classmethod
     def load(cls, root: Path | str) -> SkillRegistry:
         repo_root = Path(root).expanduser().resolve()
+        skill_root = repo_root / SKILLS_DIR_NAME
         locked_skills, lockfile_error = _read_lockfile(repo_root / LOCKFILE_NAME)
         ignored_skill_names = _read_ignored_skill_names(repo_root / ".gitignore")
         skills: list[Skill] = []
 
-        for child in sorted(repo_root.iterdir(), key=lambda item: item.name):
+        if not skill_root.is_dir():
+            return cls(repo_root, skill_root, skills, locked_skills, ignored_skill_names, lockfile_error)
+
+        for child in sorted(skill_root.iterdir(), key=lambda item: item.name):
             if child.name.startswith(".") or not child.is_dir():
                 continue
             skill_file = child / "SKILL.md"
@@ -102,7 +109,7 @@ class SkillRegistry:
                 )
             )
 
-        return cls(repo_root, skills, locked_skills, ignored_skill_names, lockfile_error)
+        return cls(repo_root, skill_root, skills, locked_skills, ignored_skill_names, lockfile_error)
 
     def all(self) -> tuple[Skill, ...]:
         return self.skills
@@ -175,21 +182,24 @@ class SkillRegistry:
 class GlobalInstallService:
     def __init__(self, repo_root: Path | str, global_path: Path | str = GLOBAL_SKILLS_PATH) -> None:
         self.repo_root = Path(repo_root).expanduser().resolve()
+        self.skill_root = self.repo_root / SKILLS_DIR_NAME
         self.global_path = Path(global_path).expanduser()
 
     def setup(self, *, dry_run: bool = False) -> OperationResult:
         if not self.repo_root.is_dir():
             return OperationResult(errors=[f"Repository root does not exist: {self.repo_root}"])
+        if not self.skill_root.is_dir():
+            return OperationResult(errors=[f"Skills directory does not exist: {self.skill_root}"])
 
         if self.global_path.is_symlink():
             target = self._resolve_global_path()
-            if target == self.repo_root:
+            if target == self.skill_root:
                 return OperationResult(
-                    messages=[f"Global skills symlink already points to {self.repo_root}"]
+                    messages=[f"Global skills symlink already points to {self.skill_root}"]
                 )
             return OperationResult(
                 errors=[
-                    f"{self.global_path} is a symlink to {target}, not {self.repo_root}. "
+                    f"{self.global_path} is a symlink to {target}, not {self.skill_root}. "
                     "Remove or move it manually before running setup."
                 ]
             )
@@ -204,12 +214,12 @@ class GlobalInstallService:
 
         if dry_run:
             return OperationResult(
-                messages=[f"Would create symlink {self.global_path} -> {self.repo_root}"]
+                messages=[f"Would create symlink {self.global_path} -> {self.skill_root}"]
             )
 
         self.global_path.parent.mkdir(parents=True, exist_ok=True)
-        os.symlink(self.repo_root, self.global_path)
-        return OperationResult(messages=[f"Created {self.global_path} -> {self.repo_root}"])
+        os.symlink(self.skill_root, self.global_path)
+        return OperationResult(messages=[f"Created {self.global_path} -> {self.skill_root}"])
 
     def verify(self) -> OperationResult:
         if not self.global_path.is_symlink():
@@ -218,9 +228,9 @@ class GlobalInstallService:
             return OperationResult(errors=[f"{self.global_path} does not exist"])
 
         target = self._resolve_global_path()
-        if target != self.repo_root:
+        if target != self.skill_root:
             return OperationResult(
-                errors=[f"{self.global_path} points to {target}, expected {self.repo_root}"]
+                errors=[f"{self.global_path} points to {target}, expected {self.skill_root}"]
             )
 
         registry = SkillRegistry.load(self.repo_root)
@@ -235,7 +245,7 @@ class GlobalInstallService:
 
         return OperationResult(
             messages=[
-                f"Global skills symlink is configured: {self.global_path} -> {self.repo_root}",
+                f"Global skills symlink is configured: {self.global_path} -> {self.skill_root}",
                 f"Visible skills: {len(registry.all())}",
             ]
         )
@@ -250,9 +260,9 @@ class GlobalInstallService:
             )
 
         target = self._resolve_global_path()
-        if target != self.repo_root:
+        if target != self.skill_root:
             return OperationResult(
-                errors=[f"{self.global_path} points to {target}, not {self.repo_root}; refusing to remove it"]
+                errors=[f"{self.global_path} points to {target}, not {self.skill_root}; refusing to remove it"]
             )
 
         if dry_run:
@@ -345,8 +355,11 @@ def _read_ignored_skill_names(path: Path) -> set[str]:
         if not line.endswith("/"):
             continue
         normalized = line.strip("/")
-        if normalized and "/" not in normalized:
-            ignored.add(normalized)
+        parts = normalized.split("/")
+        if len(parts) == 1 and parts[0]:
+            ignored.add(parts[0])
+        elif len(parts) == 2 and parts[0] == SKILLS_DIR_NAME and parts[1]:
+            ignored.add(parts[1])
     return ignored
 
 

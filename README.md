@@ -1,39 +1,43 @@
 # Agent Skills
 
 This repository is the canonical local source for globally installed agent
-skills. It is intended to be symlinked to `~/.agents/skills`:
+skills. Its `skills/` directory is intended to be symlinked to
+`~/.agents/skills`:
 
 ```sh
 just setup
 just verify
 ```
 
-The repository uses a flat skill layout. Each skill is a top-level directory
+The repository keeps runtime skills under `skills/`. Each skill is a directory
 with a `SKILL.md` file:
 
 ```text
 agent-skills/
-  git-commit/
-    SKILL.md
-  test-driven-development/
-    SKILL.md
+  skills/
+    git-commit/
+      SKILL.md
+    test-driven-development/
+      SKILL.md
+  tools/
+  tests/
 ```
 
 ## Skill Types
 
-First-party skills are skill directories that are tracked, or intended to be
-tracked, by this repository.
+First-party skills are skill directories under `skills/` that are tracked, or
+intended to be tracked, by this repository.
 
 Third-party skills are installed into the same directory by external tooling,
 such as `bunx skills`. A skill is treated as third-party when it is listed in
-`.skill-lock.json` or ignored as a top-level skill directory in `.gitignore`.
+`.skill-lock.json` or ignored as a skill directory under `skills/` in `.gitignore`.
 Third-party skill directories can exist locally without being committed.
 
 ## Common Commands
 
 ```sh
 just                 # show available commands
-just setup           # create ~/.agents/skills symlink when safe
+just setup           # create ~/.agents/skills -> repo/skills when safe
 just verify          # verify the global symlink
 just list            # list all skills
 just list-first-party
@@ -44,14 +48,16 @@ just check           # run lint, tests, validation, and verify
 ```
 
 Mutating global install commands are intentionally conservative. `just setup`
-is idempotent when `~/.agents/skills` already points to this repository, but it
-will not overwrite an existing directory or a symlink to another location.
+is idempotent when `~/.agents/skills` already points to this repository's
+`skills/` directory, but it will not overwrite an existing directory or a
+symlink to another location.
 
 ## Third-Party Updates
 
 `just update-third-party` runs `bunx skills update` by default after verifying
-that `~/.agents/skills` points at this repository. Override the command with
-`SKILLS_UPDATE_COMMAND` when the installer workflow differs:
+that `~/.agents/skills` points at this repository's `skills/` directory.
+Override the command with `SKILLS_UPDATE_COMMAND` when the installer workflow
+differs:
 
 ```sh
 SKILLS_UPDATE_COMMAND="bunx skills update" just update-third-party

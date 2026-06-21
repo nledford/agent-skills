@@ -4,7 +4,7 @@ __pycache__/
 .pytest_cache/
 
 # Third-party skills installed by bunx skills into ~/.agents/skills.
-/agent-browser/
-/anti-ai-slop-writing/
-/find-skills/
-/playwright-cli/
+/skills/agent-browser/
+/skills/anti-ai-slop-writing/
+/skills/find-skills/
+/skills/playwright-cli/
