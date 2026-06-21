@@ -1,15 +1,15 @@
 ---
 name: review-verification-protocol
-description: Mandatory evidence gates for Chidori code-review findings. Load with code-review and any specialist review skill before reporting findings, or read/apply manually if the runtime hides this skill.
+description: Mandatory evidence gates for code-review findings. Load with code-review and any specialist review skill before reporting findings, or read/apply manually if the runtime hides this skill.
 user-invocable: false
 ---
 
 # Review Verification Protocol
 
-Use this protocol before reporting any Chidori code-review finding. It is the
-evidence gate for [`code-review`](../code-review/SKILL.md) and the specialist
-`*-code-review` skills. Skipping it creates false positives that waste maintainer
-time and erode trust.
+Use this protocol before reporting any code-review finding. It is the evidence
+gate for [`code-review`](../code-review/SKILL.md) and any specialist review
+skills. Skipping it creates false positives that waste reviewer time and erode
+trust.
 
 ## Hard gates per finding
 
@@ -20,7 +20,7 @@ downgrade it, or rephrase it as a question. Do not ship soft accusations.
 | --- | --- | --- |
 | **1. Anchor** | Read the full enclosing function, module, test, migration, recipe, config, or doc section, not only the diff hunk. | You can cite the file path and line range, symbol, module, test, or behavior being judged. |
 | **2. Evidence** | Search/read enough surrounding code and docs to prove the issue is real and not handled elsewhere. | You have an artifact: file:line citation, command output, search result, relevant absence after search, or explicit “not run because ...”. |
-| **3. Impact** | Explain how the issue affects behavior, maintainability, security, tests, operations, or architecture in this repository. | The finding is not merely personal style or an implausible hypothetical. |
+| **3. Impact** | Explain how the issue affects behavior, maintainability, security, tests, operations, or architecture in the repository being reviewed. | The finding is not merely personal style or an implausible hypothetical. |
 | **4. Severity** | Assign severity using `code-review` severity calibration or the user-requested review vocabulary. | The label matches impact and urgency; unrelated net-new nice-to-have work is not a blocker. |
 | **5. Remedy** | Name a concrete fix or next step. | The author can act without guessing what you want. |
 
@@ -42,8 +42,8 @@ downgrade it, or rephrase it as a question. Do not ship soft accusations.
 - **Missing behavior, validation, or error handling:** Confirm the missing case
   can occur and matters to a supported user, operator, API, or domain flow.
 - **Authorization, privacy, or security:** Identify the trust boundary, actor,
-  data class, and route/command/path. Use the repo security process and sanitized
-  evidence; never expose secrets.
+  data class, and route/command/path. Use any available repository security
+  process and sanitized evidence; never expose secrets.
 - **Unused or dead code:** Search tests, generated contracts, trait impls, macros,
   serde names, SQLx mappings, route registration, CLI recipes, and docs links.
 - **Test weakness:** Check whether another layer already covers the behavior;

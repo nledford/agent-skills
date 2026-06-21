@@ -61,9 +61,9 @@ evidence, and isolate the direct cause.
   system gap. Stop when the next "why" would become speculative.
 - **Fault tree**: useful when multiple independent factors could have caused or
   amplified the failure.
-- **Control gap analysis**: useful for Chidori because repo workflows rely on
-  root `just` lanes, generated artifacts, SQLx metadata, feature boundaries, and
-  security review evidence.
+- **Control gap analysis**: useful when prevention depends on repository
+  workflows, generated artifacts, schema metadata, feature boundaries, security
+  review evidence, or other controls that should have caught the failure.
 - **Timeline reconstruction**: useful for incidents, flaky tests, releases, and
   multi-step regressions.
 
@@ -88,18 +88,18 @@ evidence, and isolate the direct cause.
 - Remaining risks:
 ```
 
-## Chidori Considerations
+## Prevention Considerations
 
-- Prefer root `just` validation lanes when prevention depends on repeatable
+- Prefer repository-owned validation lanes when prevention depends on repeatable
   checks.
 - For user-visible behavior, connect follow-up coverage to BDD only when a
   stakeholder-readable `.feature` contract is appropriate.
 - For code defects, recommend TDD-style regression coverage at the narrowest
   useful layer before or alongside implementation.
-- For domain failures, name the Chidori bounded context and invariant rather
+- For domain failures, name the affected bounded context and invariant rather
   than describing only tables, routes, or UI widgets.
-- For security-sensitive incidents or prevention work, follow
-  `docs/agents/security.md` and obtain sanitized review evidence.
+- For security-sensitive incidents or prevention work, follow any repository
+  security policy that exists and obtain sanitized review evidence.
 
 ## Guardrails
 

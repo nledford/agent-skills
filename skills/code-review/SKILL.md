@@ -1,20 +1,21 @@
 ---
 name: code-review
-description: Perform high-quality repository-local code reviews for meaningful Chidori changes. Use for requested audits, pull-request-style reviews, final focused review after implementation, before marking non-trivial plans complete, or whenever changes affect production code, APIs, domain boundaries, tests, data, security, workflows, dependencies, CI, or agent instructions.
+description: Perform high-quality repository-local code reviews. Use for requested audits, pull-request-style reviews, final focused review after implementation, before marking non-trivial plans complete, or whenever changes affect production code, APIs, domain boundaries, tests, data, security, workflows, dependencies, CI, or agent instructions.
 ---
 
 # Code Review
 
-Use this skill to review Chidori changes with maintainer-level rigor. A review is
-not a style pass. It protects long-term maintainability, correctness, domain
+Use this skill to review repository changes with maintainer-level rigor. A
+review is not a style pass. It protects long-term maintainability, correctness, domain
 integrity, test quality, security, reliability, and architectural consistency.
 Good reviews catch regressions, hidden coupling, unclear behavior, weak tests,
 and erosion of domain boundaries before work is merged, handed off, or marked
 complete.
 
 Pair this skill with the narrowest specialist review skill when the diff has a
-specialized surface, such as Axum, SQLx, Tokio, serde, PostgreSQL, Rust tests,
-macros, Python, or pytest. Before reporting findings, load or manually apply
+specialized surface, such as web framework code, database access, async runtime
+code, serialization, tests, macros, scripts, or security-sensitive behavior.
+Before reporting findings, load or manually apply
 [`review-verification-protocol`](../review-verification-protocol/SKILL.md) so
 each finding has objective evidence.
 
@@ -50,9 +51,9 @@ Perform a focused code review for meaningful repository changes, including:
 - Documentation changes that affect agent behavior, developer workflow, product
   behavior, operational expectations, validation, or security posture.
 
-For security-sensitive work, the repository security process still applies. Use
-`security-review-evidence` and `docs/agents/security.md`; do not treat this skill
-as a substitute for sanitized security evidence.
+For security-sensitive work, use any available repository security process and
+the `security-review-evidence` skill when present. Do not treat this skill as a
+substitute for sanitized security evidence.
 
 ## When review may be skipped
 
@@ -221,13 +222,11 @@ Do not flag style preferences where both approaches are valid. Do not treat
 requests for unrelated net-new code, new dependencies, broad rewrites, or future
 architecture ideas as actionable blockers.
 
-## Rust-heavy review references
+## Rust Review References
 
-Chidori is Rust-heavy. For Rust-specific concerns, use the specialist review
-skills first when they match (`axum-code-review`, `sqlx-code-review`,
-`tokio-async-code-review`, `rust-testing-code-review`, `serde-code-review`,
-`macros-code-review`). For general Rust review details, load these references
-only when needed:
+For Rust-specific concerns, use available specialist review skills first when
+they match the changed surface. For general Rust review details, load these
+references only when needed:
 
 | Issue type | Reference |
 | --- | --- |
@@ -255,8 +254,8 @@ Final checks:
 4. Findings are prioritized by severity and are specific enough to act on.
 5. No finding is merely style preference, unverified speculation, or unrelated
    future work.
-6. Security-sensitive findings or approvals reference the repo security process
-   and never expose secrets.
+6. Security-sensitive findings or approvals reference the applicable security
+   process when one exists and never expose secrets.
 7. Validation status is accurate: say what passed, what failed, what was not run,
    and why.
 8. Re-reviews only verify previous fixes unless a fresh full review was requested.

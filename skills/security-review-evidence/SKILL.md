@@ -1,56 +1,60 @@
 ---
 name: security-review-evidence
 description: >
-  Chidori security-review evidence checklist. Use before and after security-sensitive
+  Security-review evidence checklist. Use before and after security-sensitive
   behavior, documentation, or command-surface changes to keep findings sanitized,
-  scoped, and linked to the source-of-truth policy.
+  scoped, and tied to repository policy when one exists.
 user-invocable: false
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # Security Review Evidence
 
-Use this repo-local skill when a change touches auth, authorization, crypto,
-certificates, tokens, signatures, sessions, secrets, passwords, CORS, CSP,
-`.env` handling, credential-secret handling, trust boundaries, security-sensitive
-input validation, importer paths, plugin trust roots, browser artifacts, or
-related commands/docs.
+Use this skill when a change touches authentication, authorization, crypto,
+certificates, tokens, signatures, sessions, secrets, passwords, CORS, CSP, CSRF,
+`.env` handling, credential handling, trust boundaries, security-sensitive input
+validation, file import/export paths, plugin or extension trust roots, browser
+artifacts, or related commands/docs.
 
-## Source of truth
+## Source of Truth
 
-- Detailed policy, validation commands, and templates live in
-  [`docs/agents/security.md`](../../../docs/agents/security.md).
-- Do not copy long auth, importer, plugin, or artifact matrices into task notes;
-  cite the relevant section and summarize only the lanes and controls you checked.
+- First inspect the repository for security guidance such as `SECURITY.md`,
+  `AGENTS.md`, `docs/security*`, threat models, runbooks, CI security jobs, or
+  review templates.
+- Prefer existing validation commands and evidence templates over inventing a new
+  checklist.
+- If no repository policy exists, use this skill as the minimum evidence
+  checklist and state that no project-specific policy was found.
 
-## Evidence to collect
+## Evidence to Collect
 
 - Record **pre-change** and **post-change** security evidence for each
   security-sensitive change; if a checkpoint is impossible, say why.
-- Name the route classes, commands, docs, helper scripts, compose lanes, or
-  browser artifacts affected.
-- Cover auth, authorization, sessions, CORS, CSP, CSRF, WebAuthn, MFA,
-  throttling, and secrets/credential-secret handling where applicable.
-- For importer work, confirm raw host paths, canonical paths, cache payloads,
-  task payloads, and command output are redacted.
-- For plugin work, identify trust roots, managed roots, path boundaries, and
-  untrusted inputs without exposing private filesystem details.
+- Name the affected route classes, commands, docs, helper scripts, deployment
+  surfaces, browser artifacts, storage paths, or trust boundaries.
+- Cover authentication, authorization, sessions, CORS, CSP, CSRF, MFA,
+  throttling, and secret handling where applicable.
+- For import/export or filesystem work, confirm raw host paths, canonical paths,
+  cache payloads, task payloads, and command output are redacted where needed.
+- For plugin, extension, or script execution work, identify trust roots, managed
+  roots, path boundaries, and untrusted inputs without exposing private
+  filesystem details.
 - For browser/frontend evidence, verify artifacts and logs do not include
   cookies, storage state, CSRF/session IDs, credentialed URLs, secrets, private
   paths, or sensitive payloads.
 
-## Forbidden outputs
+## Forbidden Outputs
 
 Never print or store `.env` contents, secret files, private keys, cookies,
-tokens, CSRF values, password hashes, credential-secret material, credentialed
-PostgreSQL URLs, browser storage state, raw importer paths, or private host
-paths. Use placeholders such as `<redacted>` or `<local-secret-file>`.
+tokens, CSRF values, password hashes, credential material, credentialed database
+URLs, browser storage state, raw import paths, or private host paths. Use
+placeholders such as `<redacted>` or `<local-secret-file>`.
 
-## Verification expectations
+## Verification Expectations
 
-- Prefer root `just` recipes named in `docs/agents/security.md`; cite exact
-  commands run and sanitized pass/fail results.
-- Do not treat MCP/search output, screenshots containing secrets, or raw logs as
-  security evidence.
+- Prefer repository-owned validation recipes when they exist; cite exact commands
+  run and sanitized pass/fail results.
+- Do not treat search output, screenshots containing secrets, or raw logs as
+  shareable security evidence.
 - If verification is skipped or partial, report the missing control, why it was
   not checked, and the residual risk.
