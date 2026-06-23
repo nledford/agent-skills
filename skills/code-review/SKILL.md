@@ -47,9 +47,9 @@ impact is uncertain.
 
 3. **Choose lenses.**
    - Use this general review lens first.
-   - Add narrow specialist skills for Rust, PostgreSQL/SQLite/SQL, Python, Bun,
-     browser tests, security evidence, Justfiles, or other surfaces only when
-     they apply.
+   - Add narrow specialist skills for Rust, SQL/PostgreSQL/SQLite, Python,
+     JavaScript/TypeScript, browser tests, security review, documentation,
+     Justfiles, or other surfaces only when they apply.
 
 4. **Review tests and behavior.**
    - Check whether tests or examples specify observable behavior and meaningful

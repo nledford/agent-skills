@@ -7,9 +7,11 @@ description: SQLite and SQL engineering guidance. Use when adding, changing, rev
 
 Use this skill for SQLite-specific database work independent of application
 language. Keep the guidance focused on SQLite behavior; use
-[`postgresql-sql-engineering`](../postgresql-sql-engineering/SKILL.md) for
-PostgreSQL-native design and [`rust-persistence-sql`](../rust-persistence-sql/SKILL.md)
-for Rust SQLx or SeaQuery adapter details.
+[`sql-engineering`](../sql-engineering/SKILL.md) for database-neutral SQL first
+passes, [`postgresql-sql-engineering`](../postgresql-sql-engineering/SKILL.md)
+for PostgreSQL-native design, and
+[`rust-persistence-sql`](../rust-persistence-sql/SKILL.md) for Rust SQLx or
+SeaQuery adapter details.
 
 ## Use When
 

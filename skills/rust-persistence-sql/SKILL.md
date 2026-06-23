@@ -1,13 +1,14 @@
 ---
 name: rust-persistence-sql
-description: Rust persistence, SQLx, and SeaQuery guidance. Use when adding, changing, reviewing, or testing SQLx queries/macros, SeaQuery builders, Rust database adapters, pools, transactions, offline query metadata, migrations invoked from Rust, SQLite support, database-backed Rust tests, dynamic SQL construction, or persistence boundaries. Use postgresql-sql-engineering or sqlite-sql-engineering for database-native design.
+description: Rust persistence, SQLx, SeaQuery, and SQL-library guidance. Use when adding, changing, reviewing, or testing SQLx queries/macros, SeaQuery builders, SeaORM, Diesel, raw SQL choices, Rust database adapters, pools, transactions, offline query metadata, migrations invoked from Rust, SQLite support, database-backed Rust tests, dynamic SQL construction, or persistence boundaries. Use sql-engineering, postgresql-sql-engineering, or sqlite-sql-engineering for database-native design.
 ---
 
 # Rust Persistence, SQLx, And SeaQuery
 
 Use this skill for database-backed Rust work. Keep persistence adapters explicit,
 keep core domain rules independent of database mechanics where practical, and
-validate both Rust types and database behavior. For language-independent
+validate both Rust types and database behavior. For database-neutral SQL design,
+use [`sql-engineering`](../sql-engineering/SKILL.md). For language-independent
 PostgreSQL schema, SQL, query-plan, security, and migration design, use
 [`postgresql-sql-engineering`](../postgresql-sql-engineering/SKILL.md). For
 SQLite-native schema, transaction, and test-database behavior, use
@@ -120,6 +121,22 @@ projects use `cargo sqlx ...`; others install a standalone `sqlx` binary.
   that is explicit repository policy.
 - Seed data and fixtures are deterministic, isolated, and safe for repeated test
   runs.
+
+## SQL Library Choice
+
+- Prefer raw SQL with SQLx macros when queries are static, readability matters,
+  compile-time checking is available, and SQL expresses the behavior directly.
+- Prefer SeaQuery when query shape is genuinely dynamic, many optional filters or
+  dialects must compose, or string assembly would be unsafe or hard to review.
+- Consider SeaORM only when the project already uses it or needs its entity,
+  relation, migration, and active-model conventions across a broad persistence
+  layer. Do not add it for one query or to avoid understanding SQL.
+- Consider Diesel when the repository already uses Diesel or needs its typed query
+  DSL, compile-time schema integration, and migration workflow. Do not mix it
+  into a SQLx-centered project without a clear boundary.
+- Prefer explicit raw SQL for migrations, performance-sensitive queries,
+  database-native features, hand-tuned plans, or cases where an ORM/query builder
+  hides important semantics.
 
 ## SQLite Guidance
 

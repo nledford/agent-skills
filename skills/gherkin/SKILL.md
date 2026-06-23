@@ -114,3 +114,17 @@ Use `Background` sparingly:
 - No scenario depends on order from another scenario.
 - Tags, if used, describe execution needs or meaningful categories rather than
   temporary implementation notes.
+
+## Language Usage
+
+- **Python:** map feature steps to pytest-bdd, behave, or project-specific
+  adapters only when the repository already uses them or the user explicitly asks
+  for executable `.feature` files. Keep step definitions thin and push domain
+  rules into Python modules with ordinary tests.
+- **Rust:** use Cucumber-style crates or custom feature runners only when the
+  repository already has that lane. Otherwise keep Gherkin as acceptance criteria
+  and implement behavior with Rust unit/integration tests.
+- **JavaScript/TypeScript and other languages:** connect `.feature` files to the
+  existing test runner only when it improves stakeholder-readable coverage. Do
+  not introduce a Gherkin runner for simple changes where clear test names or
+  inline Given/When/Then notes would be enough.

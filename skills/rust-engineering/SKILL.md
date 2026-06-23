@@ -113,6 +113,24 @@ cargo fmt
   `compile_fail` examples, or a compile-test harness when the failure mode is a
   type-system contract.
 
+## Common Crate Guidance
+
+- `serde` / `serde_json`: keep serialization formats explicit at API, storage,
+  and message boundaries. Use derives for stable data shapes, custom serializers
+  only when the wire contract requires them, and tests for compatibility-sensitive
+  JSON.
+- `anyhow`: appropriate at application edges, CLIs, and task orchestration where
+  context matters more than typed recovery. Library-like crates and domain APIs
+  should expose typed errors callers can handle.
+- `tokio`: use `rust-async-web` for runtime, task, cancellation, backpressure,
+  Axum, and Leptos details. Do not hide blocking work inside async functions.
+- `reqwest`: keep HTTP clients at adapter boundaries, configure timeouts, handle
+  status codes deliberately, avoid logging secrets, and test request/response
+  mapping without real network calls when practical.
+- `rand` and ID crates: use
+  [`random-data-identifiers`](../random-data-identifiers/SKILL.md) for secure
+  randomness, deterministic seeds, UUIDs, and collision-resistant identifiers.
+
 ## Anti-Patterns
 
 - Fighting borrow errors by cloning, leaking, boxing, or adding `Arc<Mutex<_>>`

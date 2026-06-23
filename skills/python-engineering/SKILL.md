@@ -16,8 +16,8 @@ CI policy.
   requirements files, tests, type-checker config, Ruff config, or build metadata.
 - Adding behavior, fixing bugs, refactoring Python modules, reviewing Python
   code, or modernizing package/dependency workflows.
-- Working with `uv`, pytest, unittest, Ruff, mypy, Pyright, packaging, or Python
-  CLIs.
+- Working with `uv`, pytest, unittest, Ruff, ty, mypy, Pyright, packaging, or
+  Python CLIs.
 
 Do not use this skill for non-Python package managers, browser E2E test design,
 or database-native design except where Python code owns the adapter boundary.
@@ -69,12 +69,14 @@ uv remove <package>
 uv run python -m pytest
 uv run ruff check .
 uv run ruff format --check .
+uv run ty check
 uv run mypy .
 uv run pyright
 uv build
 ```
 
-Adapt type-check and test commands to the tools actually configured.
+Adapt type-check and test commands to the tools actually configured. Use `ty`
+when the repository has adopted it; otherwise use the configured type checker.
 
 ## Python Design Checklist
 
@@ -86,6 +88,8 @@ Adapt type-check and test commands to the tools actually configured.
   they clarify data shape or domain invariants.
 - Exceptions are specific, preserve cause with `raise ... from exc`, and carry
   enough context for diagnosis without leaking secrets.
+- Public docstrings explain caller-relevant behavior, parameters, return values,
+  raised exceptions, and examples only when type hints and names are not enough.
 - Async code uses non-blocking libraries, awaits coroutines, manages async
   context managers with `async with`, and avoids blocking file/network/sleep
   calls in the event loop.
@@ -128,6 +132,16 @@ Adapt type-check and test commands to the tools actually configured.
   level, and broad mocks do not make tests meaningless.
 - Workflow: `pyproject.toml`, lockfiles, format/lint/type/test commands, docs,
   and CI remain synchronized.
+
+## Pydoc and Docstrings
+
+- Use module, class, function, and method docstrings for public APIs, extension
+  points, CLIs, and non-obvious behavior. Do not restate obvious names.
+- Keep examples deterministic and runnable through the repository's doctest,
+  pytest, or documentation lane when one exists.
+- Document `Raises` only for exceptions callers can intentionally handle.
+- Prefer type hints for ordinary parameter and return shape; use prose for
+  semantics, side effects, units, invariants, and security constraints.
 
 ## Anti-Patterns
 

@@ -1,9 +1,6 @@
 ---
 name: security-review-evidence
-description: >
-  Security-review evidence checklist. Use before and after security-sensitive
-  behavior, documentation, or command-surface changes to keep findings sanitized,
-  scoped, and tied to repository policy when one exists.
+description: Security-review evidence checklist. Use before and after security-sensitive behavior, documentation, or command-surface changes to keep findings sanitized, scoped, and tied to repository policy when one exists.
 user-invocable: false
 ---
 
@@ -14,6 +11,9 @@ certificates, tokens, signatures, sessions, secrets, passwords, CORS, CSP, CSRF,
 `.env` handling, credential handling, trust boundaries, security-sensitive input
 validation, file import/export paths, plugin or extension trust roots, browser
 artifacts, or related commands/docs.
+
+Use [`security-review`](../security-review/SKILL.md) for the audit workflow and
+this skill for evidence collection, redaction, and reporting guardrails.
 
 ## Source of Truth
 

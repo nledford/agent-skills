@@ -7,7 +7,9 @@ description: PostgreSQL and SQL engineering guidance. Use when adding, changing,
 
 Use this skill for database-native PostgreSQL and SQL work independent of the
 application language. Keep database invariants explicit, changes deployable, and
-query behavior proven with the target database.
+query behavior proven with the target database. Use
+[`sql-engineering`](../sql-engineering/SKILL.md) for database-neutral SQL first
+passes when the target engine is unknown or multiple engines are involved.
 
 ## Use When
 
