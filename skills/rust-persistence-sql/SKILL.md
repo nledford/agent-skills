@@ -12,7 +12,10 @@ use [`sql-engineering`](../sql-engineering/SKILL.md). For language-independent
 PostgreSQL schema, SQL, query-plan, security, and migration design, use
 [`postgresql-sql-engineering`](../postgresql-sql-engineering/SKILL.md). For
 SQLite-native schema, transaction, and test-database behavior, use
-[`sqlite-sql-engineering`](../sqlite-sql-engineering/SKILL.md).
+[`sqlite-sql-engineering`](../sqlite-sql-engineering/SKILL.md). Use
+[`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when deciding
+whether repositories, database gateways, transactions, or query services should
+be outbound ports and adapters rather than core domain code.
 
 ## Workflow
 

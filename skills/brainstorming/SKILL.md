@@ -106,6 +106,10 @@ Open questions
 - **DDD:** Prefer existing domain language, boundaries, invariants, and policies
   when comparing options. Load `domain-driven-design` when the model itself needs
   focused design.
+- **Hexagonal Architecture:** When options differ by dependency direction,
+  ports/adapters, use cases, or infrastructure isolation, load
+  `hexagonal-architecture` after choosing whether the extra indirection is worth
+  its cost.
 - **TDD:** Use the validation plan to decide the first failing test or regression
   check. Load `test-driven-development` when implementation should proceed by
   Red-Green-Refactor.

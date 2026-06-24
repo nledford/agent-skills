@@ -7,7 +7,10 @@ description: Async Rust and Rust web/full-stack guidance. Use when working with 
 
 Use this skill for async Rust services and full-stack Rust applications. Keep
 runtime, HTTP, UI, and persistence boundaries explicit so domain logic remains
-testable without the framework.
+testable without the framework. Use
+[`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when handlers,
+jobs, server functions, message consumers, persistence, or external clients need
+formal ports/adapters or shared application use cases.
 
 ## Workflow
 

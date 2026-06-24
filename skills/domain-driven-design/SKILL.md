@@ -74,6 +74,25 @@ Avoid heavy DDD when:
    - Use integration tests for repository mappings and boundary contracts.
    - Prefer behavior names in tests over implementation names.
 
+## Relationship To Hexagonal Architecture
+
+DDD helps define what belongs inside the business-centered core; Hexagonal
+Architecture helps keep that core isolated from external mechanisms. Load
+[`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when domain
+modeling turns into decisions about application services, use cases, ports,
+adapters, dependency direction, or how controllers, databases, queues, SDKs, and
+frameworks interact with the model.
+
+- Repositories in DDD are collection-like access to aggregates; in a hexagonal
+  design they are usually outbound ports implemented by persistence adapters, not
+  generic database helper layers.
+- Application services/use cases orchestrate workflows around domain objects;
+  they should not absorb invariants that belong on entities, value objects,
+  aggregates, or domain services.
+- Hexagonal Architecture is optional. Keep simple CRUD, one-off scripts, and
+  immature domains simpler until real boundaries, testability needs, or
+  infrastructure leakage justify ports and adapters.
+
 ## Modeling Guidance
 
 - Make invalid states unrepresentable when the language and type system allow it.

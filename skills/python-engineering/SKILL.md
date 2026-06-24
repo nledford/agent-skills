@@ -34,7 +34,10 @@ schema, transaction, query-plan, and database-specific behavior.
    use BDD-style examples for externally observable workflows.
 3. Keep boundaries clear. Use DDD language where domain rules matter; keep I/O,
    framework, database, and CLI parsing at adapters instead of leaking into core
-   domain logic.
+   domain logic. Load
+   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when Python
+   code is defining ports, adapters, use cases, or infrastructure-independent
+   tests.
 4. Implement small, typed, testable units. Prefer simple functions/classes,
    explicit data models, narrow exceptions, and dependency injection at
    boundaries over global state and broad mocks.
@@ -147,6 +150,8 @@ when the repository has adopted it; otherwise use the configured type checker.
 
 - Running tools outside the project environment and then reporting confidence.
 - Replacing domain behavior with mocks.
+- Leaking framework, ORM, SDK, request, response, or row types into core domain
+  APIs without an intentional adapter boundary.
 - Catching `Exception` broadly without a recovery policy and context.
 - Adding dependencies for trivial standard-library behavior.
 - Treating formatting, linting, type checking, and tests as interchangeable.

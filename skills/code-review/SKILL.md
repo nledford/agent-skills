@@ -12,7 +12,9 @@ review is not a style pass; report only issues with evidence and impact.
 Before reporting findings, apply
 [`review-verification-protocol`](../review-verification-protocol/SKILL.md).
 Load specialist skills only when they match the changed surface. For Rust code,
-pair this skill with [`rust-code-review`](../rust-code-review/SKILL.md).
+pair this skill with [`rust-code-review`](../rust-code-review/SKILL.md). For
+ports/adapters, use-case boundaries, or Clean/Onion-style dependency direction,
+pair it with [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md).
 
 ## Use When
 
@@ -79,7 +81,7 @@ impact is uncertain.
    - Omit speculation and style preferences.
    - Downgrade uncertain issues to questions when evidence is incomplete.
 
-## BDD, DDD, and TDD Lenses
+## BDD, DDD, TDD, and Architecture Lenses
 
 - **BDD:** User-visible behavior should be described as observable outcomes,
   scenarios, acceptance criteria, or behavior-oriented tests.
@@ -88,6 +90,10 @@ impact is uncertain.
 - **TDD:** New behavior and bug fixes should have meaningful tests where
   practical. Refactors should preserve behavior through existing or added safety
   nets.
+- **Hexagonal Architecture:** Domain/application core code should not depend on
+  framework, ORM, SDK, transport, or persistence details unless the repository
+  deliberately accepts that coupling. Ports and adapters should protect real
+  boundaries, not add pass-through indirection.
 
 ## Finding Severity
 

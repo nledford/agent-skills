@@ -66,6 +66,23 @@ Repeat the cycle for each behavior slice.
 Prefer the narrowest level that gives trustworthy feedback. Add broader tests
 only when narrower tests cannot prove the behavior that matters.
 
+## TDD With Hexagonal Boundaries
+
+Load [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when test
+design depends on ports, adapters, use cases, or infrastructure-independent
+domain behavior.
+
+- Drive domain entities, value objects, aggregates, and domain services with
+  narrow unit tests.
+- Drive application services or use cases with fake or in-memory outbound
+  adapters so workflows can be tested without real databases, brokers, SDKs, or
+  clocks.
+- Add contract tests when multiple adapters must satisfy the same port.
+- Test real adapters with integration tests against the target framework,
+  database, filesystem, message broker, or external API contract.
+- Avoid over-mocking the core; substitute external boundaries, not the domain
+  behavior being specified.
+
 ## Test Quality Rules
 
 - Test behavior, not private methods, incidental call order, or internal data

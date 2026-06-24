@@ -34,7 +34,10 @@ Playwright specs/configs and browser-visible test lanes.
 3. Define the behavior before editing. Use BDD examples for user-visible or CLI
    behavior and TDD for focused logic changes and bug fixes.
 4. Keep boundaries explicit: domain logic, adapters, UI, scripts, generated code,
-   and external service clients should not blur together.
+   and external service clients should not blur together. Load
+   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when JS/TS work
+   defines use cases, ports, adapters, or tests that should avoid real
+   infrastructure.
 5. Verify with the narrowest useful script or direct command first, then broaden
    to the repository's lint, type, test, format, and build lanes.
 
@@ -128,6 +131,8 @@ HTML/Markdown rendering, SSR, or other trust boundaries.
 - Copying upstream `npm`/`npx` instructions into a Bun, pnpm, Yarn, or Deno repo
   without translating and verifying them.
 - Adding dependencies for trivial standard-library or platform behavior.
+- Letting framework, ORM, SDK, HTTP, UI, or generated-client types leak into core
+  domain APIs without an intentional adapter boundary.
 - Using `Math.random()` for secrets, tokens, identifiers, or security-sensitive
   test fixtures.
 - Reporting a script, typecheck, lint, format, build, or test lane as valid

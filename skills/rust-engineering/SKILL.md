@@ -19,7 +19,9 @@ public contracts.
    invariants, and aggregate-like rules.
 3. Choose the smallest crate/module/API boundary that can own the behavior.
    Keep framework, database, and transport concerns outside core domain logic
-   unless the crate is explicitly an adapter.
+   unless the crate is explicitly an adapter. Load
+   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when the change
+   needs use cases, ports, adapters, or Clean/Onion-style dependency direction.
 4. Design the API before filling in code: visibility, ownership, lifetimes,
    trait bounds, error type, feature gating, and caller obligations.
 5. Implement in small steps. Prefer clear safe Rust, narrow mutation, explicit
