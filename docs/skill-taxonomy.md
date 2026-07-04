@@ -32,7 +32,9 @@ unloaded templates.
 ## Skill Quality Rubric
 
 Use this rubric when creating, editing, splitting, merging, renaming, or deleting
-first-party skills.
+first-party skills. Use the concise
+[`skill-review-checklist.md`](skill-review-checklist.md) during review and
+handoff.
 
 ### Purpose and Activation
 

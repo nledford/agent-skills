@@ -27,6 +27,9 @@ For implemented security-sensitive changes, pair it with
 [`security-review`](../security-review/SKILL.md) and
 [`security-review-evidence`](../security-review-evidence/SKILL.md) for sanitized
 evidence handling.
+When reviewing first-party skill or skill-governance changes, use the
+[`skill-review-checklist`](../../docs/skill-review-checklist.md) as the compact
+skill-specific review pass.
 
 ## Use When
 
