@@ -26,8 +26,8 @@ unloaded templates.
   `.skill-lock.json` may be absent when no skills are managed through the
   installer lockfile; ignored skill directories are still third-party.
 - **Validation:** `tools/skills_manager.py validate` checks metadata, first-party
-  local links, reachable resource files, and this document's current first-party
-  inventory.
+  local links, reachable resource files, this document's current first-party
+  inventory, and explicit required related-skill link rules as warnings.
 
 ## Skill Quality Rubric
 
@@ -92,8 +92,10 @@ handoff.
 - Cross-reference related skills only when the relationship helps routing or
   execution.
 - Use [`docs/cross-reference-map.md`](cross-reference-map.md) for compact
-  routing matrices and validator-required relationships; keep this taxonomy
-  focused on inventory, boundaries, and coverage.
+  routing matrices and validator-required relationships. Keep validator rules
+  explicit and category-based where practical; do not infer requirements from
+  arbitrary prose. Keep this taxonomy focused on inventory, boundaries, and
+  coverage.
 - Keep vendor/tool-specific advice in the narrowest skill that needs it; use
   project-neutral wording elsewhere.
 - Retire stale skills instead of preserving compatibility for old names.
@@ -362,6 +364,15 @@ Scenario: First-party resources are reachable
   When repository validation runs
   Then every resource file is reachable from SKILL.md through local Markdown links
   And every local Markdown link resolves to an existing file
+```
+
+```gherkin
+Scenario: Category-required related links stay explicit
+  Given a first-party skill belongs to a taxonomy category with required related links
+  When repository validation runs
+  Then missing local SKILL.md links to those related skills are emitted as warnings
+  And existing hard validation errors are still reported as errors
+  And ignored or lockfile-owned third-party skills do not emit these warnings
 ```
 
 ```gherkin

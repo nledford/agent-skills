@@ -20,8 +20,10 @@ LOCKFILE_NAME = ".skill-lock.json"
 REQUIRED_SKILL_METADATA = ("name", "description")
 LOCAL_LINK_RE = re.compile(r"(?<![A-Za-z0-9_`])!?\[[^\]]+\]\(([^)]+)\)")
 TAXONOMY_DOC = Path("docs") / "skill-taxonomy.md"
+TAXONOMY_CATEGORY_HEADING = "## Taxonomy"
 TAXONOMY_INVENTORY_HEADING = "## Current First-Party Inventory"
 TAXONOMY_INVENTORY_ROW_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|")
+TAXONOMY_SKILL_REFERENCE_RE = re.compile(r"`([^`]+)`")
 SECURITY_LINK_REQUIRED_SKILLS = frozenset(
     {
         "code-review",
@@ -47,6 +49,24 @@ class Skill:
     locked: bool = False
     ignored: bool = False
     source: str | None = None
+
+
+@dataclass(frozen=True)
+class RelatedSkillLinkRule:
+    required_links: tuple[str, ...]
+    reason: str
+    taxonomy_categories: tuple[str, ...] = ()
+    skill_names: frozenset[str] = field(default_factory=frozenset)
+
+
+REQUIRED_RELATED_SKILL_LINK_RULES = (
+    RelatedSkillLinkRule(
+        required_links=REQUIRED_SECURITY_LINKS,
+        reason="security-sensitive work",
+        taxonomy_categories=("Security review",),
+        skill_names=SECURITY_LINK_REQUIRED_SKILLS,
+    ),
+)
 
 
 @dataclass
@@ -152,6 +172,7 @@ class SkillRegistry:
             [
                 self._validate_lockfile(),
                 self._validate_skills(self.all(), label="skill"),
+                self._validate_required_related_skill_links(),
                 self._validate_taxonomy_inventory(),
                 self._validate_locked_installs(),
                 self._validate_non_empty(),
@@ -162,6 +183,7 @@ class SkillRegistry:
         return ValidationResult.combine(
             [
                 self._validate_skills(self.first_party(), label="first-party skill"),
+                self._validate_required_related_skill_links(),
                 self._validate_taxonomy_inventory(),
                 self._validate_non_empty(kind="first-party"),
             ]
@@ -225,6 +247,12 @@ class SkillRegistry:
             for name in extra
         )
         return ValidationResult(errors=errors)
+
+    def _validate_required_related_skill_links(self) -> ValidationResult:
+        return _validate_required_related_skill_links(
+            self.first_party(),
+            taxonomy_path=self.repo_root / TAXONOMY_DOC,
+        )
 
 
 class GlobalInstallService:
@@ -355,7 +383,7 @@ def validate_skill(skill: Skill, *, label: str) -> ValidationResult:
         return ValidationResult(errors=[f"{skill.name}: {error}"])
 
     errors = []
-    warnings = []
+    warnings: list[str] = []
     for key in REQUIRED_SKILL_METADATA:
         if key not in metadata or not metadata[key].strip():
             errors.append(f"{skill.name}: SKILL.md front matter must define {key}")
@@ -369,23 +397,58 @@ def validate_skill(skill: Skill, *, label: str) -> ValidationResult:
     if skill.kind == "first-party":
         resource_result = _validate_skill_resources(skill)
         errors.extend(resource_result.errors)
-        security_link_result = _validate_security_sensitive_links(skill)
-        warnings.extend(security_link_result.warnings)
 
     return ValidationResult(errors=errors, warnings=warnings)
 
 
-def _validate_security_sensitive_links(skill: Skill) -> ValidationResult:
-    if skill.name not in SECURITY_LINK_REQUIRED_SKILLS:
-        return ValidationResult()
-
-    linked_skills = _read_linked_skill_names(skill.path / "SKILL.md", skill_root=skill.path.parent)
-    warnings = [
-        f"{skill.name}: SKILL.md should link to {required_link} for security-sensitive work"
-        for required_link in REQUIRED_SECURITY_LINKS
-        if required_link not in linked_skills
-    ]
+def _validate_required_related_skill_links(
+    skills: Sequence[Skill], *, taxonomy_path: Path
+) -> ValidationResult:
+    taxonomy_category_skill_names = (
+        _read_taxonomy_category_skill_names(taxonomy_path)
+        if taxonomy_path.is_file()
+        else {}
+    )
+    warnings = []
+    for skill in skills:
+        required_links = _required_related_skill_links_for_skill(
+            skill.name,
+            taxonomy_category_skill_names,
+        )
+        if not required_links:
+            continue
+        try:
+            linked_skills = _read_linked_skill_names(
+                skill.path / "SKILL.md", skill_root=skill.path.parent
+            )
+        except UnicodeDecodeError:
+            continue
+        warnings.extend(
+            f"{skill.name}: SKILL.md should link to {required_link} for {reason}"
+            for required_link, reason in required_links
+            if required_link not in linked_skills
+        )
     return ValidationResult(warnings=warnings)
+
+
+def _required_related_skill_links_for_skill(
+    skill_name: str,
+    taxonomy_category_skill_names: dict[str, set[str]],
+) -> list[tuple[str, str]]:
+    required_links: list[tuple[str, str]] = []
+    seen_links: set[str] = set()
+    for rule in REQUIRED_RELATED_SKILL_LINK_RULES:
+        rule_skill_names = set(rule.skill_names)
+        for category in rule.taxonomy_categories:
+            rule_skill_names.update(taxonomy_category_skill_names.get(category, set()))
+        if skill_name not in rule_skill_names:
+            continue
+        for required_link in rule.required_links:
+            if required_link == skill_name or required_link in seen_links:
+                continue
+            required_links.append((required_link, rule.reason))
+            seen_links.add(required_link)
+    return required_links
 
 
 def _read_linked_skill_names(skill_file: Path, *, skill_root: Path) -> set[str]:
@@ -554,6 +617,28 @@ def _read_skill_metadata(path: Path) -> tuple[dict[str, str], str | None]:
         if key:
             metadata[key] = value.strip().strip("\"'")
     return metadata, None
+
+
+def _read_taxonomy_category_skill_names(path: Path) -> dict[str, set[str]]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    try:
+        start_index = lines.index(TAXONOMY_CATEGORY_HEADING)
+    except ValueError:
+        return {}
+
+    categories: dict[str, set[str]] = {}
+    for line in lines[start_index + 1 :]:
+        if line.startswith("## "):
+            break
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        skill_names = set(TAXONOMY_SKILL_REFERENCE_RE.findall(cells[1]))
+        if skill_names:
+            categories.setdefault(cells[0], set()).update(skill_names)
+    return categories
 
 
 def _read_taxonomy_inventory_names(path: Path) -> tuple[set[str], str | None]:

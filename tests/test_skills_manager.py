@@ -30,9 +30,27 @@ def create_repo(root: Path) -> Path:
     return repo
 
 
-def write_taxonomy(repo: Path, names: list[str]) -> Path:
+def write_taxonomy(
+    repo: Path,
+    names: list[str],
+    *,
+    categories: dict[str, list[str]] | None = None,
+) -> Path:
     docs = repo / "docs"
     docs.mkdir()
+    taxonomy_section = ""
+    if categories is not None:
+        category_rows = []
+        for category, skill_names in categories.items():
+            listed_skills = ", ".join(f"`{name}`" for name in skill_names)
+            category_rows.append(f"| {category} | {listed_skills} | Test boundary. |")
+        category_rows_text = "\n".join(category_rows)
+        taxonomy_section = (
+            "## Taxonomy\n\n"
+            "| Category | Skills | Boundary |\n"
+            "| --- | --- | --- |\n"
+            f"{category_rows_text}\n\n"
+        )
     rows = "\n".join(
         f"| `{name}` | Test purpose. | Keep. |"
         for name in names
@@ -40,6 +58,7 @@ def write_taxonomy(repo: Path, names: list[str]) -> Path:
     path = docs / "skill-taxonomy.md"
     path.write_text(
         "# Skill Taxonomy\n\n"
+        f"{taxonomy_section}"
         "## Current First-Party Inventory\n\n"
         "| Skill | Purpose | Decision |\n"
         "| --- | --- | --- |\n"
@@ -285,39 +304,44 @@ class SkillRegistryTests(unittest.TestCase):
         self.assertEqual(["error-a", "error-b"], combined.errors)
         self.assertEqual(["warning-a"], combined.warnings)
 
-    def test_security_sensitive_first_party_skill_warns_for_missing_security_links(self) -> None:
+    def test_category_required_link_rule_warns_for_missing_links(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = create_repo(Path(temp_dir))
-            write_skill(repo / "skills", "python-engineering")
-            write_taxonomy(repo, ["python-engineering"])
+            write_skill(repo / "skills", "custom-security-skill")
+            write_taxonomy(
+                repo,
+                ["custom-security-skill"],
+                categories={"Security review": ["custom-security-skill"]},
+            )
 
             result = SkillRegistry.load(repo).validate_first_party()
 
             self.assertTrue(result.ok)
             self.assertEqual(
                 [
-                    "python-engineering: SKILL.md should link to security-review for security-sensitive work",
-                    "python-engineering: SKILL.md should link to security-review-evidence for security-sensitive work",
+                    "custom-security-skill: SKILL.md should link to security-review for security-sensitive work",
+                    "custom-security-skill: SKILL.md should link to security-review-evidence for security-sensitive work",
                 ],
                 result.warnings,
             )
 
-    def test_security_sensitive_first_party_skill_accepts_required_security_links(self) -> None:
+    def test_category_required_link_rule_accepts_required_links(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = create_repo(Path(temp_dir))
             write_skill(repo / "skills", "security-review")
             write_skill(repo / "skills", "security-review-evidence")
-            skill = write_skill(repo / "skills", "python-engineering")
+            skill = write_skill(repo / "skills", "custom-security-skill")
             write_taxonomy(
                 repo,
-                ["python-engineering", "security-review", "security-review-evidence"],
+                ["custom-security-skill", "security-review", "security-review-evidence"],
+                categories={"Security review": ["custom-security-skill"]},
             )
             (skill / "SKILL.md").write_text(
                 "---\n"
-                "name: python-engineering\n"
+                "name: custom-security-skill\n"
                 "description: Test skill.\n"
                 "---\n\n"
-                "# python-engineering\n\n"
+                "# custom-security-skill\n\n"
                 "Load [`security-review`](../security-review/SKILL.md).\n"
                 "Use [`security-review-evidence`](../security-review-evidence/SKILL.md).\n",
                 encoding="utf-8",
@@ -328,16 +352,57 @@ class SkillRegistryTests(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertEqual([], result.warnings)
 
-    def test_security_sensitive_link_warnings_ignore_third_party_skills(self) -> None:
+    def test_category_required_link_rule_ignores_third_party_skills(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = create_repo(Path(temp_dir))
-            write_skill(repo / "skills", "python-engineering")
-            (repo / ".gitignore").write_text("/skills/python-engineering/\n", encoding="utf-8")
+            write_skill(repo / "skills", "custom-security-skill")
+            write_taxonomy(
+                repo,
+                [],
+                categories={"Security review": ["custom-security-skill"]},
+            )
+            (repo / ".gitignore").write_text(
+                "/skills/custom-security-skill/\n", encoding="utf-8"
+            )
 
             result = SkillRegistry.load(repo).validate_all()
 
             self.assertTrue(result.ok)
             self.assertEqual([], result.warnings)
+
+    def test_required_link_warnings_coexist_with_hard_validation_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            skill = write_skill(repo / "skills", "custom-security-skill")
+            write_taxonomy(
+                repo,
+                ["custom-security-skill"],
+                categories={"Security review": ["custom-security-skill"]},
+            )
+            (skill / "SKILL.md").write_text(
+                "---\n"
+                "name: custom-security-skill\n"
+                "description: Test skill.\n"
+                "---\n\n"
+                "# custom-security-skill\n\n"
+                "[Missing](references/missing.md)\n",
+                encoding="utf-8",
+            )
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "custom-security-skill: broken local link in SKILL.md: references/missing.md",
+                result.errors,
+            )
+            self.assertEqual(
+                [
+                    "custom-security-skill: SKILL.md should link to security-review for security-sensitive work",
+                    "custom-security-skill: SKILL.md should link to security-review-evidence for security-sensitive work",
+                ],
+                result.warnings,
+            )
 
     def test_emit_validation_prints_warnings_without_failing(self) -> None:
         stdout = io.StringIO()
