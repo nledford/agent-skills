@@ -31,8 +31,15 @@ formal ports/adapters or shared application use cases.
 Load [`security-review`](../security-review/SKILL.md) when async/web work
 touches auth, authorization, sessions or cookies, CORS/CSRF/CSP, redirects,
 SSR/hydration trust boundaries, server functions, uploads/downloads, path
-handling, request/response redaction, secrets, dependency trust,
-external-service calls, telemetry, or artifact handling. Pair it with
+handling, request/response redaction, secrets, external-service calls,
+telemetry, or artifact handling. Use
+[`threat-modeling`](../threat-modeling/SKILL.md) before or during new auth
+middleware, request/SSR/server-function boundaries, background workers, queues,
+webhooks, external-service integrations, or sensitive data flows. Use
+[`dependency-supply-chain-review`](../dependency-supply-chain-review/SKILL.md)
+when Tokio/Axum/Leptos or toolchain dependency changes, generated assets, CI
+bootstrap, installers, or binaries raise provenance or advisory questions. Pair
+security-sensitive reviews with
 [`security-review-evidence`](../security-review-evidence/SKILL.md) when evidence
 includes sanitized HTTP traces, logs/spans, browser or server-function payloads,
 screenshots, generated assets, or test artifacts.

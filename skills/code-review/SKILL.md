@@ -18,6 +18,15 @@ ports/adapters and external actors, pair it with
 interactor, presenter, or interface-adapter boundaries, pair it with
 [`clean-architecture`](../clean-architecture/SKILL.md). For domain/application
 rings, pair it with [`onion-architecture`](../onion-architecture/SKILL.md).
+For dependency, lockfile, install-script, CI bootstrap, package provenance, or
+advisory risk, pair it with
+[`dependency-supply-chain-review`](../dependency-supply-chain-review/SKILL.md).
+For design-time auth, request, tenant, external-service, background-job, or data
+flow boundaries, pair it with [`threat-modeling`](../threat-modeling/SKILL.md).
+For implemented security-sensitive changes, pair it with
+[`security-review`](../security-review/SKILL.md) and
+[`security-review-evidence`](../security-review-evidence/SKILL.md) for sanitized
+evidence handling.
 
 ## Use When
 
@@ -53,8 +62,9 @@ impact is uncertain.
 3. **Choose lenses.**
    - Use this general review lens first.
    - Add narrow specialist skills for Rust, SQL/PostgreSQL/SQLite, Python,
-     JavaScript/TypeScript, browser tests, security review, documentation,
-     Justfiles, or other surfaces only when they apply.
+     JavaScript/TypeScript, browser tests, security review, threat modeling,
+     supply-chain review, documentation, Justfiles, or other surfaces only when
+     they apply.
 
 4. **Review tests and behavior.**
    - Check whether tests or examples specify observable behavior and meaningful

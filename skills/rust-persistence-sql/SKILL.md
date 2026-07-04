@@ -41,7 +41,14 @@ Load [`security-review`](../security-review/SKILL.md) when Rust persistence work
 touches SQL injection risk, SQLx/SeaQuery dynamic SQL, database credentials or
 `DATABASE_URL`, migration/backfill exposure, RLS/privilege assumptions, tenant
 isolation, audit logs, startup migrations, database error leakage, or
-production-data access. Pair it with
+production-data access. Use
+[`threat-modeling`](../threat-modeling/SKILL.md) before or during new tenant,
+privilege, migration/backfill, external-database, audit, or sensitive data-flow
+boundaries. Use
+[`dependency-supply-chain-review`](../dependency-supply-chain-review/SKILL.md)
+when persistence crates, migration tools, generated database clients, CI database
+bootstrap, or database/client binaries raise provenance or advisory questions.
+Pair security-sensitive reviews with
 [`security-review-evidence`](../security-review-evidence/SKILL.md) when evidence
 includes sanitized SQL, bind values, query plans, `.sqlx` metadata, migration
 output, logs, dumps, or other persistence artifacts.

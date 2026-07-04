@@ -221,6 +221,22 @@ regen:
   verification, formatting, linting, generated-code refresh, and drift checks
   should be easy to discover.
 
+## Security and supply-chain routing
+
+- Load [`dependency-supply-chain-review`](../dependency-supply-chain-review/SKILL.md)
+  when recipes change dependency updates, package-manager setup, install scripts,
+  curl-piped commands, one-off CLIs, CI/bootstrap tooling, generated code,
+  container/toolchain pins, or other provenance/advisory surfaces.
+- Load [`threat-modeling`](../threat-modeling/SKILL.md) when recipes introduce new
+  credentialed remote operations, deployment/release/data-export flows,
+  background jobs, external-service trust boundaries, or privileged/destructive
+  command surfaces that need actors, assets, and data flows mapped.
+- Load [`security-review`](../security-review/SKILL.md) for concrete recipe logic
+  that handles secrets, auth, command execution, paths, production targets, or
+  other implemented trust boundaries.
+- Use [`security-review-evidence`](../security-review-evidence/SKILL.md) when
+  recipe validation collects sensitive command output, logs, or artifacts.
+
 ## Refactoring and maintenance
 
 Audit an existing Justfile for:

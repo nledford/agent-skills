@@ -138,8 +138,17 @@ deno task <task>
 
 Load [`security-review`](../security-review/SKILL.md) when JS/TS changes touch
 auth, sessions, cookies, CSRF/CORS/CSP, cryptography, secrets, `.env`, command
-execution, path handling, uploads/downloads, dependency trust, plugin execution,
-HTML/Markdown rendering, SSR, or other trust boundaries.
+execution, path handling, uploads/downloads, plugin execution, HTML/Markdown
+rendering, SSR, or other implemented trust boundaries. Use
+[`dependency-supply-chain-review`](../dependency-supply-chain-review/SKILL.md)
+for dependency bumps, lockfile churn, package-manager updates, package scripts,
+install/postinstall hooks, one-off CLIs, CI bootstrap, generated clients,
+vendored code, provenance, or advisory questions. Use
+[`threat-modeling`](../threat-modeling/SKILL.md) before or during new auth
+middleware, request/API/SSR boundaries, plugins, webhooks, background workers,
+external-service integrations, or sensitive data flows. Use
+[`security-review-evidence`](../security-review-evidence/SKILL.md) when
+collecting or reporting sensitive security evidence.
 
 ## Anti-Patterns
 

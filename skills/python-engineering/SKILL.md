@@ -118,13 +118,17 @@ when the repository has adopted it; otherwise use the configured type checker.
 ## Security Review Routing
 
 Load [`security-review`](../security-review/SKILL.md) when Python work touches
-auth, sessions, crypto, credentials, secrets or `.env`, deserialization,
-template rendering, subprocess or command execution, path handling,
-uploads/downloads, dependency trust, package/install hooks, or other trust
-boundaries. Pair it with
-[`security-review-evidence`](../security-review-evidence/SKILL.md) when
-reviewing security-sensitive changes, telemetry, generated artifacts, package
-metadata, or test evidence so examples stay sanitized.
+implemented auth, sessions, crypto, credentials, secrets or `.env`,
+deserialization, template rendering, subprocess or command execution, path
+handling, uploads/downloads, or other trust boundaries. Use
+[`dependency-supply-chain-review`](../dependency-supply-chain-review/SKILL.md)
+for dependency bumps, `uv.lock` or requirements churn, package/install/build
+hooks, generated clients, vendored code, registry trust, provenance, or advisory
+questions. Use [`threat-modeling`](../threat-modeling/SKILL.md) before or during
+new auth flows, request/API boundaries, background jobs, external-service calls,
+tenant changes, or sensitive data flows. Pair security-sensitive reviews with
+[`security-review-evidence`](../security-review-evidence/SKILL.md) so examples
+stay sanitized.
 
 ## Testing Guidance
 

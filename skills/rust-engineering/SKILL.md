@@ -98,13 +98,17 @@ cargo fmt
 ## Security Review Routing
 
 Load [`security-review`](../security-review/SKILL.md) when Rust changes touch
-auth or session handling, crypto/randomness, credentials, secrets or `.env`,
-filesystem paths, command/process execution, dependency trust or supply chain
-surfaces, build scripts, proc macros, `unsafe`, FFI, plugin boundaries, HTTP
-clients, SQL binding, or other trust boundaries. Pair it with
-[`security-review-evidence`](../security-review-evidence/SKILL.md) when
-security findings need sanitized logs, telemetry, build artifacts, dependency
-reports, or test output.
+implemented auth or session handling, crypto/randomness, credentials, secrets or
+`.env`, filesystem paths, command/process execution, `unsafe`, FFI, plugin
+boundaries, HTTP clients, SQL binding, or other trust boundaries. Use
+[`dependency-supply-chain-review`](../dependency-supply-chain-review/SKILL.md)
+for Cargo dependency bumps, `Cargo.lock` churn, `build.rs`, proc macros, native
+crates, toolchain/bootstrap pins, provenance, or advisory questions. Use
+[`threat-modeling`](../threat-modeling/SKILL.md) before or during new auth,
+service-to-service, FFI/plugin, unsafe, external-client, or sensitive data-flow
+boundaries. Pair security-sensitive reviews with
+[`security-review-evidence`](../security-review-evidence/SKILL.md) for sanitized
+logs, telemetry, build artifacts, dependency reports, or test output.
 
 ## Refactoring Guidance
 
