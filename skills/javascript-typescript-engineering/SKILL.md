@@ -35,9 +35,11 @@ Playwright specs/configs and browser-visible test lanes.
    behavior and TDD for focused logic changes and bug fixes.
 4. Keep boundaries explicit: domain logic, adapters, UI, scripts, generated code,
    and external service clients should not blur together. Load
-   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when JS/TS work
-   defines use cases, ports, adapters, or tests that should avoid real
-   infrastructure.
+   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) for
+   ports/adapters and external actors, [`clean-architecture`](../clean-architecture/SKILL.md)
+   for use-case and interface-adapter boundaries, or
+   [`onion-architecture`](../onion-architecture/SKILL.md) for domain/application
+   rings.
 5. Verify with the narrowest useful script or direct command first, then broaden
    to the repository's lint, type, test, format, and build lanes.
 
@@ -89,6 +91,21 @@ deno task <task>
   not hand-edited.
 - Random IDs, tokens, and test data follow
   [`random-data-identifiers`](../random-data-identifiers/SKILL.md).
+
+## Pattern Routing
+
+- Load
+  [`typescript-javascript-design-patterns`](../typescript-javascript-design-patterns/SKILL.md)
+  when the change needs JS/TS-specific pattern choices: discriminated unions,
+  branded types, runtime validation boundaries, functional core/imperative shell,
+  adapter modules, command or use-case handlers, dependency injection, async
+  orchestration, or test builders.
+- Load
+  [`typescript-javascript-antipatterns`](../typescript-javascript-antipatterns/SKILL.md)
+  when reviewing or refactoring JS/TS smells: `any`, unsafe assertions, missing
+  runtime validation, unawaited promises, framework/UI leakage, singleton service
+  bags, import-time side effects, weak randomness, over-mocked tests, or brittle
+  E2E tests.
 
 ## Formatting, Linting, Types, and Builds
 

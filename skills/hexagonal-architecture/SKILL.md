@@ -114,14 +114,18 @@ Do not force it for:
   case rather than internal classes or database rows.
 - **TDD:** TDD can drive domain objects and use cases before real infrastructure
   exists by substituting fake adapters for outbound ports.
-- **Clean Architecture / Onion Architecture:** these share the inward dependency
-  rule and core isolation goal. Load
+- **Clean Architecture:** shares the inward dependency rule and core isolation
+  goal. Load
   [`clean-architecture`](../clean-architecture/SKILL.md) when the main decision
   is concentric policy/detail layers, use-case/interactor boundaries,
   presenters, DTOs, and interface-adapter responsibilities. Prefer Hexagonal
   wording when the main decision is ports and adapters around external actors.
   Do not switch terminology if the code already has healthy dependency
   boundaries.
+- **Onion Architecture:** shares the inward dependency rule and domain-centered
+  goal. Load [`onion-architecture`](../onion-architecture/SKILL.md) when the
+  main decision is domain/application rings and infrastructure outside those
+  rings, especially in DDD-heavy code.
 
 ## Anti-Patterns
 

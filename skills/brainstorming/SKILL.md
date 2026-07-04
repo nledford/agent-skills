@@ -110,6 +110,12 @@ Open questions
   ports/adapters, use cases, or infrastructure isolation, load
   `hexagonal-architecture` after choosing whether the extra indirection is worth
   its cost.
+- **Clean Architecture:** When options differ by use cases, interactors,
+  presenters, interface adapters, or concentric policy/detail boundaries, load
+  `clean-architecture` after deciding those responsibilities matter.
+- **Onion Architecture:** When options differ by domain/application rings around
+  a protected domain model, load `onion-architecture` after confirming the domain
+  behavior justifies the layers.
 - **TDD:** Use the validation plan to decide the first failing test or regression
   check. Load `test-driven-development` when implementation should proceed by
   Red-Green-Refactor.

@@ -1,6 +1,6 @@
 ---
 name: rust-code-review
-description: Review Rust code with Rust-specific rigor. Use with code-review when changes touch Rust ownership, lifetimes, traits, error contracts, crate boundaries, feature flags, tests, Rustdoc, async, Tokio, Axum, Leptos, SQLx, SeaQuery, SeaORM, Diesel, SQLite, unsafe code, macros, FFI, public APIs, or performance-sensitive behavior. Use sql-engineering, postgresql-sql-engineering, or sqlite-sql-engineering too for database-native schema, SQL, migrations, privileges, or query plans.
+description: Review Rust code with Rust-specific rigor. Use with code-review when changes touch Rust ownership, lifetimes, traits, error contracts, crate boundaries, feature flags, tests, Rustdoc, async, Tokio, Axum, Leptos, SQLx, SeaQuery, SeaORM, Diesel, SQLite, unsafe code, macros, FFI, public APIs, design patterns, anti-patterns, or performance-sensitive behavior. Use sql-engineering, postgresql-sql-engineering, or sqlite-sql-engineering too for database-native schema, SQL, migrations, privileges, or query plans.
 ---
 
 # Rust Code Review
@@ -41,6 +41,10 @@ Before reporting findings, apply
    [`rust-testing-quality`](../rust-testing-quality/SKILL.md),
    [`rust-async-web`](../rust-async-web/SKILL.md), or
    [`rust-persistence-sql`](../rust-persistence-sql/SKILL.md).
+   Add [`rust-design-patterns`](../rust-design-patterns/SKILL.md) when judging a
+   deliberate pattern choice, or
+   [`rust-antipatterns`](../rust-antipatterns/SKILL.md) when reviewing a
+   smell-focused concern.
    Add [`sql-engineering`](../sql-engineering/SKILL.md),
    [`postgresql-sql-engineering`](../postgresql-sql-engineering/SKILL.md), or
    [`sqlite-sql-engineering`](../sqlite-sql-engineering/SKILL.md) when

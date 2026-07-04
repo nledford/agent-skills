@@ -164,8 +164,11 @@ direction and domain intent visible in the target language:
   when the current code already has healthy boundaries; do not rename architecture
   for terminology alone.
 - **Onion Architecture:** closely related; both place domain/application policy at
-  the center and infrastructure outside. Onion framing often emphasizes a domain
-  model at the center with coupling toward the core.
+  the center and infrastructure outside. Load
+  [`onion-architecture`](../onion-architecture/SKILL.md) when the user asks for
+  Onion by name or when domain/application rings are the clearest framing. Prefer
+  Clean Architecture wording when use cases, interactors, presenters, and
+  interface adapters are the clearer responsibilities.
 - **DDD:** DDD defines ubiquitous language, bounded contexts, aggregates, value
   objects, repositories, domain services, and invariants. Load
   [`domain-driven-design`](../domain-driven-design/SKILL.md) when the model and

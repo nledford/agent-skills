@@ -70,14 +70,18 @@ Do not force BDD for:
 ## Architecture Boundaries
 
 - BDD should stay mechanism-neutral, but architecture affects where examples are
-  executed. In Hexagonal Architecture, drive scenarios through a public API,
-  inbound adapter, or application use case rather than private classes, database
-  rows, or framework internals.
+  executed. In Clean, Hexagonal, or Onion designs, drive scenarios through a
+  public API, inbound adapter, use case, or application service rather than
+  private classes, database rows, or framework internals.
 - Load [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when
-  acceptance behavior must be mapped to use cases, inbound ports, adapter
-  contracts, or infrastructure-independent tests.
-- Do not put ports, repositories, controller names, or ORM details in
-  Given/When/Then steps unless those mechanisms are part of the public contract.
+  acceptance behavior must be mapped to ports, adapters, or external actors. Load
+  [`clean-architecture`](../clean-architecture/SKILL.md) for use-case,
+  interactor, presenter, or interface-adapter boundaries. Load
+  [`onion-architecture`](../onion-architecture/SKILL.md) for domain/application
+  rings around a protected domain model.
+- Do not put ports, repositories, controller names, ORM details, or layer names
+  in Given/When/Then steps unless those mechanisms are part of the public
+  contract.
 
 ## Given/When/Then Thinking
 

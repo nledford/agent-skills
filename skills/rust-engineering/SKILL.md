@@ -20,8 +20,11 @@ public contracts.
 3. Choose the smallest crate/module/API boundary that can own the behavior.
    Keep framework, database, and transport concerns outside core domain logic
    unless the crate is explicitly an adapter. Load
-   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when the change
-   needs use cases, ports, adapters, or Clean/Onion-style dependency direction.
+   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) for
+   ports/adapters and external actors, [`clean-architecture`](../clean-architecture/SKILL.md)
+   for use-case and interface-adapter boundaries, or
+   [`onion-architecture`](../onion-architecture/SKILL.md) for domain/application
+   rings.
 4. Design the API before filling in code: visibility, ownership, lifetimes,
    trait bounds, error type, feature gating, and caller obligations.
 5. Implement in small steps. Prefer clear safe Rust, narrow mutation, explicit
@@ -80,6 +83,17 @@ cargo tree -p <package>
 cargo check -p <package> --all-targets
 cargo fmt
 ```
+
+## Pattern Routing
+
+- Load [`rust-design-patterns`](../rust-design-patterns/SKILL.md) when the Rust
+  change needs a deliberate pattern choice: newtypes, enums, builders, RAII
+  guards, traits as ports, compose-structs, contained unsafe modules, custom
+  traits for complex bounds, or macros.
+- Load [`rust-antipatterns`](../rust-antipatterns/SKILL.md) when reviewing or
+  refactoring generated-code smells: clone-to-satisfy-borrow-checker,
+  reflexive `Arc<Mutex<_>>`, deref polymorphism, panic at trust boundaries,
+  async overuse, framework leakage, or brittle Rust tests.
 
 ## Refactoring Guidance
 

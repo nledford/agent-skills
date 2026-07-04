@@ -13,8 +13,11 @@ Before reporting findings, apply
 [`review-verification-protocol`](../review-verification-protocol/SKILL.md).
 Load specialist skills only when they match the changed surface. For Rust code,
 pair this skill with [`rust-code-review`](../rust-code-review/SKILL.md). For
-ports/adapters, use-case boundaries, or Clean/Onion-style dependency direction,
-pair it with [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md).
+ports/adapters and external actors, pair it with
+[`hexagonal-architecture`](../hexagonal-architecture/SKILL.md). For use-case,
+interactor, presenter, or interface-adapter boundaries, pair it with
+[`clean-architecture`](../clean-architecture/SKILL.md). For domain/application
+rings, pair it with [`onion-architecture`](../onion-architecture/SKILL.md).
 
 ## Use When
 
@@ -94,6 +97,12 @@ impact is uncertain.
   framework, ORM, SDK, transport, or persistence details unless the repository
   deliberately accepts that coupling. Ports and adapters should protect real
   boundaries, not add pass-through indirection.
+- **Clean Architecture:** Use cases, interactors, presenters, and interface
+  adapters should preserve inward dependencies and keep business policy out of
+  framework, database, UI, or SDK details.
+- **Onion Architecture:** Domain and application rings should remain independent
+  from infrastructure. Outer adapters should translate into domain/application
+  types instead of shaping the core API.
 
 ## Finding Severity
 

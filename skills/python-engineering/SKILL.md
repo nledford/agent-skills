@@ -35,9 +35,11 @@ schema, transaction, query-plan, and database-specific behavior.
 3. Keep boundaries clear. Use DDD language where domain rules matter; keep I/O,
    framework, database, and CLI parsing at adapters instead of leaking into core
    domain logic. Load
-   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when Python
-   code is defining ports, adapters, use cases, or infrastructure-independent
-   tests.
+   [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) for
+   ports/adapters and external actors, [`clean-architecture`](../clean-architecture/SKILL.md)
+   for use-case and interface-adapter boundaries, or
+   [`onion-architecture`](../onion-architecture/SKILL.md) for domain/application
+   rings.
 4. Implement small, typed, testable units. Prefer simple functions/classes,
    explicit data models, narrow exceptions, and dependency injection at
    boundaries over global state and broad mocks.
@@ -101,6 +103,17 @@ when the repository has adopted it; otherwise use the configured type checker.
 - Avoid mutable defaults, hidden import-time side effects, implicit global
   configuration, broad monkeypatching, and print-based observability in
   application code.
+
+## Pattern Routing
+
+- Load [`python-design-patterns`](../python-design-patterns/SKILL.md) when the
+  change needs Python-specific pattern choices: dataclasses, value objects,
+  protocols, context managers, factories, adapters, repositories, application
+  services, or pytest fixture design.
+- Load [`python-antipatterns`](../python-antipatterns/SKILL.md) when reviewing or
+  refactoring Python smells: mutable defaults, import-time side effects, global
+  state, broad `Any`, broad exceptions, framework/ORM leakage, async blocking,
+  monkeypatch-heavy tests, or over-mocking.
 
 ## Testing Guidance
 

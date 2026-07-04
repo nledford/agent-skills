@@ -66,11 +66,15 @@ Repeat the cycle for each behavior slice.
 Prefer the narrowest level that gives trustworthy feedback. Add broader tests
 only when narrower tests cannot prove the behavior that matters.
 
-## TDD With Hexagonal Boundaries
+## TDD With Architecture Boundaries
 
 Load [`hexagonal-architecture`](../hexagonal-architecture/SKILL.md) when test
-design depends on ports, adapters, use cases, or infrastructure-independent
-domain behavior.
+design depends on ports, adapters, external actors, or infrastructure-independent
+domain behavior. Load
+[`clean-architecture`](../clean-architecture/SKILL.md) for use-case,
+interactor, presenter, and interface-adapter test boundaries. Load
+[`onion-architecture`](../onion-architecture/SKILL.md) when tests should protect
+domain/application rings around a domain model.
 
 - Drive domain entities, value objects, aggregates, and domain services with
   narrow unit tests.
