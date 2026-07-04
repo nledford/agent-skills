@@ -20,6 +20,11 @@ unloaded templates.
 - **Resources:** Optional `references/`, `scripts/`, `templates/`, or `assets/`
   files. First-party resources must be linked from `SKILL.md` and must not
   contain broken local links.
+- **Third-party skill:** A local runtime install under `skills/` that is listed
+  in `.skill-lock.json` or ignored as a skill directory under `skills/` in
+  `.gitignore`.
+  `.skill-lock.json` may be absent when no skills are managed through the
+  installer lockfile; ignored skill directories are still third-party.
 - **Validation:** `tools/skills_manager.py validate` checks metadata, first-party
   local links, reachable resource files, and this document's current first-party
   inventory.
@@ -112,6 +117,23 @@ first-party skills.
 | Language design patterns and anti-patterns | `rust-design-patterns`, `rust-antipatterns`, `python-design-patterns`, `python-antipatterns`, `typescript-javascript-design-patterns`, `typescript-javascript-antipatterns` | Standalone language-specific pattern selection and smell-detection guidance, with routing from the broader language skills. |
 | Project workflow tools | `git-commit`, `justfiles`, `context7-docs`, `suggest-lucide-icons` | Narrow operational guidance for commits, Justfiles, current external docs, and verified Lucide icon names. |
 | Third-party runtime installs | `agent-browser`, `anti-ai-slop-writing`, `find-skills`, `playwright-cli` | Installed locally for runtime use but ignored or lockfile-owned; do not edit as first-party skills. |
+
+## Third-Party Install Commands
+
+Third-party classification and update operations are separate:
+
+- `just update-third-party` runs the configured installer update command for
+  third-party installs.
+- `just update-third-party-dry-run` prints that update command without running
+  it.
+- `just sync-third-party-lock` copies the repository `.skill-lock.json` to
+  `~/.agents/.skill-lock.json` for installer compatibility. It does not run the
+  update command or update third-party skill directories.
+
+Run `sync-third-party-lock` only when a repository lockfile exists and should be
+mirrored for the installer. A missing `.skill-lock.json` is normal when no
+lockfile-managed skills are installed; ignored directories under `skills/` still
+count as third-party skills.
 
 ## Language and Data Boundaries
 
@@ -285,6 +307,15 @@ Scenario: First-party taxonomy inventory stays current
   When repository validation runs
   Then docs/skill-taxonomy.md lists exactly the current first-party skills
   And ignored or lockfile-owned third-party installs are not listed as first-party
+```
+
+```gherkin
+Scenario: Third-party lock sync stays separate from updates
+  Given third-party skills may be ignored under skills/ or listed in .skill-lock.json
+  When an operator needs to update third-party skill contents
+  Then they run update-third-party or update-third-party-dry-run
+  And sync-third-party-lock only copies the repository lockfile to ~/.agents/.skill-lock.json
+  And a missing repository lockfile means there are no lockfile-managed skills to sync
 ```
 
 ```gherkin

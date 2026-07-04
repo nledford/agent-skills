@@ -36,6 +36,8 @@ Third-party skills are installed into the same directory by external tooling,
 such as `bunx skills`. A skill is treated as third-party when it is listed in
 `.skill-lock.json` or ignored as a skill directory under `skills/` in `.gitignore`.
 Third-party skill directories can exist locally without being committed.
+`.skill-lock.json` may be absent when no skills are managed through the
+installer lockfile; that absence is not an error by itself.
 
 ## Common Commands
 
@@ -67,9 +69,18 @@ differs:
 SKILLS_UPDATE_COMMAND="bunx skills update" just update-third-party
 ```
 
-Use `just update-third-party-dry-run` to see the command without running it.
-Use `just sync-third-party-lock` when the repository lockfile should be copied
-to `~/.agents/.skill-lock.json` for installer compatibility.
+Keep third-party updates and lockfile sync separate:
+
+- `just update-third-party` runs the configured installer update command.
+- `just update-third-party-dry-run` prints the update command without running it.
+- `just sync-third-party-lock` copies the repository `.skill-lock.json` to
+  `~/.agents/.skill-lock.json` for installer compatibility. It does not run the
+  installer and does not update third-party skill directories.
+
+Run `sync-third-party-lock` only when a repository `.skill-lock.json` exists and
+needs to be mirrored for the installer. If the repository has no lockfile, there
+are no lockfile-managed skills to sync; ignored skill directories under
+`skills/` are still third-party.
 
 ## Validation
 
@@ -82,7 +93,8 @@ Validation checks the repository's actual skill format:
 - first-party local Markdown links resolve to existing files
 - first-party resource files are reachable from `SKILL.md`
 - first-party skills are listed in `docs/skill-taxonomy.md`
-- every lockfile-listed third-party skill is present locally
+- when `.skill-lock.json` exists, every lockfile-listed third-party skill is
+  present locally
 
 Helper behavior is covered by `python3 -m unittest discover -s tests -v`.
 
