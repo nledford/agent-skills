@@ -18,6 +18,9 @@ tables or skill bodies here.
 - [ ] **Taxonomy inventory:** update the taxonomy inventory, coverage, and
   boundary notes when a skill is added, removed, renamed, split, merged, or
   materially re-scoped.
+- [ ] **Change notes:** add a short change note only when skill churn creates
+  reviewer confusion, repeated audit questions, or user-facing upgrade needs;
+  do not create or maintain a changelog otherwise.
 - [ ] **Related-skill routing:** cross-links and cross-reference-map entries only
   exist when they change activation, execution, or validation choices.
 - [ ] **Examples:** examples and counterexamples are short, transferable,
