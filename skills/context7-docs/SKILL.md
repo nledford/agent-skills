@@ -37,6 +37,11 @@ repository.
   existing project conventions.
 - The task is about internal domain logic, architecture, refactoring, or test
   behavior that does not depend on external docs.
+- The task is repository-local code exploration or refactoring. Use
+  [`serena`](../serena/SKILL.md) for supported-language symbols, references,
+  implementations, semantic refactors, and diagnostics; use direct reads/search
+  for exact strings, docs, config, logs, fixtures, generated assets, and
+  tests, builds, or other validation commands.
 - The question is about stable language syntax or general programming concepts.
 - The needed documentation is already present in the repository.
 - You are making mechanical edits unrelated to external APIs.

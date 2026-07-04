@@ -82,6 +82,11 @@ Follow this sequence unless the repository has a stricter local runbook:
    - Read the relevant code, tests, fixtures, config, schema, generated code
      boundaries, and recent diffs/history if available.
    - Trace data/control flow across boundaries before editing.
+   - Use [`serena`](../serena/SKILL.md) for supported-language symbols,
+     references, implementations, call relationships, and diagnostics when call
+     paths matter. Use direct reads/search for exact error text, docs, config,
+     logs, fixtures, generated assets, and tests, builds, or other validation
+     commands.
 6. **Build a hypothesis list**
    - Include at least two plausible causes when the failure is not obvious.
    - Separate code defects from data, environment, dependency, timing, and test

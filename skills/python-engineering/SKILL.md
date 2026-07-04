@@ -30,6 +30,11 @@ schema, transaction, query-plan, and database-specific behavior.
 1. Inspect the local project first: `pyproject.toml`, `uv.lock`,
    `.python-version`, `requirements*.txt`, `tox.ini`, `noxfile.py`, CI, README,
    tests, package layout, and existing commands.
+   Use [`serena`](../serena/SKILL.md) for supported-language symbols,
+   references, implementations, semantic refactors, and diagnostics when they
+   reduce broad code reads; use direct reads/search for exact strings, docs,
+   config, logs, fixtures, generated assets, and tests, builds, or other
+   validation commands.
 2. Define the behavior before editing. Use TDD for new behavior and regressions;
    use BDD-style examples for externally observable workflows.
 3. Keep boundaries clear. Use DDD language where domain rules matter; keep I/O,

@@ -28,6 +28,11 @@ Playwright specs/configs and browser-visible test lanes.
 1. Inspect local evidence first: `package.json`, lockfiles, `bunfig.toml`,
    `deno.json`, `.npmrc`, workspaces, source/test layout, `tsconfig*`, lint and
    formatter config, bundler config, CI, README, and agent instructions.
+   Use [`serena`](../serena/SKILL.md) for supported-language symbols,
+   references, implementations, semantic refactors, and diagnostics when they
+   reduce broad code reads; use direct reads/search for exact strings, docs,
+   config, logs, fixtures, generated assets, and tests, builds, or other
+   validation commands.
 2. Identify the runtime and package manager actually owned by the repository.
    Bun-first guidance applies only when the repo uses `bun.lock`, Bun scripts, or
    Bun runtime features.
