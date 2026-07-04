@@ -1,13 +1,16 @@
+import io
 import json
 import os
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from tools.skills_manager import (
     GlobalInstallService,
     SkillRegistry,
     ValidationResult,
+    emit_validation,
 )
 
 
@@ -281,6 +284,87 @@ class SkillRegistryTests(unittest.TestCase):
         self.assertFalse(combined.ok)
         self.assertEqual(["error-a", "error-b"], combined.errors)
         self.assertEqual(["warning-a"], combined.warnings)
+
+    def test_security_sensitive_first_party_skill_warns_for_missing_security_links(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "python-engineering")
+            write_taxonomy(repo, ["python-engineering"])
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertTrue(result.ok)
+            self.assertEqual(
+                [
+                    "python-engineering: SKILL.md should link to security-review for security-sensitive work",
+                    "python-engineering: SKILL.md should link to security-review-evidence for security-sensitive work",
+                ],
+                result.warnings,
+            )
+
+    def test_security_sensitive_first_party_skill_accepts_required_security_links(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "security-review")
+            write_skill(repo / "skills", "security-review-evidence")
+            skill = write_skill(repo / "skills", "python-engineering")
+            write_taxonomy(
+                repo,
+                ["python-engineering", "security-review", "security-review-evidence"],
+            )
+            (skill / "SKILL.md").write_text(
+                "---\n"
+                "name: python-engineering\n"
+                "description: Test skill.\n"
+                "---\n\n"
+                "# python-engineering\n\n"
+                "Load [`security-review`](../security-review/SKILL.md).\n"
+                "Use [`security-review-evidence`](../security-review-evidence/SKILL.md).\n",
+                encoding="utf-8",
+            )
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertTrue(result.ok)
+            self.assertEqual([], result.warnings)
+
+    def test_security_sensitive_link_warnings_ignore_third_party_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "python-engineering")
+            (repo / ".gitignore").write_text("/skills/python-engineering/\n", encoding="utf-8")
+
+            result = SkillRegistry.load(repo).validate_all()
+
+            self.assertTrue(result.ok)
+            self.assertEqual([], result.warnings)
+
+    def test_emit_validation_prints_warnings_without_failing(self) -> None:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            exit_code = emit_validation(ValidationResult(warnings=["missing security link"]))
+
+        self.assertEqual(0, exit_code)
+        self.assertEqual("Validation passed.\n", stdout.getvalue())
+        self.assertEqual("warning: missing security link\n", stderr.getvalue())
+
+    def test_emit_validation_errors_still_fail(self) -> None:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            exit_code = emit_validation(
+                ValidationResult(errors=["broken skill"], warnings=["missing security link"])
+            )
+
+        self.assertEqual(1, exit_code)
+        self.assertEqual("", stdout.getvalue())
+        self.assertEqual(
+            "warning: missing security link\nerror: broken skill\n",
+            stderr.getvalue(),
+        )
 
 
 class GlobalInstallServiceTests(unittest.TestCase):

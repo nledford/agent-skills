@@ -22,6 +22,21 @@ LOCAL_LINK_RE = re.compile(r"(?<![A-Za-z0-9_`])!?\[[^\]]+\]\(([^)]+)\)")
 TAXONOMY_DOC = Path("docs") / "skill-taxonomy.md"
 TAXONOMY_INVENTORY_HEADING = "## Current First-Party Inventory"
 TAXONOMY_INVENTORY_ROW_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|")
+SECURITY_LINK_REQUIRED_SKILLS = frozenset(
+    {
+        "code-review",
+        "javascript-typescript-engineering",
+        "justfiles",
+        "postgresql-sql-engineering",
+        "python-engineering",
+        "rust-async-web",
+        "rust-engineering",
+        "rust-persistence-sql",
+        "sql-engineering",
+        "sqlite-sql-engineering",
+    }
+)
+REQUIRED_SECURITY_LINKS = ("security-review", "security-review-evidence")
 
 
 @dataclass(frozen=True)
@@ -340,6 +355,7 @@ def validate_skill(skill: Skill, *, label: str) -> ValidationResult:
         return ValidationResult(errors=[f"{skill.name}: {error}"])
 
     errors = []
+    warnings = []
     for key in REQUIRED_SKILL_METADATA:
         if key not in metadata or not metadata[key].strip():
             errors.append(f"{skill.name}: SKILL.md front matter must define {key}")
@@ -353,8 +369,36 @@ def validate_skill(skill: Skill, *, label: str) -> ValidationResult:
     if skill.kind == "first-party":
         resource_result = _validate_skill_resources(skill)
         errors.extend(resource_result.errors)
+        security_link_result = _validate_security_sensitive_links(skill)
+        warnings.extend(security_link_result.warnings)
 
-    return ValidationResult(errors=errors)
+    return ValidationResult(errors=errors, warnings=warnings)
+
+
+def _validate_security_sensitive_links(skill: Skill) -> ValidationResult:
+    if skill.name not in SECURITY_LINK_REQUIRED_SKILLS:
+        return ValidationResult()
+
+    linked_skills = _read_linked_skill_names(skill.path / "SKILL.md", skill_root=skill.path.parent)
+    warnings = [
+        f"{skill.name}: SKILL.md should link to {required_link} for security-sensitive work"
+        for required_link in REQUIRED_SECURITY_LINKS
+        if required_link not in linked_skills
+    ]
+    return ValidationResult(warnings=warnings)
+
+
+def _read_linked_skill_names(skill_file: Path, *, skill_root: Path) -> set[str]:
+    linked_skill_names = set()
+    resolved_skill_root = skill_root.resolve(strict=False)
+    for raw_link in _read_local_markdown_links(skill_file):
+        target = _resolve_local_link(skill_file, raw_link)
+        if target is None:
+            continue
+        linked_skill_path = target.parent if target.name == "SKILL.md" else target
+        if linked_skill_path.parent == resolved_skill_root:
+            linked_skill_names.add(linked_skill_path.name)
+    return linked_skill_names
 
 
 def _validate_skill_resources(skill: Skill) -> ValidationResult:
