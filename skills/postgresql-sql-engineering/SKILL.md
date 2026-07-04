@@ -1,6 +1,6 @@
 ---
 name: postgresql-sql-engineering
-description: PostgreSQL and SQL engineering guidance. Use when adding, changing, reviewing, testing, or optimizing PostgreSQL schemas, SQL queries, migrations, transactions, constraints, indexes, views, functions, row-level security, privileges, data behavior, or database performance in any language stack.
+description: PostgreSQL and SQL engineering guidance. Use when adding, changing, reviewing, testing, or optimizing PostgreSQL schemas, SQL queries, migrations, transactions, constraints, indexes, views, functions, row-level security, privileges, data behavior, or database performance in any language stack. Use api-design when migrations or query outputs affect published contracts and observability-engineering for PostgreSQL telemetry signals.
 ---
 
 # PostgreSQL And SQL Engineering
@@ -36,6 +36,15 @@ migrations/backfills, data repair scripts, secrets, or production-data access.
 Pair it with [`security-review-evidence`](../security-review-evidence/SKILL.md)
 when evidence includes redacted SQL, `EXPLAIN` output, schema diffs,
 audit/log samples, dumps, or migration artifacts.
+
+## API and Observability Routing
+
+- Load [`api-design`](../api-design/SKILL.md) when PostgreSQL migrations, views,
+  functions, outbox/event rows, generated schemas, reporting outputs, or
+  constraint-error mapping affect an external contract or compatibility promise.
+- Load [`observability-engineering`](../observability-engineering/SKILL.md) when
+  PostgreSQL work changes slow-query, migration, pool, lock wait, deadlock,
+  replication, maintenance, dashboard, alert, or runbook signals.
 
 ## Workflow
 

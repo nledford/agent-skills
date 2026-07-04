@@ -1,6 +1,6 @@
 ---
 name: sqlite-sql-engineering
-description: SQLite and SQL engineering guidance. Use when adding, changing, reviewing, testing, or optimizing SQLite schemas, migrations, constraints, indexes, transactions, query behavior, local/embedded database workflows, SQLite-backed tests, or SQLite adapter boundaries in any language stack.
+description: SQLite and SQL engineering guidance. Use when adding, changing, reviewing, testing, or optimizing SQLite schemas, migrations, constraints, indexes, transactions, query behavior, local/embedded database workflows, SQLite-backed tests, or SQLite adapter boundaries in any language stack. Use api-design when SQLite schemas or exports affect published contracts and observability-engineering for durable SQLite diagnostics.
 ---
 
 # SQLite And SQL Engineering
@@ -72,6 +72,16 @@ local sync or shared database files, backups, or other local trust boundaries.
 Pair it with [`security-review-evidence`](../security-review-evidence/SKILL.md)
 when evidence includes sanitized database files, fixture dumps, import/export
 artifacts, logs, or reproduction data.
+
+## API and Observability Routing
+
+- Load [`api-design`](../api-design/SKILL.md) when SQLite migrations, local file
+  schemas, import/export formats, sync payloads, reporting outputs, or
+  constraint-error mapping affect an external or documented compatibility
+  contract.
+- Load [`observability-engineering`](../observability-engineering/SKILL.md) when
+  SQLite work changes migration, query, sync, backup, locking, corruption, or
+  local-diagnostic signals meant to persist beyond temporary debugging.
 
 ## Testing Guidance
 

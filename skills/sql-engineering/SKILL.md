@@ -1,6 +1,6 @@
 ---
 name: sql-engineering
-description: Database-neutral SQL engineering guidance. Use when reading, writing, refactoring, reviewing, testing, or optimizing SQL queries, schemas, migrations, tables, views, functions, triggers, constraints, indexes, transactions, reporting queries, or data behavior before choosing a database-specific skill. Use PostgreSQL or SQLite skills for engine-specific behavior.
+description: Database-neutral SQL engineering guidance. Use when reading, writing, refactoring, reviewing, testing, or optimizing SQL queries, schemas, migrations, tables, views, functions, triggers, constraints, indexes, transactions, reporting queries, or data behavior before choosing a database-specific skill. Use api-design when SQL changes affect published contracts, observability-engineering for database telemetry, and PostgreSQL or SQLite skills for engine-specific behavior.
 ---
 
 # SQL Engineering
@@ -23,7 +23,9 @@ Do not rely on this skill alone for PostgreSQL-specific features, SQLite-specifi
 semantics, SQLx/SeaQuery adapter code, or ORM API usage with no SQL/schema
 behavior. Use [`postgresql-sql-engineering`](../postgresql-sql-engineering/SKILL.md),
 [`sqlite-sql-engineering`](../sqlite-sql-engineering/SKILL.md), or
-[`rust-persistence-sql`](../rust-persistence-sql/SKILL.md) as appropriate.
+[`rust-persistence-sql`](../rust-persistence-sql/SKILL.md) as appropriate. Use
+[`api-design`](../api-design/SKILL.md) when migrations or query outputs change a
+published API/reporting contract.
 
 ## Workflow
 
@@ -50,6 +52,15 @@ error messages. Pair it with
 [`security-review-evidence`](../security-review-evidence/SKILL.md) when findings
 need sanitized queries, query plans, migration diffs, audit samples, dumps, or
 other database artifacts.
+
+## API and Observability Routing
+
+- Load [`api-design`](../api-design/SKILL.md) when schema, migration, view,
+  stored-procedure, reporting, outbox/event, or database error-mapping changes
+  alter an external contract or compatibility promise.
+- Load [`observability-engineering`](../observability-engineering/SKILL.md) when
+  SQL work adds or changes query/migration telemetry, slow-query metrics, pool,
+  lock, deadlock, replication, dashboard, alert, or runbook signals.
 
 ## Reading and Refactoring SQL
 

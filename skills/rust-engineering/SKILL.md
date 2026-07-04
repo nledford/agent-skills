@@ -1,6 +1,6 @@
 ---
 name: rust-engineering
-description: Core Rust engineering guidance. Use when adding or changing Rust crates, modules, public APIs, domain logic, ownership and lifetime structure, traits, generics, error types, feature flags, workspaces, refactors, design patterns, or declarative/procedural macros. Use rust-testing-quality for test and CI lanes, rust-async-web for Tokio/Axum/Leptos work, rust-persistence-sql for SQLx, SeaQuery, and database adapter work, and rust-code-review for requested reviews.
+description: Core Rust engineering guidance. Use when adding or changing Rust crates, modules, public APIs, domain logic, ownership and lifetime structure, traits, generics, error types, feature flags, workspaces, refactors, design patterns, or declarative/procedural macros. Use api-design for public service/SDK/CLI contracts, observability-engineering for telemetry/logging signal design, rust-testing-quality for test and CI lanes, rust-async-web for Tokio/Axum/Leptos work, rust-persistence-sql for SQLx, SeaQuery, and database adapter work, and rust-code-review for requested reviews.
 ---
 
 # Rust Engineering
@@ -94,6 +94,16 @@ cargo fmt
   refactoring generated-code smells: clone-to-satisfy-borrow-checker,
   reflexive `Arc<Mutex<_>>`, deref polymorphism, panic at trust boundaries,
   async overuse, framework leakage, or brittle Rust tests.
+
+## API and Observability Routing
+
+- Load [`api-design`](../api-design/SKILL.md) when Rust changes define or alter a
+  public service, SDK, CLI, serialization, error, pagination, webhook/event, or
+  generated-client contract. Keep this skill focused on ownership, types,
+  modules, and implementation mechanics.
+- Load [`observability-engineering`](../observability-engineering/SKILL.md) when
+  Rust changes add or change durable logs, metrics, traces, request/correlation
+  IDs, instrumentation fields, or operator-facing diagnostics.
 
 ## Security Review Routing
 

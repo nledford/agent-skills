@@ -1,6 +1,6 @@
 ---
 name: rust-async-web
-description: Async Rust and Rust web/full-stack guidance. Use when working with Tokio, async tasks, cancellation, timeouts, backpressure, channels, shared state, synchronization, Axum handlers/extractors/state/middleware, Leptos components/server functions/SSR/hydration/WASM, or Axum-Leptos full-stack applications. Use rust-persistence-sql for SQLx/database work and rust-testing-quality for test lanes.
+description: Async Rust and Rust web/full-stack guidance. Use when working with Tokio, async tasks, cancellation, timeouts, backpressure, channels, shared state, synchronization, Axum handlers/extractors/state/middleware, Leptos components/server functions/SSR/hydration/WASM, or Axum-Leptos full-stack applications. Use api-design for endpoint contracts, observability-engineering for durable telemetry, rust-persistence-sql for SQLx/database work, and rust-testing-quality for test lanes.
 ---
 
 # Rust Async And Web
@@ -14,13 +14,13 @@ formal ports/adapters or shared application use cases.
 
 Do not use this skill for API-contract-only work such as endpoint/resource
 shape, request/response/error envelopes, versioning, pagination, idempotency, or
-OpenAPI/AsyncAPI/protobuf artifacts. Do not use it for observability-only work
-such as log/metric/trace schemas, context-propagation standards,
-labels/cardinality, dashboards, alerts, SLOs, or telemetry sampling. Those
-planned contracts are documented in
-[`docs/skill-taxonomy.md`](../../docs/skill-taxonomy.md#candidate-skill-contracts);
-add this skill only when the task also changes Tokio, Axum, Leptos, SSR,
-hydration, WASM, task, or runtime behavior.
+OpenAPI/AsyncAPI/protobuf artifacts; use [`api-design`](../api-design/SKILL.md)
+for those contracts. Do not use it for observability-only work such as
+log/metric/trace schemas, context-propagation standards, labels/cardinality,
+dashboards, alerts, SLOs, or telemetry sampling; use
+[`observability-engineering`](../observability-engineering/SKILL.md). Add this
+skill only when the task also changes Tokio, Axum, Leptos, SSR, hydration, WASM,
+task, or runtime behavior.
 
 ## Workflow
 
@@ -124,7 +124,9 @@ screenshots, generated assets, or test artifacts.
   needs graceful shutdown.
 - Instrument async services with `tracing` spans/events around request ids,
   task starts/stops, retries, timeouts, cancellation, queue depth, and adapter
-  calls. Preserve useful span context when spawning tasks.
+  calls. Preserve useful span context when spawning tasks; load
+  [`observability-engineering`](../observability-engineering/SKILL.md) when those
+  signals become durable operator-facing telemetry.
 
 ## Async And Tokio Checklist
 
@@ -218,7 +220,9 @@ loop {
 - Use typed extractors for inputs and `State`/substates for application state.
   Store shared state in `Arc` when it must be cloned into handlers.
 - Convert domain and adapter errors into HTTP responses at the edge. Avoid
-  leaking database, framework, or internal error details to clients.
+  leaking database, framework, or internal error details to clients. Use
+  [`api-design`](../api-design/SKILL.md) when status codes, error envelopes,
+  route shapes, or request/response payloads are contract decisions.
 - Validate payload size, content type, authentication, authorization, and input
   shape before invoking domain behavior.
 - Prefer Tower middleware or extractors for cross-cutting HTTP concerns such as

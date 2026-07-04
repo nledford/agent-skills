@@ -1,6 +1,6 @@
 ---
 name: python-engineering
-description: Python engineering guidance with uv. Use when adding, changing, reviewing, testing, packaging, linting, formatting, typing, dependency-managing, or refactoring Python code, pyproject.toml, uv.lock, pytest/unittest tests, Python scripts, or Python project workflows.
+description: Python engineering guidance with uv. Use when adding, changing, reviewing, testing, packaging, linting, formatting, typing, dependency-managing, or refactoring Python code, pyproject.toml, uv.lock, pytest/unittest tests, Python scripts, or Python project workflows. Use api-design for public service/SDK/CLI contracts and observability-engineering for telemetry/logging signal design.
 ---
 
 # Python Engineering
@@ -114,6 +114,20 @@ when the repository has adopted it; otherwise use the configured type checker.
   refactoring Python smells: mutable defaults, import-time side effects, global
   state, broad `Any`, broad exceptions, framework/ORM leakage, async blocking,
   monkeypatch-heavy tests, or over-mocking.
+
+## API and Observability Routing
+
+- Load [`api-design`](../api-design/SKILL.md) when Python work defines or changes
+  HTTP/RPC/GraphQL/webhook, SDK, CLI, request/response/error, pagination,
+  versioning, or generated-client contracts. Keep this skill focused on Python
+  implementation, typing, serializers, and tests.
+- Load [`observability-engineering`](../observability-engineering/SKILL.md) when
+  adding or changing structured logging, metrics, traces, correlation IDs, audit
+  events, or production diagnostics.
+- For public API docs, examples, or migration guides, load
+  [`api-design`](../api-design/SKILL.md) first if the contract is still being
+  shaped; otherwise use
+  [`documentation-engineering`](../documentation-engineering/SKILL.md).
 
 ## Security Review Routing
 

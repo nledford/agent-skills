@@ -1,6 +1,6 @@
 ---
 name: javascript-typescript-engineering
-description: JavaScript and TypeScript engineering guidance. Use when adding, changing, reviewing, testing, linting, formatting, dependency-managing, packaging, or refactoring JS/TS source, package.json scripts, lockfiles, workspaces, CLIs, Bun/Node/Deno workflows, or project automation. Do not use for checked-in Playwright test design; use playwright-e2e.
+description: JavaScript and TypeScript engineering guidance. Use when adding, changing, reviewing, testing, linting, formatting, dependency-managing, packaging, or refactoring JS/TS source, package.json scripts, lockfiles, workspaces, CLIs, Bun/Node/Deno workflows, or project automation. Use api-design for public service/SDK/CLI contracts and observability-engineering for telemetry/logging signal design. Do not use for checked-in Playwright test design; use playwright-e2e.
 ---
 
 # JavaScript and TypeScript Engineering
@@ -106,6 +106,20 @@ deno task <task>
   runtime validation, unawaited promises, framework/UI leakage, singleton service
   bags, import-time side effects, weak randomness, over-mocked tests, or brittle
   E2E tests.
+
+## API and Observability Routing
+
+- Load [`api-design`](../api-design/SKILL.md) when JS/TS work defines or changes
+  HTTP/RPC/GraphQL/webhook, SDK, CLI, request/response/error, pagination,
+  versioning, or generated-client contracts. Keep this skill focused on JS/TS
+  implementation, types, serializers, package workflow, and tests.
+- Load [`observability-engineering`](../observability-engineering/SKILL.md) when
+  adding or changing structured logs, metrics, traces, correlation IDs, audit
+  events, frontend/backend diagnostics, or operator-facing telemetry.
+- For public API docs, examples, or migration guides, load
+  [`api-design`](../api-design/SKILL.md) first if the contract is still being
+  shaped; otherwise use
+  [`documentation-engineering`](../documentation-engineering/SKILL.md).
 
 ## Formatting, Linting, Types, and Builds
 

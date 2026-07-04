@@ -53,19 +53,17 @@ security modeling or supply-chain-only review; route those surfaces as below.
   provider SDKs, libraries, CLIs, and APIs when current docs matter; cite only
   sanitized, review-relevant facts instead of turning the review into a protocol
   tutorial.
-- API-contract design belongs to the planned `api-design` contract in
-  [`docs/skill-taxonomy.md`](../../docs/skill-taxonomy.md#candidate-skill-contracts).
-  Load this skill for API work only when the contract or implementation touches
-  auth, authorization, scopes, CORS/CSRF/CSP, redirects/callbacks, input
-  validation, webhooks/signatures, sensitive data exposure, rate limits, abuse
-  controls, or other trust-boundary behavior.
-- Observability design belongs to the planned `observability-engineering`
-  contract in
-  [`docs/skill-taxonomy.md`](../../docs/skill-taxonomy.md#candidate-skill-contracts).
-  Load this skill for telemetry work only when logs, traces, metrics, dashboards,
-  alerts, or audit events can expose secrets, credentials, PII, tenant data,
-  auth/session artifacts, exploit payloads, or when they serve as security
-  monitoring controls or report evidence.
+- Use [`api-design`](../api-design/SKILL.md) for API-contract shape: resources,
+  operations, request/response/error envelopes, versioning, compatibility,
+  public docs, and generated specs. Load this skill for API work only when the
+  contract or implementation touches auth, authorization, scopes, CORS/CSRF/CSP,
+  redirects/callbacks, input validation, webhooks/signatures, sensitive data
+  exposure, rate limits, abuse controls, or other trust-boundary behavior.
+- Use [`observability-engineering`](../observability-engineering/SKILL.md) for
+  log, trace, metric, dashboard, alert, SLO, or runbook design. Load this skill
+  for telemetry work only when signals can expose secrets, credentials, PII,
+  tenant data, auth/session artifacts, exploit payloads, or when they serve as
+  security monitoring controls or report evidence.
 - Use [`security-review-evidence`](../security-review-evidence/SKILL.md) whenever
   raw artifacts, exploit proof, browser state, auth traces, scanner output, or
   other sensitive evidence must be captured, sanitized, retained, or cleaned up.
