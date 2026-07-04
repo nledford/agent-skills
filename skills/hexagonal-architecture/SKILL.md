@@ -1,6 +1,6 @@
 ---
 name: hexagonal-architecture
-description: Hexagonal Architecture / Ports and Adapters guidance. Use when designing or refactoring application and domain boundaries, use cases, application services, inbound or outbound ports, adapters, dependency inversion, Clean/Onion-style core isolation, or tests that should run without real infrastructure. Do not use for simple CRUD, prototypes, or one-off scripts where indirection costs more than it protects.
+description: Hexagonal Architecture / Ports and Adapters guidance. Use when designing or refactoring application and domain boundaries, use cases, application services, inbound or outbound ports, adapters, dependency inversion, Clean/Onion-style core isolation, or tests that should run without real infrastructure. Use for Clean vs Hexagonal tradeoffs when the main question is ports/adapters around external actors. Do not use for simple CRUD, prototypes, or one-off scripts where indirection costs more than it protects.
 ---
 
 # Hexagonal Architecture
@@ -115,8 +115,13 @@ Do not force it for:
 - **TDD:** TDD can drive domain objects and use cases before real infrastructure
   exists by substituting fake adapters for outbound ports.
 - **Clean Architecture / Onion Architecture:** these share the inward dependency
-  rule and core isolation goal. Do not treat the names as identical blueprints;
-  adapt the vocabulary to the repository while preserving dependency direction.
+  rule and core isolation goal. Load
+  [`clean-architecture`](../clean-architecture/SKILL.md) when the main decision
+  is concentric policy/detail layers, use-case/interactor boundaries,
+  presenters, DTOs, and interface-adapter responsibilities. Prefer Hexagonal
+  wording when the main decision is ports and adapters around external actors.
+  Do not switch terminology if the code already has healthy dependency
+  boundaries.
 
 ## Anti-Patterns
 

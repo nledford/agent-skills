@@ -103,7 +103,7 @@ first-party skills.
 | Skill authoring and governance | `create-agent-skill`, `code-review`, `review-verification-protocol` | Creating, validating, and reviewing durable agent guidance and repository changes. |
 | Security review | `security-review`, `security-review-evidence` | Security audit workflow and sanitized evidence handling for trust-boundary work. |
 | Documentation | `documentation-engineering` | Markdown, README, API docs, comments, rustdoc, pydoc/docstrings, examples, and documentation review. |
-| Design methods and architecture | `brainstorming`, `behavior-driven-development`, `domain-driven-design`, `hexagonal-architecture`, `test-driven-development`, `gherkin` | Use the direct method or architecture skill that matches the work; do not load a meta-selection skill for simple changes. |
+| Design methods and architecture | `brainstorming`, `behavior-driven-development`, `clean-architecture`, `domain-driven-design`, `hexagonal-architecture`, `test-driven-development`, `gherkin` | Use the direct method or architecture skill that matches the work; do not load a meta-selection skill for simple changes. |
 | Debugging and prevention | `systematic-debugging`, `root-cause-analysis` | Active symptom diagnosis first; postmortem and recurrence prevention after the direct cause is understood. |
 | Data, identifiers, and SQL | `random-data-identifiers`, `sql-engineering`, `postgresql-sql-engineering`, `sqlite-sql-engineering` | Randomness/IDs, database-neutral SQL, and engine-specific PostgreSQL/SQLite schema, migration, query, transaction, performance, security, and review guidance. |
 | Python engineering | `python-engineering` | Python implementation, review, testing, packaging, dependency management, quality gates, docs, and `uv` workflows. |
@@ -140,8 +140,12 @@ first-party skills.
   criteria need concrete examples.
 - Use **DDD** when naming, boundaries, invariants, or long-term domain model
   clarity matter.
-- Use **Hexagonal Architecture** when use cases, ports, adapters, dependency
-  direction, or infrastructure-independent testing shape the implementation.
+- Use **Clean Architecture** when concentric policy/detail boundaries, entities,
+  use cases/interactors, interface adapters, presenters, dependency direction, or
+  framework/database/UI independence shape the implementation.
+- Use **Hexagonal Architecture** when ports, adapters, external actors, multiple
+  drivers, swappable infrastructure, or headless core testing shape the
+  implementation.
 - Use **TDD** when behavior can be specified and protected with executable tests.
 - Use **Gherkin** when formal `.feature` syntax or durable Given/When/Then
   artifacts are useful.
@@ -152,15 +156,18 @@ Combinations should be proportional:
 
 - **BDD + DDD:** when examples need domain language, invariants, roles, policies,
   or bounded-context distinctions before implementation.
-- **DDD + Hexagonal Architecture:** when the domain model needs protection from
-  framework, persistence, messaging, SDK, or delivery-mechanism leakage.
-- **BDD + Hexagonal Architecture:** when behavior examples should execute at the
-  system, inbound-adapter, or use-case boundary without exposing internals.
+- **DDD + Clean or Hexagonal Architecture:** when the domain model needs
+  protection from framework, persistence, messaging, SDK, or delivery-mechanism
+  leakage. Use Clean wording for use-case/layer responsibilities; use Hexagonal
+  wording for port/adapter decisions.
+- **BDD + Clean or Hexagonal Architecture:** when behavior examples should
+  execute at the system, inbound-adapter, or use-case boundary without exposing
+  internals.
 - **BDD + TDD:** when acceptance examples should drive executable behavior tests.
 - **DDD + TDD:** when domain invariants, state transitions, value objects, or
   policies should be protected with narrow tests.
-- **TDD + Hexagonal Architecture:** when use cases should be tested with fake or
-  in-memory adapters before real infrastructure exists.
+- **TDD + Clean or Hexagonal Architecture:** when use cases should be tested with
+  fake or in-memory adapters before real infrastructure exists.
 - **BDD + DDD + TDD:** when a significant feature has user-visible behavior,
   important domain modeling, and executable tests that should evolve together.
 - **None of these methods:** for formatting-only, docs-only, mechanical renames,
@@ -176,6 +183,7 @@ reading the code, making a small change, and running the relevant check is enoug
 | --- | --- | --- |
 | `behavior-driven-development` | Behavior examples, acceptance criteria, workflows, and executable specifications. | Keep. Focused method skill; overlaps with `gherkin` only at the formal syntax boundary. |
 | `brainstorming` | Structured option generation for ambiguous engineering choices before implementation. | Keep. Useful only when multiple credible paths exist; non-goals are explicit. |
+| `clean-architecture` | Clean Architecture, dependency rule, entities, use cases/interactors, interface adapters, framework/database/UI independence, and Clean vs Hexagonal/Onion/layered tradeoffs. | Add. Splits detailed Clean Architecture guidance from Ports and Adapters while preserving cross-links to avoid duplicate architecture checklists. |
 | `code-review` | General repository-local audit and review workflow, severity, and finding format. | Keep. Owns review reporting; specialist skills add narrow lenses. |
 | `context7-docs` | Current third-party library, framework, SDK, API, CLI, and tool documentation lookup. | Keep. External-docs skill; does not replace repository inspection. |
 | `create-agent-skill` | Creating, updating, validating, and maintaining reusable `SKILL.md` skills. | Keep. Canonical skill-authoring workflow. |
@@ -213,9 +221,9 @@ reading the code, making a small change, and running the relevant check is enoug
 | Security review and audit | `security-review`, `security-review-evidence`, `code-review`, language/data skills | Complete | Generic audit skill covers trust boundaries; support skill controls sanitized evidence. |
 | BDD | `behavior-driven-development`, `gherkin`, `playwright-e2e` | Complete | BDD principles and misuse are separate from formal `.feature` syntax. |
 | DDD | `domain-driven-design`, language/data skills | Complete | Strategic and tactical patterns with anti-ceremony guidance. |
-| Hexagonal Architecture / Ports and Adapters / Clean / Onion | `hexagonal-architecture`, `domain-driven-design`, language/data skills | Complete | Core isolation, dependency direction, inbound/outbound adapters, use cases, tests, and when not to add indirection. |
+| Clean / Hexagonal Architecture / Ports and Adapters / Onion | `clean-architecture`, `hexagonal-architecture`, `domain-driven-design`, language/data skills | Complete | Core isolation, dependency direction, entities, use cases/interactors, interface adapters, ports/adapters, tests, tradeoffs, and when not to add indirection. |
 | TDD | `test-driven-development`, language/test skills | Complete | Red/green/refactor, test levels, regression, and misuse guidance. |
-| Combining BDD, DDD, TDD, and Hexagonal Architecture | This taxonomy plus BDD/DDD/TDD/Hexagonal cross-references | Complete | Composition guidance lives here to avoid a competing meta-skill. |
+| Combining BDD, DDD, TDD, Clean Architecture, and Hexagonal Architecture | This taxonomy plus BDD/DDD/TDD/Clean/Hexagonal cross-references | Complete | Composition guidance lives here to avoid a competing meta-skill. |
 | Gherkin and `.feature` files | `gherkin`, `behavior-driven-development`, `playwright-e2e` | Complete | Includes Given/When/Then discipline, outlines, anti-patterns, and language usage. |
 | Random data and identifiers | `random-data-identifiers`, `security-review`, language/data skills | Complete | Covers CSPRNG defaults, seeded reproducibility, UUID/CUID/ULID-style choices, tests, and warnings. |
 | SQL | `sql-engineering`, `postgresql-sql-engineering`, `sqlite-sql-engineering`, `rust-persistence-sql` | Complete | Generic SQL plus engine and Rust adapter specialization. |
