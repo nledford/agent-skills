@@ -299,17 +299,21 @@ count as third-party skills.
 | `typescript-javascript-antipatterns` | TypeScript/JavaScript smells such as `any`, unsafe assertions, missing runtime validation, unawaited promises, singleton service bags, import-time side effects, framework/UI leakage, weak randomness, over-mocked tests, and brittle E2E tests. | Positive pattern selection or ordinary JS/TS workflow. |
 | `documentation-engineering` | Markdown, README, API docs, code comments, rustdoc, pydoc/docstrings, examples, and documentation review. | Code-only behavior changes with no reader-facing documentation or comment impact. |
 
-### Future Python and TypeScript/JavaScript Split Triggers
+### Future Python, TypeScript/JavaScript, and Accessibility Split Triggers
 
 These are not backlog items. Split `python-engineering` or
-`javascript-typescript-engineering` only after repeated tasks show a durable
-activation boundary that would make the broad language skill noisy or
-under-specific:
+`javascript-typescript-engineering`, or treat a dedicated accessibility-review
+skill as eligible, only after repeated tasks show a durable activation boundary
+that would make the broad language or review skill noisy or under-specific:
 
 - **Testing:** recurring work is mostly test strategy, fixtures, runner behavior,
   coverage, flake isolation, or CI lane selection across projects, rather than
   implementation plus its normal tests. Keep checked-in browser E2E work in
   `playwright-e2e`.
+- **Accessibility review:** recurring work is mostly WCAG criteria,
+  keyboard/focus behavior, ARIA semantics, contrast, screen-reader behavior, or
+  axe-style findings across projects, rather than ordinary frontend fixes or
+  browser test implementation.
 - **Packaging and toolchains:** package metadata, builds, publishing, lockfiles,
   workspaces, dependency resolution, or release automation become version-sensitive
   enough that they can be handled without loading general implementation guidance.
