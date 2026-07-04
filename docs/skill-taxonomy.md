@@ -299,6 +299,31 @@ count as third-party skills.
 | `typescript-javascript-antipatterns` | TypeScript/JavaScript smells such as `any`, unsafe assertions, missing runtime validation, unawaited promises, singleton service bags, import-time side effects, framework/UI leakage, weak randomness, over-mocked tests, and brittle E2E tests. | Positive pattern selection or ordinary JS/TS workflow. |
 | `documentation-engineering` | Markdown, README, API docs, code comments, rustdoc, pydoc/docstrings, examples, and documentation review. | Code-only behavior changes with no reader-facing documentation or comment impact. |
 
+### Future Python and TypeScript/JavaScript Split Triggers
+
+These are not backlog items. Split `python-engineering` or
+`javascript-typescript-engineering` only after repeated tasks show a durable
+activation boundary that would make the broad language skill noisy or
+under-specific:
+
+- **Testing:** recurring work is mostly test strategy, fixtures, runner behavior,
+  coverage, flake isolation, or CI lane selection across projects, rather than
+  implementation plus its normal tests. Keep checked-in browser E2E work in
+  `playwright-e2e`.
+- **Packaging and toolchains:** package metadata, builds, publishing, lockfiles,
+  workspaces, dependency resolution, or release automation become version-sensitive
+  enough that they can be handled without loading general implementation guidance.
+- **Web/API frameworks:** framework routing, middleware, request lifecycles,
+  server/client boundaries, SSR, validation adapters, or framework-specific test
+  harnesses dominate the task. Keep public contract shape in `api-design` and
+  security controls in the security skills.
+- **Async and concurrency:** cancellation, backpressure, task lifetimes, queues,
+  workers, event loops, shared state, or resource cleanup are the primary risk;
+  do not split for routine `await` usage.
+- **Anti-pattern review:** create narrower smell-review skills only when one
+  repeated review surface has its own evidence rules and false-positive risks.
+  Do not split merely to add more examples to the existing anti-pattern skills.
+
 ## Rust Skill Boundaries
 
 | Skill | Use For | Do Not Use For |
