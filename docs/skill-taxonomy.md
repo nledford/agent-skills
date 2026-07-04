@@ -106,7 +106,7 @@ first-party skills.
 | Category | Skills | Boundary |
 | --- | --- | --- |
 | Skill authoring and governance | `create-agent-skill`, `code-review`, `review-verification-protocol` | Creating, validating, and reviewing durable agent guidance and repository changes. |
-| Security review | `security-review`, `security-review-evidence` | Security audit workflow and sanitized evidence handling for trust-boundary work. |
+| Security review | `threat-modeling`, `security-review`, `security-review-evidence`, `dependency-supply-chain-review` | Security design analysis, implemented-control audits, sanitized evidence handling, and dependency/supply-chain risk for trust-boundary work. |
 | Documentation | `documentation-engineering` | Markdown, README, API docs, comments, rustdoc, pydoc/docstrings, examples, and documentation review. |
 | Design methods and architecture | `brainstorming`, `behavior-driven-development`, `clean-architecture`, `domain-driven-design`, `hexagonal-architecture`, `onion-architecture`, `test-driven-development`, `gherkin` | Use the direct method or architecture skill that matches the work; do not load a meta-selection skill for simple changes. |
 | Debugging and prevention | `systematic-debugging`, `root-cause-analysis` | Active symptom diagnosis first; postmortem and recurrence prevention after the direct cause is understood. |
@@ -134,6 +134,15 @@ Run `sync-third-party-lock` only when a repository lockfile exists and should be
 mirrored for the installer. A missing `.skill-lock.json` is normal when no
 lockfile-managed skills are installed; ignored directories under `skills/` still
 count as third-party skills.
+
+## Security Skill Boundaries
+
+| Skill | Use For | Do Not Use For |
+| --- | --- | --- |
+| `threat-modeling` | Design-time security analysis for new or changed trust boundaries, actors, assets, data flows, entry points, abuse cases, mitigations, security acceptance criteria, assumptions, and residual risk. | Ordinary code review, confirmed vulnerability validation, exploit reproduction, or dependency/SBOM/CVE/provenance review. |
+| `security-review` | Implemented-control review for auth, authorization, crypto, secrets, sessions, input validation, web controls, file paths, command execution, and other concrete trust-boundary behavior. | Design-only modeling before controls exist, supply-chain-only review, or unverified vulnerability claims without repository evidence. |
+| `security-review-evidence` | Sanitized evidence handling for security-sensitive changes and review findings. | Standalone security review, threat modeling, or implementation work without a security evidence/reporting need. |
+| `dependency-supply-chain-review` | Dependency, package, binary, registry, manifest, lockfile, SBOM/SCA, CVE/GHSA, provenance, install-script, CI bootstrap, container/base-image, vendored-code, and generated-code supply-chain risk. | Routine package-manager workflow, third-party API documentation lookup, or language-specific dependency implementation with no supply-chain security question. |
 
 ## Language and Data Boundaries
 
@@ -187,6 +196,14 @@ count as third-party skills.
   a design idiomatically in Rust, Python, or TypeScript/JavaScript.
 - Use **language anti-pattern skills** when the task is smell detection, generated
   code cleanup, or review of repeated language-specific failure modes.
+- Use **Threat Modeling** before or during significant trust-boundary design to
+  map actors, assets, entry points, data flows, abuse cases, mitigations,
+  security acceptance criteria, and residual risk.
+- Use **Security Review** after controls exist or when validated findings and
+  sanitized evidence are required.
+- Use **Dependency Supply-Chain Review** when dependency, package, binary,
+  registry, lockfile, CI bootstrap, container, provenance, SBOM/SCA, or advisory
+  risk is the security question.
 
 Combinations should be proportional:
 
@@ -213,9 +230,16 @@ Combinations should be proportional:
   lifetime, or construction pattern.
 - **Language engineering + anti-patterns:** when reviewing generated code,
   smell-heavy refactors, brittle tests, or repeated language-specific mistakes.
+- **Threat modeling + BDD/TDD:** when abuse cases and mitigations should become
+  user-visible acceptance criteria or executable security regression tests.
+- **Threat modeling + security review:** when design-time risks need verification
+  against implemented controls before they are reported as findings.
+- **Dependency supply-chain review + language/workflow skills:** when manifests,
+  lockfiles, package scripts, CI bootstrap, or container changes require both
+  ecosystem mechanics and supply-chain trust review.
 - **None of these methods:** for formatting-only, docs-only, mechanical renames,
-  generated updates, dependency bumps, or obvious one-line fixes with existing
-  coverage.
+  generated updates, routine dependency bumps with no trust or supply-chain
+  question, or obvious one-line fixes with existing coverage.
 
 Prefer one focused practice over several shallow ones. Do not add ceremony when
 reading the code, making a small change, and running the relevant check is enough.
@@ -230,6 +254,7 @@ reading the code, making a small change, and running the relevant check is enoug
 | `code-review` | General repository-local audit and review workflow, severity, and finding format. | Keep. Owns review reporting; specialist skills add narrow lenses. |
 | `context7-docs` | Current third-party library, framework, SDK, API, CLI, and tool documentation lookup. | Keep. External-docs skill; does not replace repository inspection. |
 | `create-agent-skill` | Creating, updating, validating, and maintaining reusable `SKILL.md` skills. | Keep. Canonical skill-authoring workflow. |
+| `dependency-supply-chain-review` | Dependency audits, SBOM/SCA output, CVE/GHSA advisories, package provenance, registries, manifests, lockfiles, install scripts, CI bootstrap dependencies, containers, binaries, and vendored/generated code. | Add. Specializes security review for supply-chain trust surfaces while language skills continue to own package-manager workflow and implementation details. |
 | `documentation-engineering` | Concise, accurate Markdown, README, API docs, comments, rustdoc, pydoc/docstrings, examples, and documentation review. | Add. Fills documentation coverage without relying on third-party writing skills. |
 | `domain-driven-design` | Domain modeling, bounded contexts, invariants, repositories, services, events, and language. | Keep. Focused on domain boundaries and anti-ceremony guidance. |
 | `gherkin` | Writing or editing `.feature` files and durable Given/When/Then artifacts. | Keep. Syntax-focused companion to BDD, with language usage boundaries. |
@@ -260,6 +285,7 @@ reading the code, making a small change, and running the relevant check is enoug
 | `suggest-lucide-icons` | Verified Lucide icon name selection for UI concepts and placements. | Keep. Small, focused workflow with concrete verification rules. |
 | `systematic-debugging` | Active failures, regressions, crashes, flakes, performance issues, build failures, and evidence-driven fixes. | Keep. Core workflow remains in `SKILL.md`; detailed failure heuristics moved to a reference. |
 | `test-driven-development` | Red-Green-Refactor, regression tests, test-level selection, and behavior-first implementation. | Keep. Concise method skill used by language and workflow skills. |
+| `threat-modeling` | Threat models, abuse cases, actors, assets, data flows, trust boundaries, attack surface, security requirements, mitigations, assumptions, and residual risk. | Add. Covers design-time security analysis before implemented-control review; concrete vulnerabilities and evidence still route to `security-review` and `security-review-evidence`. |
 | `typescript-javascript-antipatterns` | TypeScript/JavaScript generated-code and design smell review for `any`, unsafe assertions, missing runtime validation, unawaited promises, singleton state, framework/UI leakage, and brittle tests. | Add. Splits smell-focused JS/TS review from positive pattern selection and broad JS/TS workflow. |
 | `typescript-javascript-design-patterns` | TypeScript/JavaScript pattern guidance for discriminated unions, branded types, runtime validation boundaries, adapter modules, use-case handlers, async orchestration, and test builders. | Add. Provides standalone pattern selection while `javascript-typescript-engineering` remains the workflow skill. |
 
@@ -273,7 +299,9 @@ existing skill.
 | Required Topic | Covering Skill(s) | Status | Notes |
 | --- | --- | --- | --- |
 | Code review | `code-review`, `review-verification-protocol`, `rust-code-review` | Baseline complete | Generic review plus Rust-specific review lens and evidence gates. |
-| Security review and audit | `security-review`, `security-review-evidence`, `code-review`, language/data skills | Baseline complete | Generic audit skill covers trust boundaries; support skill controls sanitized evidence. |
+| Security review and audit | `threat-modeling`, `security-review`, `security-review-evidence`, `dependency-supply-chain-review`, `code-review`, language/data skills | Baseline complete | Design-time modeling, implemented-control review, supply-chain review, generic audit routing, and sanitized evidence are covered. |
+| Threat modeling and security design | `threat-modeling`, `security-review`, `security-review-evidence`, architecture/method/language skills | Baseline complete | Actors, assets, entry points, data flows, trust boundaries, abuse cases, mitigations, security acceptance criteria, residual risk, and handoff to verified review are covered. |
+| Dependency and supply-chain review | `dependency-supply-chain-review`, `security-review`, `security-review-evidence`, language/workflow skills | Baseline complete | Manifests, lockfiles, SBOM/SCA/CVE/GHSA advisories, provenance, registries, install scripts, CI bootstrap, containers, binaries, vendored/generated code, and sanitized evidence are covered. |
 | BDD | `behavior-driven-development`, `gherkin`, `playwright-e2e` | Baseline complete | BDD principles and misuse are separate from formal `.feature` syntax. |
 | DDD | `domain-driven-design`, language/data skills | Baseline complete | Strategic and tactical patterns with anti-ceremony guidance. |
 | Clean / Hexagonal Architecture / Onion / Ports and Adapters | `clean-architecture`, `hexagonal-architecture`, `onion-architecture`, `domain-driven-design`, language/data skills | Baseline complete | Core isolation, dependency direction, entities, use cases/interactors, domain/application rings, interface adapters, ports/adapters, tests, tradeoffs, and when not to add indirection. |
@@ -337,6 +365,23 @@ Scenario: Security-sensitive work uses explicit review
   When an agent reviews the change
   Then it loads security-review and security-review-evidence with code-review
   And reports only sanitized, verified findings
+```
+
+```gherkin
+Scenario: Threat modeling stays separate from verified findings
+  Given a change introduces a trust boundary, sensitive-data flow, external integration, upload, webhook, command surface, or tenant/admin distinction
+  When an agent models security risk before or during implementation
+  Then it loads threat-modeling
+  And records actors, assets, entry points, trust boundaries, abuse cases, mitigations, security acceptance criteria, and residual risk
+  And hands concrete implemented-control findings to security-review and security-review-evidence before reporting verified vulnerabilities
+```
+
+```gherkin
+Scenario: Dependency supply-chain review inspects trust signals safely
+  Given a change touches dependency manifests, lockfiles, SBOM or SCA output, CVE or GHSA advisories, registries, install scripts, CI bootstrap dependencies, container images, vendored code, generated code, or binaries
+  When an agent reviews supply-chain risk
+  Then it loads dependency-supply-chain-review with security-review and security-review-evidence
+  And inspects provenance, pins, checksums, signatures, dependency-path impact, scripts, and sanitized advisory evidence without running untrusted code first
 ```
 
 ```gherkin
