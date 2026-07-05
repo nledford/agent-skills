@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
-# Third-party skills installed by bunx skills into ~/.agents/skills.
+# Third-party skills installed by npx skills into ~/.agents/skills.
 /skills/agent-browser/
 /skills/anti-ai-slop-writing/
 /skills/find-skills/

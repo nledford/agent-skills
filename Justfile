@@ -78,7 +78,7 @@ list-third-party:
 validate-third-party:
     @{{python}} {{manager}} validate --kind third-party
 
-# Update third-party skills with bunx skills or SKILLS_UPDATE_COMMAND.
+# Update third-party skills with npx skills or SKILLS_UPDATE_COMMAND.
 [group('third-party')]
 update-third-party:
     @{{python}} {{manager}} update-third-party

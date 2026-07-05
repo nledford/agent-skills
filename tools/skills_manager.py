@@ -747,7 +747,7 @@ def run_third_party_update(repo_root: Path, global_path: Path, *, dry_run: bool 
     if not verify_result.ok:
         return verify_result
 
-    command_text = os.environ.get("SKILLS_UPDATE_COMMAND", "bunx skills update")
+    command_text = os.environ.get("SKILLS_UPDATE_COMMAND", "npx skills update")
     command = command_text.split()
     if not command:
         return OperationResult(errors=["SKILLS_UPDATE_COMMAND is empty"])

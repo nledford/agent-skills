@@ -33,7 +33,7 @@ First-party skills are skill directories under `skills/` that are tracked, or
 intended to be tracked, by this repository.
 
 Third-party skills are installed into the same directory by external tooling,
-such as `bunx skills`. A skill is treated as third-party when it is listed in
+such as `npx skills`. A skill is treated as third-party when it is listed in
 `.skill-lock.json` or ignored as a skill directory under `skills/` in `.gitignore`.
 Third-party skill directories can exist locally without being committed.
 `.skill-lock.json` may be absent when no skills are managed through the
@@ -88,13 +88,13 @@ symlink to another location.
 
 ## Third-Party Updates
 
-`just update-third-party` runs `bunx skills update` by default after verifying
+`just update-third-party` runs `npx skills update` by default after verifying
 that `~/.agents/skills` points at this repository's `skills/` directory.
 Override the command with `SKILLS_UPDATE_COMMAND` when the installer workflow
 differs:
 
 ```sh
-SKILLS_UPDATE_COMMAND="bunx skills update" just update-third-party
+SKILLS_UPDATE_COMMAND="pnpm dlx skills update" just update-third-party
 ```
 
 Keep third-party updates and lockfile sync separate:
