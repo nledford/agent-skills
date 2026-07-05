@@ -79,8 +79,8 @@ For broader workflow and tooling, use
 - Can promise ownership be made explicit with `await`, return, cancellation,
   cleanup, or a supervised task group?
 - Can a unit or integration test replace a brittle E2E path?
-- Can Web Crypto, Node/Bun crypto, or a project-standard ID library replace
-  weak randomness?
+- Can Web Crypto, Node.js crypto, or a project-standard ID library replace weak
+  randomness? Use Bun crypto only when the repository explicitly runs on Bun.
 
 ## Reporting Rules
 
@@ -92,4 +92,3 @@ For broader workflow and tooling, use
   make one async ownership path explicit.
 - State which checks would validate the fix: unit tests, integration tests,
   typecheck, lint, build, or Playwright where browser behavior matters.
-

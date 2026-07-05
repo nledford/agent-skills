@@ -61,9 +61,10 @@ as well when constraints, indexes, or migrations are involved.
 - **Python:** use `secrets` for tokens and unguessable strings, `uuid.uuid4()` for
   random UUIDs, and `random.Random(seed)` for deterministic tests. Do not use the
   `random` module for secrets. Keep Faker/Hypothesis seeds explicit when used.
-- **JavaScript/TypeScript:** use Web Crypto or Node/Bun crypto APIs such as
+- **JavaScript/TypeScript:** use Web Crypto or Node.js crypto APIs such as
   `crypto.randomUUID()`, `crypto.getRandomValues`, or `randomBytes` for secure
-  values. Use deterministic PRNG libraries only when already present or clearly
+  values. Use Bun crypto APIs only when the repository explicitly runs on Bun.
+  Use deterministic PRNG libraries only when already present or clearly
   justified. Do not use `Math.random()` for IDs, tokens, or security-sensitive
   fixtures.
 - **Rust:** inspect crate versions and features. Use OS-backed randomness or

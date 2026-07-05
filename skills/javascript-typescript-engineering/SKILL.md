@@ -1,6 +1,6 @@
 ---
 name: javascript-typescript-engineering
-description: JavaScript and TypeScript engineering guidance. Use when adding, changing, reviewing, testing, linting, formatting, dependency-managing, packaging, or refactoring JS/TS source, package.json scripts, lockfiles, workspaces, CLIs, Bun/Node/Deno workflows, or project automation. Use api-design for public service/SDK/CLI contracts, observability-engineering for telemetry/logging signal design, and css-scss-styling for CSS/SCSS/CSS-module/CSS-in-JS/utility styling decisions. Do not use for checked-in Playwright test design; use playwright-e2e.
+description: JavaScript and TypeScript engineering guidance. Use when adding, changing, reviewing, testing, linting, formatting, dependency-managing, packaging, or refactoring JS/TS source, package.json scripts, lockfiles, workspaces, CLIs, Node/npm, Bun, Deno, pnpm, or Yarn workflows, or project automation. Use api-design for public service/SDK/CLI contracts, observability-engineering for telemetry/logging signal design, and css-scss-styling for CSS/SCSS/CSS-module/CSS-in-JS/utility styling decisions. Do not use for checked-in Playwright test design; use playwright-e2e.
 ---
 
 # JavaScript and TypeScript Engineering
@@ -14,8 +14,8 @@ linter, test runner, or bundler.
 - Editing `.js`, `.jsx`, `.ts`, `.tsx`, `.mts`, `.cts`, package manifests,
   lockfiles, TypeScript configs, lint/format configs, build configs, tests, CLIs,
   workspaces, or project scripts.
-- Working with Bun, Node.js, Deno, npm, pnpm, Yarn, package-manager migration, or
-  one-off package CLIs.
+- Working with Node.js, npm, `npx`, pnpm, Yarn, Deno, Bun,
+  package-manager migration, or one-off package CLIs.
 - Reviewing JS/TS correctness, types, async behavior, module boundaries,
   dependency changes, formatting/linting, build output, or runtime compatibility.
 
@@ -37,8 +37,9 @@ responsive layout, and design-token decisions.
    config, logs, fixtures, generated assets, and tests, builds, or other
    validation commands.
 2. Identify the runtime and package manager actually owned by the repository.
-   Bun-first guidance applies only when the repo uses `bun.lock`, Bun scripts, or
-   Bun runtime features.
+   Use Node.js and npm by default when there is no local evidence requiring a
+   different workflow. Use Bun only when the repo explicitly uses `bun.lock`, Bun
+   scripts, Bun runtime features, or the task is Bun-specific.
 3. Define the behavior before editing. Use BDD examples for user-visible or CLI
    behavior and TDD for focused logic changes and bug fixes.
 4. Keep boundaries explicit: domain logic, adapters, UI, scripts, generated code,
@@ -54,15 +55,16 @@ responsive layout, and design-token decisions.
 ## Runtime and Package Manager Rules
 
 - Do not switch package managers silently. Lockfiles are policy evidence:
-  `bun.lock`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, and `deno.lock`
-  imply different workflows.
-- Use Bun for install/run/test/add/remove/x commands when the repository is
-  Bun-owned. Use Node/npm, pnpm, Yarn, or Deno when local config, CI, runtime
-  APIs, deployment target, or workspace policy requires them.
+  `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lock`, and
+  `deno.lock` imply different workflows.
+- Use Node.js and npm for install/run/test/add/remove commands by default, and
+  use `npx` for one-off CLI execution unless the repository documents another
+  tool. Use pnpm, Yarn, Deno, or Bun when local config, CI, runtime APIs,
+  deployment target, or workspace policy requires them.
 - Do not introduce another lockfile unless the project intentionally supports
   multiple package managers.
 - Add dependencies only when durable project code needs them. Use one-off CLI
-  runners (`bunx`, `npx`, `pnpm dlx`, `yarn dlx`, `deno run`) only when they fit
+  runners (`npx`, `pnpm dlx`, `yarn dlx`, `bunx`, `deno run`) only when they fit
   the local workflow and do not hide unreviewed side effects.
 - Keep package scripts explicit about arguments, environment variables, working
   directory, generated files, and exit codes.
@@ -70,15 +72,16 @@ responsive layout, and design-token decisions.
 Common commands to adapt to the repo:
 
 ```sh
-bun install --frozen-lockfile
-bun run <script>
-bun test <filter>
 npm ci
 npm run <script>
+npx <tool> [args]
 pnpm install --frozen-lockfile
 pnpm run <script>
 yarn install --immutable
 yarn <script>
+bun install --frozen-lockfile
+bun run <script>
+bun test <filter>
 deno task <task>
 ```
 
@@ -186,9 +189,9 @@ collecting or reporting sensitive security evidence.
 ## Anti-Patterns
 
 - Assuming every JS/TS repo uses React, Next.js, Vite, ESLint, Prettier, Jest,
-  Vitest, Node, Bun, or Deno without local evidence.
-- Copying upstream `npm`/`npx` instructions into a Bun, pnpm, Yarn, or Deno repo
-  without translating and verifying them.
+  Vitest, pnpm, Yarn, Bun, or Deno without local evidence.
+- Following default `npm`/`npx` instructions after local evidence shows the repo
+  requires pnpm, Yarn, Bun, or Deno, without translating and verifying them.
 - Adding dependencies for trivial standard-library or platform behavior.
 - Letting framework, ORM, SDK, HTTP, UI, or generated-client types leak into core
   domain APIs without an intentional adapter boundary.

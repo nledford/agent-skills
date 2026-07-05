@@ -73,10 +73,10 @@ Use the package manager and scripts already present. Common patterns include:
 
 ```sh
 npm run test:e2e -- <spec-or-filter>
+npx playwright test <spec-or-filter>
 pnpm test:e2e <spec-or-filter>
 yarn test:e2e <spec-or-filter>
 bun run test:e2e <spec-or-filter>
-npx playwright test <spec-or-filter>
 ```
 
 Useful focused options:
@@ -165,5 +165,6 @@ contents, reports, downloads, or live data.
 - Do not leave `test.only`, retained traces, screenshots, videos, HTML reports,
   downloads, raw browser artifacts, or sanitized artifacts without policy and
   security evidence in handoff evidence.
-- Do not assume `npx`, `npm`, `pnpm`, `yarn`, or `bun`; inspect the repository's
-  package manager and scripts first.
+- Use `npm` scripts and `npx playwright` by default when no package-manager
+  policy is present, but do not override repository evidence for pnpm, Yarn,
+  Bun, or another documented workflow.
