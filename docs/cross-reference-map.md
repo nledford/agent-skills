@@ -17,7 +17,7 @@ validator-enforced relationship.
 | Optional companion skills | Skills to add only when local evidence matches their trigger. |
 | Should-trigger examples | Short phrases that should activate the row. |
 | Should-not-trigger examples | Near misses that should route elsewhere or avoid the row. |
-| Validation source notes | Where enforcement or authority comes from: validator constant, taxonomy scenario, or skill frontmatter/body. |
+| Validation source notes | Where enforcement or authority comes from: validator constant, taxonomy scenario, repository docs, or first-party skill frontmatter/body. |
 
 Notation:
 
@@ -28,6 +28,12 @@ Notation:
   apply.
 
 ## Routing Matrix
+
+### Skill Authoring and Governance
+
+| Route | Primary skill | Related required skill(s) | Optional companion skills | Should-trigger examples | Should-not-trigger examples | Validation source notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| First-party skill creation or maintenance | `create-agent-skill` | load: `documentation-engineering` for doc quality; load: `code-review`, `review-verification-protocol` for requested or final reviews; use `docs/skill-review-checklist.md`; run `just validate` or `just check` before handoff | `context7-docs` for current upstream APIs; security/review skills when trust boundaries, dependencies, or evidence are involved | "create a new skill"; "update this SKILL.md"; "split this skill into two"; "audit skill routing after renaming a skill" | "use an existing skill to implement application code"; "edit ignored third-party runtime skills"; "ordinary README edit with no skill contract impact" | Taxonomy skill-authoring boundary; README and AGENTS first-party rules; skill review checklist |
 
 ### Security and Evidence
 
@@ -124,7 +130,7 @@ focused skill plus one companion covers the evidence.
 | Route | Primary skill | Related required skill(s) | Optional companion skills | Should-trigger examples | Should-not-trigger examples | Validation source notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Checked-in Playwright E2E tests | `playwright-e2e` | load: `javascript-typescript-engineering` when JS/TS tooling changes | `behavior-driven-development`, `gherkin`, `test-driven-development`, `security-review` for auth flows | "add a Playwright spec for checkout"; "edit `playwright.config.ts` projects"; "fix a flaky checked-in E2E helper"; "analyze CI trace for a failing test" | "open a website and click through manually"; "take a one-off screenshot"; "scrape page data with no checked-in test change" | Taxonomy JS/TS and third-party runtime boundaries |
-| Browser runtime automation | `agent-browser` | — | `playwright-cli` only when explicitly requested by the task/runtime | "navigate to localhost and capture a screenshot"; "fill a web form"; "manual QA bug hunt in a running app"; "scrape visible data from a page" | "write or refactor repository Playwright specs"; "change `playwright.config.ts`"; "design durable E2E test lanes" | Taxonomy third-party runtime installs; skill frontmatter/body |
+| Browser runtime automation | `agent-browser` | — | `playwright-cli` only when explicitly requested by the task/runtime | "navigate to localhost and capture a screenshot"; "fill a web form"; "manual QA bug hunt in a running app"; "scrape visible data from a page" | "write or refactor repository Playwright specs"; "change `playwright.config.ts`"; "design durable E2E test lanes" | Third-party runtime only; verify local install; not validator-enforced; README/taxonomy third-party policy |
 | Playwright artifacts and reports | `playwright-e2e` | load: `javascript-typescript-engineering` when test project tooling is involved | `systematic-debugging`, `test-driven-development` | "interpret a Playwright trace.zip"; "review HTML report, screenshot, or video from CI"; "debug browser-visible assertion failure" | "one-off browser screenshot for product review"; "non-Playwright browser automation"; "unit test failure unrelated to browser behavior" | Taxonomy Playwright E2E boundary |
 
 ### Documentation
@@ -161,5 +167,6 @@ Keep source notes terse and machine-updatable:
 - `taxonomy ... scenario` points to executable acceptance criteria in
   `skill-taxonomy.md`.
 - `taxonomy ... boundary` points to the boundary tables in `skill-taxonomy.md`.
-- `skill frontmatter/body` should be used only when the route is not yet covered
-  by taxonomy or validator rules.
+- `first-party skill frontmatter/body` should be used only when the route is not
+  yet covered by taxonomy, repository docs, or validator rules. Third-party
+  runtime skill bodies are not repository-owned routing authority.

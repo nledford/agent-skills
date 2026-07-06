@@ -134,25 +134,9 @@ handoff.
 
 These first-party contracts document boundaries shared by the taxonomy,
 cross-reference map, and validator-required related-link rules. The skill files
-remain the detailed workflow source of truth.
+remain the source of truth for frontmatter descriptions and detailed workflows.
 
 ### `observability-engineering`
-
-Frontmatter description:
-
-```yaml
-description: >-
-  Observability, telemetry, and production diagnostics guidance. Use when
-  designing, adding, reviewing, or testing structured logs, metrics, traces,
-  span/context propagation, correlation or request IDs, sampling,
-  labels/cardinality, dashboards, alerts, SLO/SLI/error-budget signals,
-  OpenTelemetry/Prometheus/Grafana/Datadog-style instrumentation, operational
-  runbooks, or incident visibility. Do not use for ordinary language
-  implementation, active debugging without durable instrumentation changes,
-  security review except telemetry leakage or audit controls, BDD/TDD mechanics,
-  or documentation-only edits; load those existing skills instead or alongside
-  this skill when their trigger is primary.
-```
 
 Boundary rules:
 
@@ -184,24 +168,6 @@ Boundary rules:
   operational signal design.
 
 ### `api-design`
-
-Frontmatter description:
-
-```yaml
-description: >-
-  API design and contract guidance. Use when defining, changing, reviewing, or
-  testing service or public interface contracts: HTTP/REST resources,
-  RPC/GraphQL operations, webhooks, event/message schemas,
-  request/response/error envelopes, pagination/filtering/sorting, idempotency,
-  versioning/deprecation/backward compatibility, OpenAPI/AsyncAPI/JSON
-  Schema/protobuf artifacts, SDK or CLI public surfaces, or consumer/provider
-  compatibility. Do not use for ordinary language/framework implementation,
-  Rust handler mechanics, SQL schema/query design, architecture boundary
-  selection, security controls, BDD/TDD mechanics, observability
-  instrumentation, or documentation-only API references after the contract is
-  set; load those existing skills instead or alongside it when their trigger is
-  primary.
-```
 
 Boundary rules:
 

@@ -28,8 +28,12 @@ tables or skill bodies here.
 - [ ] **Security evidence:** trust-boundary, secret, dependency, command, file
   path, or credential-adjacent work routes to `security-review` and
   `security-review-evidence`; report only sanitized, verified evidence.
-- [ ] **Validation:** run `python3 tools/skills_manager.py validate`; run narrower
-  checks for changed scripts, examples, or generated resources when present.
+- [ ] **Validation:** run `just validate` for skill metadata, taxonomy,
+  cross-reference, resource, and link changes; run `just check` for broader
+  repository changes. The underlying validator is
+  `python3 tools/skills_manager.py validate` when a direct script call is needed.
+  Run narrower checks for changed scripts, examples, or generated resources when
+  present.
 - [ ] **Handoff:** report changed files, validation output, skipped checks,
   unresolved risks, and at least one should-trigger and should-not-trigger
   scenario considered.
