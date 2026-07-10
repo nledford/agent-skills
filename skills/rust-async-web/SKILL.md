@@ -97,122 +97,13 @@ screenshots, generated assets, or test artifacts.
   domain rules with sync unit tests; test async application services with fakes;
   and test real adapters with `#[tokio::test]` integration tests.
 
-## Tokio Runtime And Tasks
+## Tokio Runtime, Coordination, And Cancellation
 
-- Tokio is the async runtime that schedules futures, timers, I/O resources, and
-  tasks. An `async fn` does not run until a runtime polls its future.
-- Use `#[tokio::main]` for application binaries and `#[tokio::test]` for async
-  tests. Use an explicit `tokio::runtime::Runtime` or `Builder` only for sync
-  entry points, custom runtime configuration, embedding, or tests that need
-  precise runtime control.
-- Do not create a nested runtime from code already running inside Tokio. Pass a
-  handle, restructure the boundary, or keep runtime construction at process
-  edges.
-- Use `tokio::spawn` for independent async work that must run concurrently.
-  Spawned futures and outputs must be `Send + 'static`.
-- Await `JoinHandle`s and handle `Result<T, JoinError>`; panics, aborts, and
-  cancellations are not normal successful task results. Detached
-  fire-and-forget tasks need an explicit justification, observability, and
-  shutdown path.
-- Use `JoinSet` or a task tracker for related dynamic task groups so fan-out,
-  result collection, error handling, and shutdown are supervised in one place.
-- Use `tokio::task::spawn_local` inside a `LocalSet` when `!Send` futures are
-  genuinely required. Prefer `Send` futures and `tokio::spawn` for server and
-  worker code unless a local-only dependency forces the constraint.
-- Use `spawn_blocking` for blocking I/O or CPU-heavy work that must coexist with
-  async code. Cancellation does not forcibly stop an already-running blocking
-  closure, so give long blocking work its own cooperative stop signal when it
-  needs graceful shutdown.
-- Instrument async services with `tracing` spans/events around request ids,
-  task starts/stops, retries, timeouts, cancellation, queue depth, and adapter
-  calls. Preserve useful span context when spawning tasks; load
-  [`observability-engineering`](../observability-engineering/SKILL.md) when those
-  signals become durable operator-facing telemetry.
-
-## Async And Tokio Checklist
-
-- Do not block the async runtime with CPU-heavy work, synchronous I/O, or long
-  lock holds. Use async APIs or `spawn_blocking` when appropriate.
-- Every spawned task has an ownership story: cancellation, shutdown, error
-  reporting, tracing context, and whether its `JoinHandle` is awaited,
-  supervised, or deliberately detached.
-- Use `JoinSet`, task trackers, semaphores, or bounded queues when spawning many
-  related tasks so concurrency and shutdown stay explicit.
-- Use `tokio::time::timeout` or cancellation tokens at external boundaries
-  where unbounded waiting would leak resources or stall requests.
-- Treat `tokio::select!` cancellation as real control flow. Dropped branches
-  must be safe to cancel or explicitly protected.
-- Prefer bounded channels for backpressure. Choose `mpsc`, `oneshot`, `watch`,
-  or `broadcast` according to fan-out and state semantics.
-- Use `Arc` for shared ownership, and choose `std::sync`, `tokio::sync`, or
-  message passing based on whether work crosses `.await` points.
-- Avoid holding non-async mutex guards or borrowed request data across `.await`.
-  Keep database transactions narrow, and do not hold them across unrelated,
-  slow, or externally-cancellable awaits unless that is the intended consistency
-  boundary.
-
-## Tokio Coordination Primitives
-
-- `tokio::select!` races cancellation, channel receive/send, timeouts, signals,
-  and child task completion. Treat the losing branches as cancelled; only select
-  over futures that are safe to drop or intentionally pinned/protected.
-- `tokio::time::timeout` bounds external waits. Convert elapsed time into a
-  domain/application error at the boundary rather than letting calls hang
-  indefinitely.
-- `tokio::time::sleep` is for one-off delays; `interval` is for recurring work.
-  Avoid real sleeps in tests; use Tokio time controls where practical.
-- Use bounded `mpsc` for work queues and producer/consumer pipelines. Capacity is
-  part of the overload policy; unbounded channels require a documented memory
-  bound elsewhere.
-- Use `oneshot` for a single reply or shutdown acknowledgement, `watch` for
-  latest-state notifications such as config or shutdown state, and `broadcast`
-  when many subscribers need each event and lag handling is acceptable.
-- Use `Semaphore` for concurrency limits around outbound calls, CPU handoff,
-  queue consumers, or scarce resources. Do not use spawning alone as a limit.
-- Use `tokio::sync::Mutex` or `RwLock` when a guard must be held across `.await`;
-  keep critical sections short. Prefer message passing or ownership transfer
-  when mutable shared state is only coordinating work.
-- Standard `std::sync::Mutex`/`RwLock` can be acceptable in async code when the
-  critical section is short, never crosses `.await`, and does not perform
-  blocking I/O. This is often clearer for protecting small in-memory state.
-- Use `Notify` for lightweight one-to-many wakeups when no data needs to be
-  transferred. Use channels when the signal carries work, state, or errors.
-
-## Cancellation And Graceful Shutdown
-
-- Tokio cancellation is cooperative: dropping a future or taking a different
-  `select!` branch stops polling that future, but arbitrary blocking work and
-  external systems are not forcibly cleaned up for you.
-- Use `tokio_util::sync::CancellationToken` to fan cancellation out to tasks that
-  should stop together. Clone tokens for background workers, request-scoped
-  subwork, long-running tasks, fan-out/fan-in orchestration, and graceful
-  shutdown.
-- Pass cancellation tokens through application services and adapters that own
-  cancellable I/O. Do not pass them into pure domain objects unless cancellation
-  is part of the domain language.
-- Combine cancellation with `tokio::select!`, `tokio::signal`, channel closure,
-  `timeout`, and task joining. Shutdown usually means: stop accepting work,
-  signal cancellation, close senders, drain or reject queued work deliberately,
-  then await task handles with a bounded timeout.
-- Dropping a `JoinHandle` detaches the task; it does not create clean shutdown
-  semantics. Spawned tasks must be owned, joined, aborted with intent, or
-  supervised by a tracker/`JoinSet`.
-- Cancellation does not forcibly stop `spawn_blocking` work, synchronous file or
-  process calls, driver operations that ignore cancellation, or remote side
-  effects already sent. Design idempotency, timeouts, and cleanup around those
-  facts.
-
-```rust
-loop {
-    tokio::select! {
-        _ = token.cancelled() => break,
-        maybe_job = jobs.recv() => match maybe_job {
-            Some(job) => handle(job).await?,
-            None => break, // all senders closed
-        },
-    }
-}
-```
+Use the [Tokio runtime reference](references/tokio-runtime.md) when the task
+requires runtime construction, spawning, coordination primitives, cancellation,
+or graceful shutdown. Keep the core constraints visible: never block runtime
+threads, give every task an owner and shutdown path, bound concurrency and
+queues, and treat cancellation as real control flow.
 
 ## Axum
 
