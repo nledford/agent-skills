@@ -12,6 +12,10 @@ testable without the framework. Use
 jobs, server functions, message consumers, persistence, or external clients need
 formal ports/adapters or shared application use cases.
 
+Load [`rust-engineering`](../rust-engineering/SKILL.md) when async/web work also
+changes core Rust implementation such as types, ownership, traits, errors,
+features, modules, or macros. Do not load it for review-only async/web guidance.
+
 Do not use this skill for API-contract-only work such as endpoint/resource
 shape, request/response/error envelopes, versioning, pagination, idempotency, or
 OpenAPI/AsyncAPI/protobuf artifacts; use [`api-design`](../api-design/SKILL.md)

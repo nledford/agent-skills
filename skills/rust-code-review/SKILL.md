@@ -96,7 +96,15 @@ Async, web, and persistence:
 - Axum handlers, Leptos components/server functions, and persistence adapters
   are thin enough for domain logic to be tested outside the framework.
 - SQLx queries, SeaQuery builders, migrations, transactions, constraints, and
-  indexes preserve database invariants and use bound parameters.
+  indexes preserve database invariants. Bind runtime query values; construct DDL
+  identifiers, migrations, constraints, and indexes safely as static reviewed
+  SQL or through a reviewed builder, then review their invariants.
+- Query macros behind tests, target-specific code, or features have offline
+  metadata prepared and checked with the repository-supported Cargo target and
+  feature matrix forwarded after `--`. Require matching `SQLX_OFFLINE=true`
+  Cargo checks for every supported configuration; use
+  [`rust-persistence-sql`](../rust-persistence-sql/SKILL.md) for the command
+  shape and database setup.
 - SeaQuery is justified by genuine dynamic query composition and does not hide
   simple static SQL that `sqlx` macros could check.
 - PostgreSQL-native and SQLite-native schema, index, privilege, RLS, PRAGMA,
@@ -130,11 +138,16 @@ cargo test --workspace
 cargo test --doc --workspace
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo sqlx prepare --check --workspace
+cargo sqlx prepare --check --workspace -- --workspace --all-targets --features <supported-feature-set>
+SQLX_OFFLINE=true cargo check --workspace --all-targets --features <supported-feature-set>
 ```
 
 Use repository recipes instead when they encode the correct toolchain, features,
-services, or target matrix.
+services, or target matrix. When all targets and all features are compatible,
+the corresponding metadata command can be
+`cargo sqlx prepare -- --all-targets --all-features`; otherwise, forward the
+supported target and feature arguments after `--` and use the matching
+workspace/check variant.
 
 ## Reporting Rules
 

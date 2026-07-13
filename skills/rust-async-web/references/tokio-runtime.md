@@ -30,6 +30,11 @@ shutdown guidance.
   async code. Cancellation does not forcibly stop an already-running blocking
   closure, so give long blocking work its own cooperative stop signal when it
   needs graceful shutdown.
+- Tokio's blocking-thread limit is intentionally high because blocking calls can
+  wait for long periods. Explicitly limit CPU-bound fan-out with a semaphore or
+  use a specialized executor; do not treat that limit as CPU parallelism policy.
+- A started `spawn_blocking` task cannot be aborted. Keep long-lived blocking
+  work on dedicated threads or workers with an explicit stop protocol.
 - Instrument async services with tracing around request IDs, task starts and
   stops, retries, timeouts, cancellation, queue depth, and adapter calls. Load
   [`observability-engineering`](../../observability-engineering/SKILL.md) when
@@ -93,6 +98,9 @@ shutdown guidance.
 - Graceful shutdown usually means stopping acceptance, signalling cancellation,
   closing senders, deliberately draining or rejecting queued work, and joining
   tasks with a bounded timeout.
+- Ordinary runtime shutdown may wait indefinitely for started blocking work.
+  `Runtime::shutdown_timeout` stops waiting after its timeout, but does not stop
+  that work; design it to finish or be managed independently.
 - Dropping a `JoinHandle` detaches the task. Own, join, intentionally abort, or
   supervise every spawned task.
 - Cancellation does not forcibly stop `spawn_blocking`, synchronous file or

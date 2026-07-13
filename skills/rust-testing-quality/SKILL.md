@@ -9,6 +9,10 @@ Use this skill to build fast feedback loops and credible final evidence for
 Rust changes. Prefer repository recipes when they encode toolchain versions,
 services, features, databases, or CI parity.
 
+Load [`rust-engineering`](../rust-engineering/SKILL.md) when the test task also
+changes core Rust implementation. Do not require it for test-only or review-only
+work.
+
 ## Workflow
 
 1. Inspect `Cargo.toml`, workspace layout, `rust-toolchain`, `bacon.toml`,
@@ -157,8 +161,10 @@ cargo nextest run --profile <profile>
 - `cargo clippy` complements `cargo check` and tests; it does not replace them.
 - Do not run `cargo clippy --fix` without checking the working tree and reading
   the generated diff.
-- Use targeted `#[allow(...)]` or `#[expect(..., reason = "...")]` only when the
-  lint is intentionally inapplicable. Keep suppressions as narrow as possible.
+- Use `#[expect(..., reason = "...")]` only when the project's MSRV/toolchain is
+  Rust 1.81 or newer and the lint is intentionally inapplicable. For an older
+  MSRV, use a narrowly scoped `#[allow(...)]` with an explanatory comment.
+  Verify the suppression against the intended lint and supported configuration.
 - Do not enable the entire `clippy::restriction` group globally; choose specific
   lints that express project policy.
 

@@ -32,8 +32,8 @@ be outbound ports and adapters rather than core domain code.
    mapping, narrow transactions, and safe error conversion.
 5. Test at the right layer: pure domain tests, SQLx integration tests against
    the target database, and end-to-end tests only for user-visible workflows.
-6. Update SQLx offline query metadata or document why it is not used by the
-   repo.
+6. Update SQLx offline query metadata for every supported configuration that
+   compiles query macros, or document why offline metadata is not used.
 
 ## Security Review Prompts
 
@@ -66,6 +66,35 @@ output, logs, dumps, or other persistence artifacts.
   while returning safe domain or API errors.
 - For PostgreSQL and SQLite support in one codebase, test both. SQL dialects,
   type affinity, locking, migrations, and constraint behavior differ.
+
+### Offline Metadata
+
+Query macros behind `cfg(test)`, target-specific modules, or features are not
+necessarily compiled by a default build. Inspect the repository-supported Cargo
+target and feature matrix, then forward that matrix to Cargo after `--` when
+preparing or checking metadata. `--workspace` on `cargo sqlx prepare` writes one
+workspace-root `.sqlx` directory; pass Cargo's workspace scope after `--` too
+when the supported command needs it.
+
+For a project where all targets and all features are compatible, for example:
+
+```sh
+cargo sqlx prepare -- --all-targets --all-features
+```
+
+For a workspace or a narrower supported feature set, adapt the forwarded Cargo
+arguments rather than assuming that all features can coexist:
+
+```sh
+cargo sqlx prepare --workspace -- --workspace --all-targets --features <supported-feature-set>
+cargo sqlx prepare --check --workspace -- --workspace --all-targets --features <supported-feature-set>
+SQLX_OFFLINE=true cargo check --workspace --all-targets --features <supported-feature-set>
+```
+
+Require `SQLX_OFFLINE=true` compile checks for each supported configuration that
+uses query macros. Run the matching prepare command against the repository's
+approved database/schema first, then use `prepare --check` and the offline Cargo
+check to prove committed metadata covers that configuration.
 
 Prefer `sqlx` when:
 
@@ -122,9 +151,9 @@ Common commands:
 sqlx migrate info
 sqlx migrate run
 sqlx migrate revert
-cargo sqlx prepare
-cargo sqlx prepare --check --workspace
-SQLX_OFFLINE=true cargo check --workspace --all-targets
+cargo sqlx prepare --workspace -- --workspace --all-targets --features <supported-feature-set>
+cargo sqlx prepare --check --workspace -- --workspace --all-targets --features <supported-feature-set>
+SQLX_OFFLINE=true cargo check --workspace --all-targets --features <supported-feature-set>
 ```
 
 Adapt command names to the repository's SQLx CLI version and recipes. Some
