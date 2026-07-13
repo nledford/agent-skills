@@ -44,6 +44,8 @@ SECURITY_LINK_REQUIRED_SKILLS = frozenset(
 )
 REQUIRED_SECURITY_LINKS = ("security-review", "security-review-evidence")
 REQUIRED_API_SECURITY_LINKS = ("security-review",)
+GIT_SKILLS = frozenset({"git-commit", "git-workflows"})
+REQUIRED_GIT_SKILL_LINKS = ("git-commit", "git-workflows")
 
 
 @dataclass(frozen=True)
@@ -80,6 +82,11 @@ REQUIRED_RELATED_SKILL_LINK_RULES = (
         reason="security-sensitive work",
         taxonomy_categories=("Security review",),
         skill_names=SECURITY_LINK_REQUIRED_SKILLS,
+    ),
+    RelatedSkillLinkRule(
+        required_links=REQUIRED_GIT_SKILL_LINKS,
+        reason="related Git operations",
+        skill_names=GIT_SKILLS,
     ),
 )
 

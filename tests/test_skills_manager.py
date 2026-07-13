@@ -325,7 +325,7 @@ class SkillRegistryTests(unittest.TestCase):
                 result.warnings,
             )
 
-    def test_git_skills_require_security_review_links(self) -> None:
+    def test_git_skills_require_related_skill_links(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repo = create_repo(Path(temp_dir))
             write_skill(repo / "skills", "git-commit")
@@ -339,8 +339,10 @@ class SkillRegistryTests(unittest.TestCase):
                 [
                     "git-commit: SKILL.md should link to security-review for security-sensitive work",
                     "git-commit: SKILL.md should link to security-review-evidence for security-sensitive work",
+                    "git-commit: SKILL.md should link to git-workflows for related Git operations",
                     "git-workflows: SKILL.md should link to security-review for security-sensitive work",
                     "git-workflows: SKILL.md should link to security-review-evidence for security-sensitive work",
+                    "git-workflows: SKILL.md should link to git-commit for related Git operations",
                 ],
                 result.warnings,
             )
