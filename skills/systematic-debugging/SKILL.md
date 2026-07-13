@@ -55,12 +55,12 @@ changes, or greenfield implementation with no failure or symptom to explain.
 - Form multiple plausible hypotheses; do not stop at the first plausible bug.
 - Test hypotheses one at a time and record evidence for or against each one.
 - Prefer direct evidence over speculation, intuition, or broad pattern matching.
-- Distinguish symptom, proximate trigger, root cause, and contributing factors.
+- Distinguish symptom, proximate trigger, direct cause, and contributing factors.
 - Keep fixes minimal, targeted, and aligned with the domain model and public
   contracts.
 - Add or update regression coverage for confirmed defects.
 - Do not weaken tests, delete assertions, reduce coverage, bypass validation, or
-  mark tests ignored/skipped unless the root cause proves the original behavior
+  mark tests ignored/skipped unless the direct cause proves the original behavior
   contract was wrong and the change is explicitly justified.
 
 ## Investigation Workflow
@@ -105,10 +105,10 @@ Follow this sequence unless the repository has a stricter local runbook:
      reading and focused tests do not provide enough evidence.
    - Remove temporary instrumentation before finishing unless it is intentionally
      production-quality observability.
-9. **Isolate the root cause**
+9. **Isolate the direct cause**
    - Prove why the failure occurs and why competing hypotheses are less likely or
      false.
-   - Identify whether the root cause is code logic, contract mismatch, missing
+   - Identify whether the direct cause is code logic, contract mismatch, missing
      validation, incorrect test expectation, data setup, configuration,
      dependency/toolchain change, race/timing, caching, or environment drift.
 10. **Implement the smallest correct fix**
@@ -127,8 +127,8 @@ Follow this sequence unless the repository has a stricter local runbook:
     - Broaden to package/module/full-suite checks only when the change crosses
       boundaries, affects shared behavior, or focused checks cannot provide
       enough confidence.
-14. **Summarize evidence, root cause, fix, and verification**
-    - State what was observed, what changed, why it fixes the root cause, and
+14. **Summarize evidence, direct cause, fix, and verification**
+    - State what was observed, what changed, why it fixes the direct cause, and
       what remains unverified.
 
 ## Debugging Output
@@ -144,7 +144,7 @@ fields that truly do not apply:
 - Impacted behavior:
 - Expected behavior:
 - Actual behavior:
-- Root cause:
+- Direct cause:
 - Proximate trigger:
 - Contributing factors:
 - Why the fix is correct:
@@ -156,7 +156,7 @@ fields that truly do not apply:
 
 Avoid shallow explanations such as "the test was wrong", "state was invalid",
 "race condition", or "environment issue" unless you explain why, show the
-evidence, and distinguish the root cause from the symptom.
+evidence, and distinguish the direct cause from the symptom.
 
 If the work reveals repeated failures, broad contributing factors, or prevention
 items beyond the direct fix, hand off to `root-cause-analysis` for a postmortem-
@@ -187,7 +187,7 @@ style RCA rather than expanding this debugging pass.
 Do **not**:
 
 - Guess and patch without reproduction when reproduction is feasible.
-- Treat the first plausible issue as the root cause without testing alternatives.
+- Treat the first plausible issue as the direct cause without testing alternatives.
 - Make multiple unrelated changes in one debugging pass.
 - Paper over errors with retries, sleeps, broad exception handlers, broad null
   checks, silent defaults, swallowed errors, cache clears, or relaxed validation
@@ -218,7 +218,7 @@ Communicate in short, evidence-based updates:
 
 - State what failed and the exact evidence observed.
 - State the hypothesis currently being tested and why it is plausible.
-- State what changed and why it addresses the root cause.
+- State what changed and why it addresses the direct cause.
 - State what verification was performed and the result.
 - State uncertainty explicitly when evidence is incomplete; do not overstate
   confidence.
@@ -249,4 +249,4 @@ implements a targeted fix, and verifies with focused tests.
 
 Why this is bad: it guesses without evidence, weakens the test, hides possible
 nondeterminism with a retry, makes broad unrelated changes, and never explains
-the root cause or why the new behavior is correct.
+the direct cause or why the new behavior is correct.

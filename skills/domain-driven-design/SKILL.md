@@ -1,6 +1,6 @@
 ---
 name: domain-driven-design
-description: Apply Domain-Driven Design to complex business logic and module boundaries. Use when modeling domains, bounded contexts, aggregates, value objects, repositories, domain services, policies, domain events, ubiquitous language, or refactoring toward clearer domain behavior.
+description: Apply Domain-Driven Design to complex business logic and module boundaries. Use when modeling domains, bounded contexts, aggregates, value objects, repositories, domain services, policies, domain events, ubiquitous language, or refactoring toward clearer domain behavior. Do not use for focused audits of an existing domain model; use domain-modeling. Avoid simple CRUD or data-centric work without meaningful domain pressure.
 ---
 
 # Domain-Driven Design

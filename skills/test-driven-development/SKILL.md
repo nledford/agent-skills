@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Apply Test-Driven Development to implementation and bug fixes. Use when adding or changing behavior, fixing defects, writing regression tests, choosing test levels, or using Red-Green-Refactor to guide autonomous coding work.
+description: Apply Test-Driven Development to implementation and bug fixes. Use when adding or changing behavior, fixing defects, writing regression tests, choosing test levels during implementation, or using Red-Green-Refactor to guide autonomous coding work. Do not use for risk-focused reviews of an existing test suite or plan; use testing-strategy.
 ---
 
 # Test-Driven Development
@@ -28,6 +28,9 @@ Use lighter test-first or test-after work when:
 - Making documentation-only, formatting-only, generated, or mechanical changes.
 - Updating code that is already strongly covered and where a new test would only
   duplicate existing evidence.
+
+When implementation begins, load the matching language engineering or test skill
+for repository-specific execution and validation.
 
 ## Red-Green-Refactor
 

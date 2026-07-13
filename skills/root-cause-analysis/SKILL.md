@@ -1,6 +1,6 @@
 ---
 name: root-cause-analysis
-description: Structured root-cause analysis for recurring failures, incidents, regressions, systemic process gaps, and postmortem-style prevention work. Use after a current symptom is reproduced or understood; use systematic-debugging first for active failing tests, crashes, or unknown immediate causes.
+description: Structured root-cause analysis for recurring failures, incidents, regressions, systemic process gaps, and postmortem-style prevention work. Use after the direct cause of a current symptom is understood; use systematic-debugging first for active failing tests, crashes, or unknown immediate causes.
 ---
 
 # Root Cause Analysis
@@ -88,8 +88,10 @@ evidence, and isolate the direct cause.
 
 - Prefer repository-owned validation lanes when prevention depends on repeatable
   checks.
-- For user-visible behavior, connect follow-up coverage to BDD only when a
-  stakeholder-readable `.feature` contract is appropriate.
+- For user-visible behavior, use
+  [`behavior-driven-development`](../behavior-driven-development/SKILL.md) for
+  stakeholder-readable prevention examples and acceptance criteria. Load
+  [`gherkin`](../gherkin/SKILL.md) only when writing a formal `.feature` artifact.
 - For code defects, recommend TDD-style regression coverage at the narrowest
   useful layer before or alongside implementation.
 - For domain failures, name the affected bounded context and invariant rather
