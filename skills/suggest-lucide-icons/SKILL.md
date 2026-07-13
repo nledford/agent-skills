@@ -1,6 +1,6 @@
 ---
 name: suggest-lucide-icons
-description: Pick real Lucide icons for a concept, UI placement, button, section header, or note frontmatter. Use when the user asks what Lucide icon to use, requests icon candidates, or needs an icon name verified.
+description: Pick real Lucide icons for a concept, UI placement, button, section header, or note frontmatter. Use when the user asks what Lucide icon to use, requests icon candidates, or needs an icon name verified. Do not use for non-Lucide icon libraries or general icon or artwork design.
 ---
 
 # Suggest Lucide Icons
@@ -10,14 +10,17 @@ artwork. Optimize for recognizable meaning in the user's context.
 
 ## Workflow
 
-1. When the project uses Lucide, inspect its manifest and installed package version
-   first. Verify candidates against that exact version; `@latest` is not proof of
-   project compatibility.
+1. When the project uses Lucide, inspect its manifest, lockfile-resolved version,
+   and installed package first. Prefer installed assets or exact-version package
+   assets as proof; `@latest` is not proof of project compatibility.
 2. Identify the concept, action, object, state, and UI placement.
 3. Generate 4-6 plausible Lucide icon names in kebab-case.
-4. Verify candidates against the installed package or versioned package assets. If
-   no project version constrains compatibility, use `https://lucide.dev/icons/<icon-name>`
-   or the current upstream package instead.
+4. Verify candidates against installed, lockfile-resolved, or exact-version
+   package assets. If no project version exists, confirm the icon through the
+   official current package metadata or release, the current upstream package,
+   or `https://lucide.dev/icons/<icon-name>`. Use
+   [`context7-docs`](../context7-docs/SKILL.md) for current framework integration
+   documentation when needed, not as sole proof of icon existence or version.
 5. Discard names that cannot be verified.
 6. Present up to 3 confirmed candidates and recommend one, stating the verification
    source and version.

@@ -1,6 +1,6 @@
 ---
 name: random-data-identifiers
-description: Randomness, generated identifiers, and test data guidance. Use when generating random numbers, UUIDs, CUIDs, ULIDs, nonces, tokens, filenames, fixture data, seeded simulations, or collision-resistant IDs in code or tests. Prefer cryptographically secure randomness for secrets and IDs; use explicit seeded PRNGs for reproducible tests and simulations. Do not use for fixed examples with no randomness or database-native ID/index design without a generated-value decision.
+description: Randomness, generated identifiers, and test data guidance. Use when generating random numbers, UUIDs, CUIDs, ULIDs, nonces, tokens, filenames, fixture data, seeded simulations, or collision-resistant IDs in code or tests. Prefer cryptographically secure randomness for secrets, security-sensitive IDs, and public IDs that must be unguessable; use explicit seeded PRNGs for reproducible tests and simulations. Do not use for fixed examples with no randomness or database-native ID/index design without a generated-value decision.
 ---
 
 # Random Data and Identifiers
@@ -77,12 +77,13 @@ security evidence unless their handling itself is the control under review.
   `crypto.randomUUID()`, `crypto.getRandomValues`, or `randomBytes` for secure
   values. Use Bun crypto APIs only when the repository explicitly runs on Bun.
   Use deterministic PRNG libraries only when already present or clearly
-  justified. Do not use `Math.random()` for IDs, tokens, or security-sensitive
-  fixtures.
+  justified. Do not use `Math.random()` for tokens, security-sensitive or public
+  unguessable IDs, or security-sensitive fixtures.
 - **Rust:** inspect crate versions and features. Use OS-backed randomness or
-  vetted crates for secrets and IDs, deterministic seeded RNGs for tests, and the
-  `uuid`, `rand`, or project-standard ID crates only through reviewed APIs. Avoid
-  leaking predictable seeds into production paths.
+  vetted crates for secrets and security-sensitive or public unguessable IDs,
+  deterministic seeded RNGs for tests, and the `uuid`, `rand`, or
+  project-standard ID crates only through reviewed APIs. Avoid leaking
+  predictable seeds into production paths.
 - **SQL:** enforce uniqueness with constraints or indexes. Prefer database-native
   generators only when the target engine, extension, replication model, and
   migration story are explicit.

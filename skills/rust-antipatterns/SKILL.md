@@ -1,6 +1,6 @@
 ---
 name: rust-antipatterns
-description: Rust anti-pattern detection and correction guidance. Use when reviewing or refactoring Rust code for generated-code smells, borrow-checker workarounds, unnecessary clones, Arc<Mutex> misuse, boxed indirection, deref polymorphism, deny-warnings misuse, panic/unwrap at boundaries, async overuse, leaky framework or SQL types, brittle tests, or architecture boundary violations.
+description: Rust anti-pattern detection and correction guidance. Use when reviewing or refactoring Rust code for generated-code smells, borrow-checker workarounds, unnecessary clones, Arc<Mutex> misuse, boxed indirection, deref polymorphism, deny-warnings misuse, panic/unwrap at boundaries, async overuse, leaky framework or SQL types, brittle tests, or architecture boundary violations. Do not use for ordinary Rust implementation; use rust-engineering instead.
 ---
 
 # Rust Anti-Patterns
