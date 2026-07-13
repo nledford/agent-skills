@@ -24,6 +24,10 @@ For smell-focused review, use
 For package manager, runtime, lint, type, build, and test workflow, use
 [`javascript-typescript-engineering`](../javascript-typescript-engineering/SKILL.md).
 
+Advice-only pattern choice may use this skill independently. When applying or
+implementing a pattern, load
+[`javascript-typescript-engineering`](../javascript-typescript-engineering/SKILL.md).
+
 ## Selection Rules
 
 1. Inspect local evidence first: runtime, package manager, `tsconfig`, framework,
@@ -92,4 +96,3 @@ For package manager, runtime, lint, type, build, and test workflow, use
 - Putting domain decisions in route handlers, UI components, hooks, generated
   clients, or SDK wrappers.
 - Overusing E2E tests for rules that unit or integration tests can prove faster.
-

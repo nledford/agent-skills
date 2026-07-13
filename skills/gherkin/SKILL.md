@@ -1,6 +1,6 @@
 ---
 name: gherkin
-description: Write clear, idiomatic Gherkin feature specifications. Use when creating or editing .feature files, BDD scenarios, Given/When/Then examples, Scenario Outlines, Examples tables, Background sections, or business-readable acceptance criteria.
+description: Write clear, idiomatic formal Gherkin feature specifications. Use when creating or editing .feature files, Scenario Outlines, Examples tables, Background sections, dialect keywords, or step wording. Do not use for behavior clarification before a formal artifact; use behavior-driven-development.
 ---
 
 # Gherkin
@@ -9,6 +9,18 @@ Use Gherkin to write business-readable behavior specifications that can be
 reviewed by non-engineers and connected to automated tests. Use the official
 Gherkin reference as the conceptual baseline:
 https://cucumber.io/docs/gherkin/reference
+
+When the behavior, rule, or acceptance example is unclear, load
+[`behavior-driven-development`](../behavior-driven-development/SKILL.md) before
+writing formal syntax. Do not make a `.feature` file the default output for
+informal behavior clarification.
+
+## Inspect Local Conventions First
+
+Before editing, inspect existing `.feature` files for dialect declarations,
+keyword style, tags, indentation, and naming. Identify the configured runner,
+its narrowest feature/scenario command, and the corresponding step definitions
+or glue code; align new steps with the suite's existing vocabulary.
 
 ## Core Structure
 
@@ -107,6 +119,11 @@ Use `Background` sparingly:
 
 ## Validation Checklist
 
+- Run the narrowest available Gherkin parser, feature/scenario command, or runner
+  lane after editing; start with the affected file or scenario.
+- If no parser or executable lane is available, validate syntax and local
+  conventions manually and report that automated validation was unavailable or
+  skipped, with the reason.
 - The file uses valid Gherkin keywords and indentation.
 - Every scenario has at least one observable `Then`.
 - Each `When` describes the behavior-triggering action or event.

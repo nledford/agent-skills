@@ -101,6 +101,16 @@ responsibility boundaries are clear.
    with tests, and leave stable code alone. Prefer strangling infrastructure leaks
    over broad directory reshuffles.
 
+When implementation begins, load the matching language engineering skill and any
+data skill needed for persistence, schema, query, or transaction work.
+
+## Verification And Reporting
+
+Before reporting completion, check the changed behavior and dependency direction
+at the affected policy and adapter boundaries, then run broader repository checks
+when the change warrants them. Report failures, skipped checks, and residual risk
+from unverified wiring, mappings, or dependency leaks.
+
 ## Boundary and Data Guidance
 
 - DTOs are boundary messages. They are not domain entities, ORM rows, API models,

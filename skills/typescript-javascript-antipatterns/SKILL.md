@@ -23,6 +23,9 @@ For positive pattern selection, use
 [`typescript-javascript-design-patterns`](../typescript-javascript-design-patterns/SKILL.md).
 For broader workflow and tooling, use
 [`javascript-typescript-engineering`](../javascript-typescript-engineering/SKILL.md).
+Read-only smell identification may use this skill independently or with the
+review skills below. When fixing JS/TS code, tests, manifests, or tooling, load
+[`javascript-typescript-engineering`](../javascript-typescript-engineering/SKILL.md).
 For a requested review or audit, also load
 [`code-review`](../code-review/SKILL.md) and
 [`review-verification-protocol`](../review-verification-protocol/SKILL.md)

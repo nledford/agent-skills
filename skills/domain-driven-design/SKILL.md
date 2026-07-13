@@ -74,6 +74,22 @@ Avoid heavy DDD when:
    - Use integration tests for repository mappings and boundary contracts.
    - Prefer behavior names in tests over implementation names.
 
+6. Implement with the matching mechanics.
+   - When implementation begins, load the matching language engineering skill and
+     any data skill needed for persistence, schema, query, or transaction work.
+
+## Review And Verification
+
+DDD remains discovery, design, and refactor guidance. For a focused tactical
+model audit, load [`domain-modeling`](../domain-modeling/SKILL.md) with
+[`code-review`](../code-review/SKILL.md) and
+[`review-verification-protocol`](../review-verification-protocol/SKILL.md).
+
+Before reporting implementation or refactor work complete, run focused checks for
+the changed behavior, invariants, and boundary mappings; then run broader
+repository checks when the change warrants them. Report failed or skipped checks
+and residual domain, boundary, or migration risk.
+
 ## Relationship To Architecture Skills
 
 DDD helps define what belongs inside the business-centered core; Hexagonal

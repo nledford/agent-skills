@@ -90,6 +90,16 @@ dependency direction is healthy.
 8. **Wire outside-in.** Construct concrete infrastructure in composition roots,
    dependency-injection wiring, factories, framework setup, or process startup.
 
+When implementation begins, load the matching language engineering skill and any
+data skill needed for persistence, schema, query, or transaction work.
+
+## Verification And Reporting
+
+Before reporting completion, check the changed behavior, ring boundaries, and
+inward dependencies; then run broader repository checks when the change warrants
+them. Report failures, skipped checks, and residual risk from unverified edge
+adapters, mappings, or composition wiring.
+
 ## Testing Guidance
 
 - Test domain entities, value objects, aggregates, and domain services directly.
@@ -155,4 +165,3 @@ dependency direction is healthy.
 The final design names the protected domain model, application services, inner
 abstractions, adapters, mapping points, dependency direction, tests per boundary,
 and any deliberate decision to keep part of the codebase simpler.
-

@@ -79,6 +79,16 @@ Do not force it for:
    database, broker, or SDK contract. Add end-to-end tests only for behavior that
    narrower tests cannot prove.
 
+When implementation begins, load the matching language engineering skill and any
+data skill needed for persistence, schema, query, or transaction work.
+
+## Verification And Reporting
+
+Before reporting completion, check the changed behavior plus inbound/outbound port
+contracts, adapter mappings, and inward dependencies; then run broader repository
+checks when the change warrants them. Report failures, skipped checks, and
+residual risk from unverified adapters, contracts, or infrastructure wiring.
+
 ## Layer Responsibilities
 
 - **Domain objects:** enforce invariants, state transitions, calculations,

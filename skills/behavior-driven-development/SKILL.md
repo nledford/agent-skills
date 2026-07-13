@@ -1,6 +1,6 @@
 ---
 name: behavior-driven-development
-description: Apply Behavior-Driven Development to software changes. Use when implementing or clarifying user-visible behavior, acceptance criteria, business workflows, Gherkin scenarios, executable specifications, or feature tests before or during implementation.
+description: Apply Behavior-Driven Development to clarify user-visible behavior, acceptance criteria, business workflows, and executable examples before or during implementation. Do not use to author formal .feature syntax; use gherkin.
 ---
 
 # Behavior-Driven Development
@@ -8,6 +8,10 @@ description: Apply Behavior-Driven Development to software changes. Use when imp
 Use BDD to turn user intent into concrete, observable behavior before choosing
 implementation details. Treat it as a collaboration and specification practice,
 not as a requirement to write `.feature` files for every change.
+
+Use [`gherkin`](../gherkin/SKILL.md) when these examples must become formal
+`.feature` artifacts. Use Gherkin alone for syntax-only edits when the behavior
+is already clear.
 
 ## When to Use
 
@@ -28,6 +32,8 @@ Do not force BDD for:
   dependency bumps with no behavior change.
 - Purely technical refactors whose behavior is already well covered.
 - Low-level implementation details that are better specified with unit tests.
+- Formal `.feature` grammar, dialect, or step wording when no behavior
+  clarification is needed; use [`gherkin`](../gherkin/SKILL.md).
 
 ## Workflow
 
@@ -44,6 +50,8 @@ Do not force BDD for:
      cases.
    - Keep scenarios specific and testable; avoid broad statements such as
      "works correctly" or "handles errors".
+   - If the examples need a `.feature` file, load
+     [`gherkin`](../gherkin/SKILL.md) for local syntax and runner conventions.
 
 3. Choose the executable layer.
    - Use acceptance tests for product-level flows.

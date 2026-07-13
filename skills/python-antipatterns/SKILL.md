@@ -22,6 +22,9 @@ code as an anti-pattern.
 For positive pattern selection, use
 [`python-design-patterns`](../python-design-patterns/SKILL.md). For broader
 workflow and tooling, use [`python-engineering`](../python-engineering/SKILL.md).
+Read-only smell identification may use this skill independently or with the
+review skills below. When fixing Python code, tests, manifests, or tooling, load
+[`python-engineering`](../python-engineering/SKILL.md).
 For a requested review or audit, also load
 [`code-review`](../code-review/SKILL.md) and
 [`review-verification-protocol`](../review-verification-protocol/SKILL.md)
@@ -39,8 +42,11 @@ before reporting findings.
 - **Dict soup and broad `Any`:** important domain shapes move through untyped
   dictionaries, `Any`, string keys, or loose JSON without validation or named
   types.
-- **Catch-all exceptions:** broad `except Exception` swallows errors, loses
-  cause, hides cancellation, logs secrets, or returns misleading defaults.
+- **Catch-all exceptions:** broad `except Exception` can swallow errors, lose
+  cause, log secrets, or return misleading defaults. Do not claim it swallows
+  cancellation merely from that clause: `asyncio.CancelledError` has inherited
+  from `BaseException` since Python 3.8. Flag cancellation swallowing only when
+  the concrete caught hierarchy or framework behavior actually catches it.
 - **Framework leakage:** request, response, ORM, serializer, Pydantic, Click,
   FastAPI, Django, SDK, or database row types become core domain APIs without an
   intentional boundary.

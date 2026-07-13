@@ -17,11 +17,15 @@ This skill helps create concise, maintainable agent skills that future agents ca
 
 2. Inspect local conventions before writing.
    - Look for existing skills in the requested skill root, commonly `~/.agents/skills` for global agent skills.
+   - Before editing a repository skill, classify an ambiguous target directory with `just list-first-party`, `just list-third-party`, or `just inspect <skill>`.
+      Treat lockfile-owned or ignored runtime installs as third-party; never edit them as first-party source or force-add them.
    - Match the local file names, frontmatter style, optional metadata, resource folders, and validation tools already in use.
    - In this repository, consult [`docs/skill-taxonomy.md`](../../docs/skill-taxonomy.md) before adding, deleting, splitting, merging, or renaming first-party skills.
      Use [`docs/cross-reference-map.md`](../../docs/cross-reference-map.md) for related-skill routing, and apply the taxonomy rubric and
      [`docs/skill-review-checklist.md`](../../docs/skill-review-checklist.md) before handoff.
    - Do not invent a different skill format when a local convention exists.
+   - Load [`documentation-engineering`](../documentation-engineering/SKILL.md) for skill-document quality. For a requested or final review, also load
+      [`code-review`](../code-review/SKILL.md) and [`review-verification-protocol`](../review-verification-protocol/SKILL.md).
 
 3. Define the skill contract.
    - Name the users, tasks, inputs, outputs, and success criteria.

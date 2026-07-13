@@ -29,8 +29,12 @@ requests implementation.
    failure reporting, and escalation conditions when relevant.
 5. Remove duplicated policy and unnecessary verbosity. Preserve the user's
    intent and state assumptions that remain unresolved.
+6. Match the deliverable to the request: review-only prompts need findings;
+   rewrite or optimization requests need a replacement prompt.
 
 ## Output
 
-Return prioritized issues, their likely effect on agent behavior, a polished
-Markdown prompt, and any assumptions that still require confirmation.
+For review-only requests, report prioritized findings first, their likely effect
+on agent behavior, and unresolved assumptions. A replacement prompt is optional
+unless requested. For rewrite or optimization requests, provide the replacement
+Markdown prompt alongside the findings and assumptions.

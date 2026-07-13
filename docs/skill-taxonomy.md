@@ -325,8 +325,7 @@ and browser-test skills.
   domain model are the clearest framing and infrastructure should stay outside
   those rings.
 - Use **TDD** when behavior can be specified and protected with executable tests.
-- Use **Gherkin** when formal `.feature` syntax or durable Given/When/Then
-  artifacts are useful.
+- Use **Gherkin** when formal `.feature` artifacts or Gherkin syntax are needed.
 - Use **Brainstorming** only when there are multiple credible paths and tradeoffs
   worth comparing before implementation.
 - Use **language design pattern skills** when the main decision is how to express
@@ -399,7 +398,7 @@ reading the code, making a small change, and running the relevant check is enoug
 | `documentation-engineering` | Concise, accurate Markdown, README, API docs, comments, rustdoc, pydoc/docstrings, examples, and documentation review. | Provides first-party documentation workflow independent of third-party writing tools. |
 | `domain-driven-design` | Domain modeling, bounded contexts, invariants, repositories, services, events, and language. | Owns model discovery and implementation with explicit anti-ceremony guidance. |
 | `domain-modeling` | Tactical DDD review of aggregates, entities, value objects, invariants, services, lifecycle ownership, and ubiquitous language. | Provides a tactical review lens while `domain-driven-design` owns discovery and implementation. |
-| `gherkin` | Writing or editing `.feature` files and durable Given/When/Then artifacts. | Owns formal Gherkin syntax as a companion to BDD. |
+| `gherkin` | Writing or editing formal `.feature` files, Gherkin syntax, and step wording. | Owns formal Gherkin artifacts as a companion to BDD. |
 | `git-commit` | Atomic commits, logical grouping, staged diff review, and commit messages. | Keeps authorization, staging, grouping, and commit-message decisions in one workflow. |
 | `git-workflows` | Safe branch, remote, history-inspection, integration, rewrite, conflict, recovery, tag, and worktree workflows. | Owns repository-state operations beyond constructing a new commit while routing commit composition, security-sensitive Git incidents, and supply-chain provenance to their focused skills. |
 | `hexagonal-architecture` | Ports and Adapters, use cases, application services, dependency inversion, inbound/outbound adapters, and Clean/Onion-style core isolation. | Owns external-actor and port/adapter decisions without making indirection mandatory. |
@@ -411,7 +410,7 @@ reading the code, making a small change, and running the relevant check is enoug
 | `performance-review` | Cross-stack performance and scalability review using workload, baseline, profiling, query-plan, rendering, concurrency, resource, and measurement evidence. | Provides a measurement-driven review lens while implementation remains with language, runtime, browser, SQL, and observability skills. |
 | `playwright-e2e` | Checked-in Playwright tests, configs, helpers, traces, lanes, and browser-visible behavior. | Remains distinct from one-off browser automation and lower-level domain tests. |
 | `postgresql-sql-engineering` | PostgreSQL schema, migrations, SQL, transactions, indexes, JSONB, RLS, privileges, plans, maintenance, and review. | Owns PostgreSQL-native behavior while Rust adapter details stay in `rust-persistence-sql`. |
-| `prompt-engineering-review` | Review and rewrite of coding-agent prompts, roles, delegation instructions, acceptance criteria, and quality gates. | Owns prompt behavior and clarity while `create-agent-skill` owns reusable skill contracts. |
+| `prompt-engineering-review` | Review and, when requested, rewrite coding-agent prompts, roles, delegation instructions, acceptance criteria, and quality gates. | Owns prompt behavior and clarity while `create-agent-skill` owns reusable skill contracts. |
 | `python-antipatterns` | Python generated-code and design smell review for mutable defaults, global state, import-time side effects, broad typing, framework leakage, async blocking, and brittle tests. | Owns smell-focused Python review while positive patterns and broad workflow stay separate. |
 | `python-design-patterns` | Python pattern guidance for dataclasses, value objects, protocols, context managers, adapters, repositories, factories, fixtures, and architecture boundaries. | Owns positive pattern selection while `python-engineering` remains the workflow skill. |
 | `python-engineering` | Python code, tests, typing, packaging, dependency management, `uv`, Ruff, ty/mypy/Pyright, docstrings, and review. | Covers Python broadly while delegating database-native behavior to data skills. |
@@ -494,6 +493,9 @@ existing skill.
 | `agent-browser`, `anti-ai-slop-writing`, `find-skills`, `playwright-cli` | Third-party or ignored runtime installs. They may exist under `skills/` locally, but repository-owned audits should not edit them. |
 
 ## Acceptance Criteria
+
+These scenarios are documented acceptance criteria. Treat one as executable only
+when an automated test or validator check explicitly traces to it.
 
 ```gherkin
 Scenario: First-party taxonomy inventory stays current

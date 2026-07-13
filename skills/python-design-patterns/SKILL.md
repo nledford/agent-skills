@@ -24,6 +24,10 @@ For smell-focused review, use
 typing, test, and command workflow, use
 [`python-engineering`](../python-engineering/SKILL.md).
 
+Advice-only pattern choice may use this skill independently. When applying or
+implementing a pattern, load
+[`python-engineering`](../python-engineering/SKILL.md).
+
 ## Selection Rules
 
 1. Inspect local Python version, package layout, tests, framework conventions,
@@ -94,4 +98,3 @@ typing, test, and command workflow, use
 - Hiding environment, filesystem, network, or database access in import-time
   side effects.
 - Using fixtures or monkeypatching to replace the behavior being specified.
-

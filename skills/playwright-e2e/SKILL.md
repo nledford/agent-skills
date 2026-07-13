@@ -11,6 +11,11 @@ Use this skill for checked-in Playwright browser tests. The goal is fast,
 targeted, behavior-readable evidence for browser-visible workflows, not broad
 manual exploration or proof of backend/domain invariants.
 
+Load [`javascript-typescript-engineering`](../javascript-typescript-engineering/SKILL.md)
+only when the work changes package scripts, Playwright or TypeScript config,
+shared helpers, the JS/TS toolchain, lockfiles, or package-manager workflow.
+Ordinary spec-only edits remain in this skill.
+
 ## When to Use
 
 - Adding, updating, splitting, moving, or deleting Playwright specs.

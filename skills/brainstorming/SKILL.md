@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: Structured ideation for ambiguous software engineering work. Use when agents need to generate multiple options, compare tradeoffs, or converge on a recommendation before implementation, architecture, domain modeling, API design, migration, refactor, testing strategy, or unclear debugging work. Do not use for simple mechanical tasks, obvious single-path fixes, or work that first requires direct code inspection, tests, or a narrow change.
+description: Structured ideation for ambiguous software engineering work. Use when agents need to generate multiple options, compare tradeoffs, or converge on a recommendation before implementation, architecture, domain modeling, API design, migration, refactor, testing strategy, or debugging choices after systematic reproduction. Do not use for simple mechanical tasks, obvious single-path fixes, or active unexplained symptoms; use systematic-debugging first.
 ---
 
 # Brainstorming
@@ -16,8 +16,8 @@ plausible path:
 - ambiguous product or engineering requirements;
 - architecture, domain modeling, API design, migration, refactor, or testing
   strategy decisions;
-- debugging situations where the cause is unclear and multiple hypotheses need
-  comparison;
+- debugging choices after systematic reproduction has produced credible
+  hypotheses or solution paths to compare;
 - planning that benefits from divergent thinking before convergence;
 - decisions where maintainability, domain alignment, testability, simplicity,
   performance, security, operability, or migration cost may point in different
@@ -33,8 +33,10 @@ Skip brainstorming when it would add ceremony without changing the outcome:
 - situations where the next honest step is direct repository inspection,
   reproduction, tests, or validation rather than ideation.
 
-For active failures, load `systematic-debugging` first. Use brainstorming only
-after the symptom is clear enough to compare hypotheses or solution paths.
+Route active unexplained symptoms to
+[`systematic-debugging`](../systematic-debugging/SKILL.md) before brainstorming.
+Use brainstorming only after reproduction establishes evidence sufficient to
+compare hypotheses or solution paths.
 
 ## Workflow
 
