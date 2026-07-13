@@ -141,6 +141,9 @@ into REST nouns, RPC verbs, or GraphQL shapes when another style is clearer.
     schema validation, contract tests, golden examples, backward-compatibility
     tests, generated-client smoke tests, negative validation cases, and migration
     checks for changed clients.
+12. **Complete the handoff.** Name changed contract artifacts, checks run and
+    their results, failed or skipped checks, and unresolved consumer, migration,
+    or compatibility risk.
 
 ## Contract Checklist
 

@@ -93,6 +93,12 @@ relevant compile options), and apply the controls the deployed binding supports.
 - Mark application-defined SQL functions and virtual-table modules `DIRECTONLY`
   where supported so schema content cannot invoke them indirectly. Keep custom
   functions, virtual tables, and extensions minimal and reviewed.
+- When a custom virtual-table module prepares SQL from `CREATE VIRTUAL TABLE`
+  schema arguments, use `sqlite3_prepare_v3()` with `SQLITE_PREPARE_FROM_DDL`
+  when the deployed SQLite version and binding support it. This prevents that
+  preparation from bypassing `trusted_schema`; route support gaps and sanitized
+  verification evidence through `security-review` and
+  `security-review-evidence`.
 - Consider `PRAGMA quick_check` or `integrity_check` as the first SQL statement
   after connection hardening when the cost and failure behavior fit the opening
   path; neither substitutes for a trust boundary or sandbox against SQLite

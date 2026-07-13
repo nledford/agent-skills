@@ -149,15 +149,19 @@ audit/log samples, dumps, or migration artifacts.
 
 ## Commands
 
-Prefer repository recipes when they exist. Useful direct commands include:
+Prefer repository recipes when they exist, especially for SQL scripts. When
+direct commands are needed:
 
 ```sh
-psql -f path/to/query.sql
+psql -X -v ON_ERROR_STOP=1 -f path/to/query.sql
 psql -c "\\d+ table_name"
 psql -c "EXPLAIN (ANALYZE, BUFFERS) SELECT ..."
 sqlx migrate run
 sqlx migrate revert
 ```
+
+By default, `psql` continues after SQL errors. `ON_ERROR_STOP` stops processing
+and makes a noninteractive script invocation fail when an error occurs.
 
 Use SQLx migration commands only when the repository uses SQLx. Otherwise use
 the repository's migration tool or SQL deployment recipe. Use a repository-owned
