@@ -41,6 +41,12 @@ changes, or greenfield implementation with no failure or symptom to explain.
 - Preserve and inspect exact evidence: error text, stack trace, logs, failing
   assertion, diff, request/response, screenshot, trace, profile, or user-visible
   behavior.
+- When that or production evidence may expose secrets, credentials, PII, tenant
+  data, payloads, or private paths, load
+  [`security-review`](../security-review/SKILL.md) and
+  [`security-review-evidence`](../security-review-evidence/SKILL.md). Keep raw
+  artifacts local and ignored; report sanitized summaries only. Do not add this
+  routing for evidence without a sensitive-data risk.
 - Reproduce the issue before fixing whenever feasible. If reproduction is not
   feasible, explain why and use the strongest available evidence.
 - Find the smallest reliable reproduction: narrow command, test filter, route,

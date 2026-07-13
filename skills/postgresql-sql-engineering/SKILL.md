@@ -50,7 +50,9 @@ audit/log samples, dumps, or migration artifacts.
 
 1. Inspect the real database surface: migrations, schema dumps, SQL files,
    query builders, ORM mappings, seed data, test fixtures, migration tool,
-   database version, extensions, and CI database setup.
+   target PostgreSQL major version, extensions, and CI database setup. Verify
+   version-sensitive behavior in the official documentation for that target
+   version, not only the current documentation.
 2. State the data behavior before implementation. Use BDD-style examples for
    observable rules such as uniqueness, authorization, lifecycle transitions,
    conflict handling, and partial-write prevention.
@@ -122,20 +124,45 @@ audit/log samples, dumps, or migration artifacts.
   pgvector must have a clear product need, migration story, and operational
   ownership.
 
+## RLS, Privileges, And Privileged Functions
+
+- Model the actual application role, migration role, and object-owner role;
+  test the policy with representative connections or `SET ROLE`, not just a
+  privileged development connection. Superusers and roles with `BYPASSRLS`
+  always bypass RLS; table owners usually do too unless the table uses `FORCE
+  ROW LEVEL SECURITY`.
+- Scope each policy deliberately by command and `TO` role. `USING` controls
+  which existing rows are visible or targetable by `SELECT`, `UPDATE`, and
+  `DELETE`; `WITH CHECK` controls proposed rows for `INSERT` and `UPDATE`.
+  Ordinary table grants still authorize commands: RLS filters authorized access,
+  it does not replace grants.
+- Test allowed and denied reads, inserts, updates, and deletes for the app role,
+  migration/owner behavior where relevant, and expected bypass behavior. Include
+  cross-tenant and policy-absent cases.
+- Use `SECURITY DEFINER` only for a narrow, reviewed privilege boundary. Give
+  the function a trusted owner, fully qualify referenced objects, and set a
+  trusted `search_path` with `pg_temp` last (for example, `SET search_path =
+  app_private, pg_temp`); do not search schemas writable by callers.
+- Create privileged functions transactionally, revoke default `PUBLIC` execute
+  immediately, then grant execute only to intended roles. Keep the function
+  owner and its table privileges least-privileged and explicit.
+
 ## Commands
 
 Prefer repository recipes when they exist. Useful direct commands include:
 
 ```sh
-psql "$DATABASE_URL" -f path/to/query.sql
-psql "$DATABASE_URL" -c "\\d+ table_name"
-psql "$DATABASE_URL" -c "EXPLAIN (ANALYZE, BUFFERS) SELECT ..."
+psql -f path/to/query.sql
+psql -c "\\d+ table_name"
+psql -c "EXPLAIN (ANALYZE, BUFFERS) SELECT ..."
 sqlx migrate run
 sqlx migrate revert
 ```
 
 Use SQLx migration commands only when the repository uses SQLx. Otherwise use
-the repository's migration tool or SQL deployment recipe.
+the repository's migration tool or SQL deployment recipe. Use a repository-owned
+recipe, libpq defaults, or a named `PGSERVICE` configured outside the command;
+never put credentialed DSNs in argv, shell history, logs, examples, or reports.
 
 For mutating `EXPLAIN ANALYZE`, use a transaction and rollback on disposable or
 safe data:

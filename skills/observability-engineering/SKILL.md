@@ -64,6 +64,23 @@ sanitized evidence and treat raw logs, traces, profiles, dashboard exports,
 network dumps, screenshots, incident bundles, and reproduced payloads as local
 ignored artifacts unless repository policy explicitly allows sanitized retention.
 
+## Security, Compliance, And Forensic Audit Events (Conditional)
+
+Keep ordinary telemetry operational by default; do not relabel routine logs as
+audit events. When a security, compliance, or forensic obligation requires an
+audit event, load the security skills above and define an explicit event contract:
+
+- Record actor, action, target, outcome, time, and correlation identifiers with
+  stable semantics and appropriate data minimization.
+- State whether delivery is complete or has explicit loss semantics. Do not
+  sample when completeness is required; define how duplicates, ordering, and
+  delayed delivery are handled.
+- Define access control, integrity/tamper expectations, retention, and deletion
+  rules for the event store and its exports.
+- Define failure behavior: fail closed, block, queue durably, degrade with an
+  alert, or record explicit loss, according to the threat model and operational
+  impact.
+
 ## Workflow
 
 1. **Inspect local evidence first.** Read existing logging/tracing setup,

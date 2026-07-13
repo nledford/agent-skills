@@ -73,6 +73,34 @@ Pair it with [`security-review-evidence`](../security-review-evidence/SKILL.md)
 when evidence includes sanitized database files, fixture dumps, import/export
 artifacts, logs, or reproduction data.
 
+## Untrusted Database Files (Conditional)
+
+Apply this workflow only when a database file or its companion files can be
+written by another security domain. Treat the file as untrusted input: record
+its provenance, inspect the actual SQLite library and binding versions (and
+relevant compile options), and apply the controls the deployed binding supports.
+
+- Apply global or compile-time resource limits before opening the file when the
+  deployment supports them. Open it inside the selected isolation boundary, then
+  immediately disable `trusted_schema`, enable defensive controls, and install
+  the authorizer, connection limits, and progress/cancellation handler before
+  preparing or executing schema-dependent SQL. Do not assume every binding or
+  deployed SQLite version exposes the same controls.
+- Keep extension loading disabled unless a reviewed use case needs it. Bound
+  query time, result size, memory, cache, and blob use with the controls the
+  deployed API actually exposes.
+- Mark application-defined SQL functions and virtual-table modules `DIRECTONLY`
+  where supported so schema content cannot invoke them indirectly. Keep custom
+  functions, virtual tables, and extensions minimal and reviewed.
+- Consider `PRAGMA quick_check` or `integrity_check` as the first SQL statement
+  after connection hardening when the cost and failure behavior fit the opening
+  path; neither substitutes for a trust boundary or sandbox against SQLite
+  engine vulnerabilities.
+- Choose controls from the threat model: reject external files when possible, or
+  isolate parsing, constrain filesystem access, and define recovery behavior for
+  malformed or resource-exhausting files. Load `security-review` and
+  `security-review-evidence` for this boundary.
+
 ## API and Observability Routing
 
 - Load [`api-design`](../api-design/SKILL.md) when SQLite migrations, local file

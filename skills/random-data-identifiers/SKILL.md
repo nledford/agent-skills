@@ -26,20 +26,32 @@ as well when constraints, indexes, or migrations are involved.
 
 ## Core Rules
 
-1. Use cryptographically secure randomness by default for secrets, tokens,
-   nonces, invitation/reset codes, password material, API keys, public IDs,
-   unguessable filenames, auth/session data, and security-sensitive test data.
-2. Use explicit seeded PRNGs for deterministic tests, simulations, fixtures,
+1. Use cryptographically secure randomness for production secrets, tokens,
+   nonces, invitation/reset codes, password material, API keys, unguessable
+   public IDs or filenames, and auth/session data.
+2. Use fixed, deterministic, explicitly non-live placeholders for ordinary
+   security fixtures. Use a CSPRNG in tests only when entropy, uniqueness, or
+   unpredictability is under test, or when generating production-like secret
+   material with defined access, cleanup, and non-retention handling.
+3. Use explicit seeded PRNGs for deterministic tests, simulations, fixtures,
    snapshots, generated examples, and reproducible bug reports. Record or print
    the seed only when it is not a secret.
-3. Never use weak or convenience randomness for secrets or public unguessable IDs:
+4. Never use weak or convenience randomness for secrets or public unguessable IDs:
    no `Math.random()`, Python `random`, timestamps, counters, process IDs, or
    ad-hoc hashes for security-sensitive values.
-4. Make collision handling explicit. A random ID still needs a uniqueness
+5. Make collision handling explicit. A random ID still needs a uniqueness
    constraint, retry policy, or deterministic derivation strategy when collisions
    matter.
-5. Keep test data readable unless randomness is the behavior under test. Most
+6. Keep test data readable unless randomness is the behavior under test. Most
    tests are clearer with fixed examples plus one seeded/generated edge case.
+
+## Security Routing (Conditional)
+
+Load [`security-review`](../security-review/SKILL.md) and
+[`security-review-evidence`](../security-review-evidence/SKILL.md) when
+generating or reviewing secrets, authentication/session material, or
+security-sensitive identifiers. Keep ordinary deterministic fixtures out of
+security evidence unless their handling itself is the control under review.
 
 ## Identifier Choice
 

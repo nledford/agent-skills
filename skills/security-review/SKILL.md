@@ -116,6 +116,14 @@ security modeling or supply-chain-only review; route those surfaces as below.
 - **Input validation:** untrusted input is parsed, bounded, canonicalized, and
   validated before use. Validation errors are safe externally and actionable
   internally.
+- **SSRF and outbound requests:** parse and canonicalize request targets before
+  policy checks; allow only intended schemes and destinations. Revalidate DNS
+  and resolved addresses at connection time to address rebinding, and deny
+  loopback, private, link-local, and provider metadata targets unless explicitly
+  required. Revalidate every redirect, enforce egress where the deployment can
+  enforce it, do not forward credentials by default, and bound response time,
+  size, and redirects. Account for proxies, service meshes, dual-stack DNS, and
+  platform-specific metadata/egress controls in the deployed environment.
 - **Injection and execution:** SQL, shell, paths, templates, HTML, Markdown,
   archive extraction, plugin loading, and command arguments use structured APIs or
   strict allowlists rather than string concatenation.

@@ -15,6 +15,13 @@ browser, and SQL skills for implementation mechanics. Use
 [`observability-engineering`](../observability-engineering/SKILL.md) when the
 work changes durable production signals, dashboards, alerts, or SLOs.
 
+When profiles, traces, logs, responses, or production evidence may expose
+secrets, credentials, PII, tenant data, payloads, or private paths, also load
+[`security-review`](../security-review/SKILL.md) and
+[`security-review-evidence`](../security-review-evidence/SKILL.md). Keep raw
+artifacts local and ignored; report sanitized measurements and summaries only.
+This routing is unnecessary for non-sensitive evidence.
+
 ## Workflow
 
 1. Define the supported workload, data size, traffic or concurrency shape,
