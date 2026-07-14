@@ -32,13 +32,20 @@ the review side of that boundary.
 ### Maintainer-authorized Lead tools
 
 The human maintainer explicitly authorizes the Engineering Lead to use
-`pbcopy` and every tool exposed by the configured MCP servers. The Lead's
-permission map carries explicit MCP server-prefix rules, and repository
-validation protects both those rules and the clipboard exception. Routine
-reviews, audits, and refactors must not remove, downgrade, or override this
-baseline. Evidence-backed concerns may be reported for a human decision, but
-only a new explicit human instruction may change the authorization. Reconcile
-the prefix list and validator when the configured MCP server set changes.
+`pbcopy`, `todowrite`, every tool exposed by the configured MCP servers, and the
+canonical predominantly non-destructive Git command set. The Git set includes
+inspection, index staging, ordinary staged-index commits, and ordinary fetches;
+ordered exceptions keep history rewriting, hook bypass, worktree/ref mutation,
+unsafe fetch variants, shell composition, and remote mutation gated or denied.
+Tool permission does not replace the user authorization required by the Lead's
+commit and external-side-effect policies.
+
+The Lead's permission map carries explicit rules for these tools, and repository
+validation protects their actions and ordering. Routine reviews, audits, and
+refactors must not remove, downgrade, broaden, or override this baseline.
+Evidence-backed concerns may be reported for a human decision, but only a new
+explicit human instruction may change the authorization. Reconcile the MCP
+prefix list and validator when the configured server set changes.
 
 ## Handoffs
 

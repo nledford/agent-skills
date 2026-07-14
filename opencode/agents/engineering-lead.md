@@ -14,22 +14,144 @@ permission:
     # Unknown or unclassified commands require approval.
     "*": ask
     "pwd": allow
+    # Predominantly non-destructive Git commands are allowed by explicit human
+    # authorization. Later rules preserve approval or denial for riskier forms.
+    "git branch *": ask
+    "git commit *": ask
+    "git push *": ask
+    "git pull *": ask
+    "git merge *": ask
+    "git rebase *": ask
+    "git reset *": ask
+    "git restore *": ask
+    "git checkout *": ask
+    "git switch *": ask
+    "git clean *": ask
+    "git stash *": ask
+    "git tag *": ask
+    "git worktree *": ask
+    "git remote *": ask
+    "git cherry-pick *": ask
+    "git revert *": ask
     "git status": allow
-    "git status *": ask
+    "git status *": allow
     "git diff": allow
-    "git diff *": ask
+    "git diff *": allow
     "git log": allow
-    "git log *": ask
+    "git log *": allow
     "git show": allow
-    "git show *": ask
-    "git grep *": ask
-    "git rev-parse *": ask
+    "git show *": allow
+    "git grep *": allow
+    "git rev-parse *": allow
+    "git branch": allow
+    "git branch --list *": allow
     "git branch --show-current": allow
-    "git branch --show-current *": ask
     "git ls-files": allow
-    "git ls-files *": ask
-    "git blame *": ask
-    "git cat-file *": ask
+    "git ls-files *": allow
+    "git blame *": allow
+    "git cat-file *": allow
+    "git diff-tree *": allow
+    "git diff-index *": allow
+    "git diff-files *": allow
+    "git range-diff *": allow
+    "git merge-base *": allow
+    "git name-rev *": allow
+    "git describe *": allow
+    "git shortlog *": allow
+    "git for-each-ref *": allow
+    "git show-ref *": allow
+    "git ls-tree *": allow
+    "git rev-list *": allow
+    "git reflog show *": allow
+    "git remote -v": allow
+    "git remote get-url *": allow
+    "git worktree list *": allow
+    "git stash list *": allow
+    "git submodule status *": allow
+    "git config --get core.hooksPath": allow
+    "git config --get commit.gpgsign": allow
+    "git config --get gpg.format": allow
+    "git add *": allow
+    "git commit": allow
+    "git fetch *": allow
+    "git *--output*": ask
+    "git *--ext-diff*": ask
+    "git *--textconv*": ask
+    "git grep *--open-files-in-pager*": ask
+    "git grep -O*": ask
+    "git grep * -O*": ask
+    "git cat-file *--filters*": ask
+    "git commit *--am*": ask
+    "git commit *--fixup*": ask
+    "git commit *--squash*": ask
+    "git commit *--all*": ask
+    "git commit -a *": ask
+    "git commit * -a *": ask
+    "git commit *--author*": ask
+    "git commit *--date*": ask
+    "git commit *--reset-author*": ask
+    "git commit *--allow-empty*": ask
+    "git commit *--no-gpg-sign*": ask
+    "git commit *--pathspec-from-file*": ask
+    "git commit *--include*": ask
+    "git commit *--only*": ask
+    "git commit *--interactive*": ask
+    "git commit *--patch*": ask
+    "git commit -m * -- *": ask
+    "git fetch *--force*": ask
+    "git fetch -f *": ask
+    "git fetch * -f *": ask
+    "git fetch *--prune*": ask
+    "git fetch -p *": ask
+    "git fetch * -p *": ask
+    "git fetch *--refmap*": ask
+    "git fetch *--set-upstream*": ask
+    "git fetch *--stdin*": ask
+    "git fetch *--upload-pack*": ask
+    "git fetch *--server-option*": ask
+    "git fetch *--recurse-submodules*": ask
+    "git fetch +*": ask
+    "git fetch * +*": ask
+    "git fetch *:*": ask
+    "git fetch -*": ask
+    "git fetch * -*": ask
+    "git fetch ./*": ask
+    "git fetch ../*": ask
+    "git fetch /*": ask
+    "git fetch ~*": ask
+    "git fetch $*": ask
+    "git fetch *://*": ask
+    "git fetch git@*": ask
+    "git *>*": ask
+    "git *<*": ask
+    "git *|*": ask
+    "git *&*": ask
+    "git *;*": ask
+    "git *$(*": ask
+    "git *`*": ask
+    "git commit *--no-verify*": deny
+    "git commit -n *": deny
+    "git commit * -n *": deny
+    "git commit *--no-post-rewrite*": deny
+    "git fetch -*u*": deny
+    "git fetch * -*u*": deny
+    "git fetch --*": ask
+    "git fetch * --*": ask
+    "git fetch *--update-head-ok*": deny
+    "git push *--force*": deny
+    "git push -f *": deny
+    "git push * -f *": deny
+    "git push *--delete*": deny
+    "git push -d *": deny
+    "git push * -d *": deny
+    "git push *--mirror*": deny
+    "git push *--prune*": deny
+    "git push +*": deny
+    "git push * +*": deny
+    "git push :*": deny
+    "git push * :*": deny
+    "git push -f*": deny
+    "git push * -f*": deny
     "rg *": ask
     "cargo check": ask
     "cargo check *": ask
@@ -55,20 +177,6 @@ permission:
     "npm uninstall *": ask
     "npm update *": ask
     "npx *": ask
-    "git add *": ask
-    "git commit *": ask
-    "git push *": ask
-    "git pull *": ask
-    "git fetch *": ask
-    "git merge *": ask
-    "git rebase *": ask
-    "git reset *": ask
-    "git restore *": ask
-    "git checkout *": ask
-    "git switch *": ask
-    "git clean *": ask
-    "git stash *": ask
-    "git tag *": ask
     "python *": ask
     "python3 *": ask
     "node *": ask
@@ -129,6 +237,7 @@ permission:
     "prompt-critic": allow
   webfetch: ask
   websearch: ask
+  todowrite: allow
   question: allow
   skill:
     "*": allow
@@ -289,13 +398,44 @@ architecture, migration, security, or behavior change.
 
 ## Git Commit Policy
 
+The human maintainer authorizes predominantly non-destructive Git inspection,
+index staging, ordinary staged-index commits, and ordinary fetches without a
+runtime approval prompt. This permission does not replace the user instruction
+required to create a commit. Use one Git command per Bash invocation; do not use
+shell chaining, pipelines, redirection, or command substitution around an
+allowed Git command. Do not abbreviate safety-sensitive long options or combine
+short options in ways that bypass the ordered permission rules.
+
 Create commits only when the user explicitly requests one or invokes a workflow
 that explicitly requires commits. Before committing, inspect the staged diff,
 confirm one coherent change, exclude unrelated or suspicious files, propose a
 concise repository-consistent message, and honor runtime permission policy.
+Inspect effective hook provenance before the first commit in an unfamiliar
+repository. The ordinary default commit form is staged-index `git commit`
+without a pathspec or extra mode options. Non-interactive message options remain
+runtime-gated because glob permissions cannot distinguish a message operand from
+a trailing pathspec. Amend, auto-stage, fixup, identity, date, hook-bypass, and
+history-rewrite options also remain gated or denied. Never skip hooks.
+
+Fetch only configured, trusted remotes by default. Inline URLs or paths,
+options, destination refspecs, and custom transport behavior require separate
+runtime approval; updating a checked-out branch is denied. Default Git permission
+does not authorize a push or any other remote mutation. Because a bare relative
+path is syntactically indistinguishable from a remote name at the permission
+layer, verify the operand against `git remote -v` and request approval whenever
+it is not a configured remote.
+
 Never amend, reset, rebase, tag, push, or rewrite history without an explicit
 request for that specific action; conversational approval does not bypass a
 runtime permission prompt.
+
+## Session TODOs
+
+Use `todowrite` for non-trivial in-session work when a visible task list improves
+coordination. TODO state is transient session guidance, not durable plan history,
+approval evidence, or authority to change a plan. Keep exactly one item
+`in_progress` while work remains, update statuses as evidence is obtained, and
+clear or complete the list when the work ends.
 
 ## Implementation Delegation
 

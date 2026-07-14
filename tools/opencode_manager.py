@@ -8,6 +8,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
+from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Sequence
 
@@ -55,6 +56,7 @@ KNOWN_PERMISSION_TOOLS = frozenset(
         "grep",
         "list",
         "lsp",
+        "todowrite",
     }
 )
 SAFE_EXACT_GIT_BASH_ALLOWS = frozenset(
@@ -79,6 +81,163 @@ SAFE_EXACT_GIT_BASH_ALLOWS = frozenset(
     }
 )
 ENGINEERING_LEAD_POST_PLAN_BASH_RULES = (("pbcopy *", "allow"),)
+ENGINEERING_LEAD_GIT_BASH_RULES = (
+    ("git branch *", "ask"),
+    ("git commit *", "ask"),
+    ("git push *", "ask"),
+    ("git pull *", "ask"),
+    ("git merge *", "ask"),
+    ("git rebase *", "ask"),
+    ("git reset *", "ask"),
+    ("git restore *", "ask"),
+    ("git checkout *", "ask"),
+    ("git switch *", "ask"),
+    ("git clean *", "ask"),
+    ("git stash *", "ask"),
+    ("git tag *", "ask"),
+    ("git worktree *", "ask"),
+    ("git remote *", "ask"),
+    ("git cherry-pick *", "ask"),
+    ("git revert *", "ask"),
+    ("git status", "allow"),
+    ("git status *", "allow"),
+    ("git diff", "allow"),
+    ("git diff *", "allow"),
+    ("git log", "allow"),
+    ("git log *", "allow"),
+    ("git show", "allow"),
+    ("git show *", "allow"),
+    ("git grep *", "allow"),
+    ("git rev-parse *", "allow"),
+    ("git branch", "allow"),
+    ("git branch --list *", "allow"),
+    ("git branch --show-current", "allow"),
+    ("git ls-files", "allow"),
+    ("git ls-files *", "allow"),
+    ("git blame *", "allow"),
+    ("git cat-file *", "allow"),
+    ("git diff-tree *", "allow"),
+    ("git diff-index *", "allow"),
+    ("git diff-files *", "allow"),
+    ("git range-diff *", "allow"),
+    ("git merge-base *", "allow"),
+    ("git name-rev *", "allow"),
+    ("git describe *", "allow"),
+    ("git shortlog *", "allow"),
+    ("git for-each-ref *", "allow"),
+    ("git show-ref *", "allow"),
+    ("git ls-tree *", "allow"),
+    ("git rev-list *", "allow"),
+    ("git reflog show *", "allow"),
+    ("git remote -v", "allow"),
+    ("git remote get-url *", "allow"),
+    ("git worktree list *", "allow"),
+    ("git stash list *", "allow"),
+    ("git submodule status *", "allow"),
+    ("git config --get core.hooksPath", "allow"),
+    ("git config --get commit.gpgsign", "allow"),
+    ("git config --get gpg.format", "allow"),
+    ("git add *", "allow"),
+    ("git commit", "allow"),
+    ("git fetch *", "allow"),
+    ("git *--output*", "ask"),
+    ("git *--ext-diff*", "ask"),
+    ("git *--textconv*", "ask"),
+    ("git grep *--open-files-in-pager*", "ask"),
+    ("git grep -O*", "ask"),
+    ("git grep * -O*", "ask"),
+    ("git cat-file *--filters*", "ask"),
+    ("git commit *--am*", "ask"),
+    ("git commit *--fixup*", "ask"),
+    ("git commit *--squash*", "ask"),
+    ("git commit *--all*", "ask"),
+    ("git commit -a *", "ask"),
+    ("git commit * -a *", "ask"),
+    ("git commit *--author*", "ask"),
+    ("git commit *--date*", "ask"),
+    ("git commit *--reset-author*", "ask"),
+    ("git commit *--allow-empty*", "ask"),
+    ("git commit *--no-gpg-sign*", "ask"),
+    ("git commit *--pathspec-from-file*", "ask"),
+    ("git commit *--include*", "ask"),
+    ("git commit *--only*", "ask"),
+    ("git commit *--interactive*", "ask"),
+    ("git commit *--patch*", "ask"),
+    ("git commit -m * -- *", "ask"),
+    ("git fetch *--force*", "ask"),
+    ("git fetch -f *", "ask"),
+    ("git fetch * -f *", "ask"),
+    ("git fetch *--prune*", "ask"),
+    ("git fetch -p *", "ask"),
+    ("git fetch * -p *", "ask"),
+    ("git fetch *--refmap*", "ask"),
+    ("git fetch *--set-upstream*", "ask"),
+    ("git fetch *--stdin*", "ask"),
+    ("git fetch *--upload-pack*", "ask"),
+    ("git fetch *--server-option*", "ask"),
+    ("git fetch *--recurse-submodules*", "ask"),
+    ("git fetch +*", "ask"),
+    ("git fetch * +*", "ask"),
+    ("git fetch *:*", "ask"),
+    ("git fetch -*", "ask"),
+    ("git fetch * -*", "ask"),
+    ("git fetch ./*", "ask"),
+    ("git fetch ../*", "ask"),
+    ("git fetch /*", "ask"),
+    ("git fetch ~*", "ask"),
+    ("git fetch $*", "ask"),
+    ("git fetch *://*", "ask"),
+    ("git fetch git@*", "ask"),
+    ("git *>*", "ask"),
+    ("git *<*", "ask"),
+    ("git *|*", "ask"),
+    ("git *&*", "ask"),
+    ("git *;*", "ask"),
+    ("git *$(*", "ask"),
+    ("git *`*", "ask"),
+    ("git commit *--no-verify*", "deny"),
+    ("git commit -n *", "deny"),
+    ("git commit * -n *", "deny"),
+    ("git commit *--no-post-rewrite*", "deny"),
+    ("git fetch -*u*", "deny"),
+    ("git fetch * -*u*", "deny"),
+    ("git fetch --*", "ask"),
+    ("git fetch * --*", "ask"),
+    ("git fetch *--update-head-ok*", "deny"),
+    ("git push *--force*", "deny"),
+    ("git push -f *", "deny"),
+    ("git push * -f *", "deny"),
+    ("git push *--delete*", "deny"),
+    ("git push -d *", "deny"),
+    ("git push * -d *", "deny"),
+    ("git push *--mirror*", "deny"),
+    ("git push *--prune*", "deny"),
+    ("git push +*", "deny"),
+    ("git push * +*", "deny"),
+    ("git push :*", "deny"),
+    ("git push * :*", "deny"),
+    ("git push -f*", "deny"),
+    ("git push * -f*", "deny"),
+)
+ENGINEERING_LEAD_GIT_EFFECTIVE_ACTIONS = (
+    ("git status --short", "allow"),
+    ("git diff --cached", "allow"),
+    ("git add src/app.py", "allow"),
+    ("git commit", "allow"),
+    ("git commit -m message", "ask"),
+    ("git commit --amend", "ask"),
+    ("git commit --no-verify -m message", "deny"),
+    ("git diff-tree --output=result HEAD", "ask"),
+    ("git grep -Ocustom pattern", "ask"),
+    ("git fetch origin", "allow"),
+    ("git fetch -fpP origin", "ask"),
+    ("git fetch -fu origin", "deny"),
+    ("git fetch -u origin", "deny"),
+    ("git pull --ff-only", "ask"),
+    ("git push origin main", "ask"),
+    ("git push -fv origin main", "deny"),
+    ("git status | tee status.txt", "ask"),
+)
 ENGINEERING_LEAD_MCP_TOOL_PATTERNS = (
     "playwright_*",
     "chrome-devtools_*",
@@ -129,6 +288,20 @@ PLAN_TEMPLATE_HEADINGS = (
     "## Amendments",
     "## Execution Record",
 )
+
+
+def resolve_v118_permission_action(
+    rules: tuple[tuple[str, str], ...],
+    command: str,
+    *,
+    baseline: str,
+) -> str:
+    action = baseline
+    for pattern, candidate in rules:
+        optional_suffix_match = pattern.endswith(" *") and command == pattern[:-2]
+        if optional_suffix_match or fnmatchcase(command, pattern):
+            action = candidate
+    return action
 
 
 @dataclass(frozen=True)
@@ -706,18 +879,72 @@ class OpenCodeInstallService:
                 if action == "allow" and any(marker in rule for marker in "*?["):
                     if (
                         agent_id == "engineering-lead"
-                        and (rule, action) in ENGINEERING_LEAD_POST_PLAN_BASH_RULES
+                        and (
+                            (rule, action) in ENGINEERING_LEAD_GIT_BASH_RULES
+                            or (rule, action) in ENGINEERING_LEAD_POST_PLAN_BASH_RULES
+                        )
                     ):
                         continue
                     errors.append(
                         f"agents: '{name}' bash permission must not allow wildcard rules"
                     )
                     break
-                if action == "allow" and rule not in SAFE_EXACT_GIT_BASH_ALLOWS:
+                if (
+                    action == "allow"
+                    and rule not in SAFE_EXACT_GIT_BASH_ALLOWS
+                    and not (
+                        agent_id == "engineering-lead"
+                        and (rule, action) in ENGINEERING_LEAD_GIT_BASH_RULES
+                    )
+                ):
                     errors.append(
                         f"agents: '{name}' bash permission has an unsafe allow rule"
                     )
                     break
+
+        if agent_id == "engineering-lead":
+            git_rules = (
+                tuple(rule for rule in bash if rule[0].startswith("git"))
+                if isinstance(bash, tuple)
+                else ()
+            )
+            if git_rules != ENGINEERING_LEAD_GIT_BASH_RULES:
+                errors.append(
+                    f"agents: '{name}' must preserve canonical git permissions"
+                )
+            if isinstance(bash, tuple) and any(
+                action in {"allow", "ask"}
+                and (pattern, action) not in ENGINEERING_LEAD_GIT_BASH_RULES
+                and pattern not in {"*", PLAN_REDIRECTION_DENY_RULE}
+                and (
+                    pattern.startswith(("*", "?", "["))
+                    or (
+                        pattern.startswith("g")
+                        and any(
+                            marker in pattern.split(" ", 1)[0]
+                            for marker in "*?["
+                        )
+                    )
+                )
+                for pattern, action in bash
+            ):
+                errors.append(
+                    f"agents: '{name}' has a noncanonical wildcard rule that can override git permissions"
+                )
+            if isinstance(bash, tuple) and any(
+                resolve_v118_permission_action(bash, command, baseline="ask")
+                != expected
+                for command, expected in ENGINEERING_LEAD_GIT_EFFECTIVE_ACTIONS
+            ):
+                errors.append(
+                    f"agents: '{name}' must preserve effective git permission actions"
+                )
+            if permissions.get("todowrite") != "allow":
+                errors.append(f"agents: '{name}' must allow todowrite")
+        elif "todowrite" in permissions and permissions["todowrite"] != "deny":
+            errors.append(
+                f"agents: '{name}' must not allow todowrite for this role"
+            )
 
         expected_network_action = "ask" if agent_id in {
             "engineering-lead",

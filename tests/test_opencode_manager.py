@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
+from fnmatch import fnmatchcase
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,6 +18,187 @@ SUPPORT_FILES = (
     "project-template/docs/implementation-plans/README.md",
     "project-template/docs/implementation-plans/TEMPLATE.md",
 )
+
+LEAD_GIT_RULES = (
+    ("git branch *", "ask"),
+    ("git commit *", "ask"),
+    ("git push *", "ask"),
+    ("git pull *", "ask"),
+    ("git merge *", "ask"),
+    ("git rebase *", "ask"),
+    ("git reset *", "ask"),
+    ("git restore *", "ask"),
+    ("git checkout *", "ask"),
+    ("git switch *", "ask"),
+    ("git clean *", "ask"),
+    ("git stash *", "ask"),
+    ("git tag *", "ask"),
+    ("git worktree *", "ask"),
+    ("git remote *", "ask"),
+    ("git cherry-pick *", "ask"),
+    ("git revert *", "ask"),
+    ("git status", "allow"),
+    ("git status *", "allow"),
+    ("git diff", "allow"),
+    ("git diff *", "allow"),
+    ("git log", "allow"),
+    ("git log *", "allow"),
+    ("git show", "allow"),
+    ("git show *", "allow"),
+    ("git grep *", "allow"),
+    ("git rev-parse *", "allow"),
+    ("git branch", "allow"),
+    ("git branch --list *", "allow"),
+    ("git branch --show-current", "allow"),
+    ("git ls-files", "allow"),
+    ("git ls-files *", "allow"),
+    ("git blame *", "allow"),
+    ("git cat-file *", "allow"),
+    ("git diff-tree *", "allow"),
+    ("git diff-index *", "allow"),
+    ("git diff-files *", "allow"),
+    ("git range-diff *", "allow"),
+    ("git merge-base *", "allow"),
+    ("git name-rev *", "allow"),
+    ("git describe *", "allow"),
+    ("git shortlog *", "allow"),
+    ("git for-each-ref *", "allow"),
+    ("git show-ref *", "allow"),
+    ("git ls-tree *", "allow"),
+    ("git rev-list *", "allow"),
+    ("git reflog show *", "allow"),
+    ("git remote -v", "allow"),
+    ("git remote get-url *", "allow"),
+    ("git worktree list *", "allow"),
+    ("git stash list *", "allow"),
+    ("git submodule status *", "allow"),
+    ("git config --get core.hooksPath", "allow"),
+    ("git config --get commit.gpgsign", "allow"),
+    ("git config --get gpg.format", "allow"),
+    ("git add *", "allow"),
+    ("git commit", "allow"),
+    ("git fetch *", "allow"),
+    ("git *--output*", "ask"),
+    ("git *--ext-diff*", "ask"),
+    ("git *--textconv*", "ask"),
+    ("git grep *--open-files-in-pager*", "ask"),
+    ("git grep -O*", "ask"),
+    ("git grep * -O*", "ask"),
+    ("git cat-file *--filters*", "ask"),
+    ("git commit *--am*", "ask"),
+    ("git commit *--fixup*", "ask"),
+    ("git commit *--squash*", "ask"),
+    ("git commit *--all*", "ask"),
+    ("git commit -a *", "ask"),
+    ("git commit * -a *", "ask"),
+    ("git commit *--author*", "ask"),
+    ("git commit *--date*", "ask"),
+    ("git commit *--reset-author*", "ask"),
+    ("git commit *--allow-empty*", "ask"),
+    ("git commit *--no-gpg-sign*", "ask"),
+    ("git commit *--pathspec-from-file*", "ask"),
+    ("git commit *--include*", "ask"),
+    ("git commit *--only*", "ask"),
+    ("git commit *--interactive*", "ask"),
+    ("git commit *--patch*", "ask"),
+    ("git commit -m * -- *", "ask"),
+    ("git fetch *--force*", "ask"),
+    ("git fetch -f *", "ask"),
+    ("git fetch * -f *", "ask"),
+    ("git fetch *--prune*", "ask"),
+    ("git fetch -p *", "ask"),
+    ("git fetch * -p *", "ask"),
+    ("git fetch *--refmap*", "ask"),
+    ("git fetch *--set-upstream*", "ask"),
+    ("git fetch *--stdin*", "ask"),
+    ("git fetch *--upload-pack*", "ask"),
+    ("git fetch *--server-option*", "ask"),
+    ("git fetch *--recurse-submodules*", "ask"),
+    ("git fetch +*", "ask"),
+    ("git fetch * +*", "ask"),
+    ("git fetch *:*", "ask"),
+    ("git fetch -*", "ask"),
+    ("git fetch * -*", "ask"),
+    ("git fetch ./*", "ask"),
+    ("git fetch ../*", "ask"),
+    ("git fetch /*", "ask"),
+    ("git fetch ~*", "ask"),
+    ("git fetch $*", "ask"),
+    ("git fetch *://*", "ask"),
+    ("git fetch git@*", "ask"),
+    ("git *>*", "ask"),
+    ("git *<*", "ask"),
+    ("git *|*", "ask"),
+    ("git *&*", "ask"),
+    ("git *;*", "ask"),
+    ("git *$(*", "ask"),
+    ("git *`*", "ask"),
+    ("git commit *--no-verify*", "deny"),
+    ("git commit -n *", "deny"),
+    ("git commit * -n *", "deny"),
+    ("git commit *--no-post-rewrite*", "deny"),
+    ("git fetch -*u*", "deny"),
+    ("git fetch * -*u*", "deny"),
+    ("git fetch --*", "ask"),
+    ("git fetch * --*", "ask"),
+    ("git fetch *--update-head-ok*", "deny"),
+    ("git push *--force*", "deny"),
+    ("git push -f *", "deny"),
+    ("git push * -f *", "deny"),
+    ("git push *--delete*", "deny"),
+    ("git push -d *", "deny"),
+    ("git push * -d *", "deny"),
+    ("git push *--mirror*", "deny"),
+    ("git push *--prune*", "deny"),
+    ("git push +*", "deny"),
+    ("git push * +*", "deny"),
+    ("git push :*", "deny"),
+    ("git push * :*", "deny"),
+    ("git push -f*", "deny"),
+    ("git push * -f*", "deny"),
+)
+
+
+def render_lead_permissions(
+    *,
+    git_rules: tuple[tuple[str, str], ...] = LEAD_GIT_RULES,
+    todowrite_action: str = "allow",
+) -> str:
+    rendered_git_rules = "".join(
+        f'    "{pattern}": {action}\n' for pattern, action in git_rules
+    )
+    return (
+        '  "*": ask\n'
+        "  edit:\n"
+        '    "*": ask\n'
+        '    "docs/implementation-plans/**": ask\n'
+        "  bash:\n"
+        '    "*": ask\n'
+        f"{rendered_git_rules}"
+        '    "*docs/implementation-plans*": deny\n'
+        '    "pbcopy *": allow\n'
+        '  "playwright_*": allow\n'
+        '  "chrome-devtools_*": allow\n'
+        '  "serena_*": allow\n'
+        '  "context7_*": allow\n'
+        '  "gh_grep_*": allow\n'
+        '  "github_*": allow\n'
+        "  task: deny\n"
+        "  webfetch: ask\n"
+        "  websearch: ask\n"
+        f"  todowrite: {todowrite_action}\n"
+    )
+
+
+def resolve_v118_action(
+    rules: tuple[tuple[str, str], ...], command: str, *, baseline: str = "ask"
+) -> str:
+    action = baseline
+    for pattern, candidate in rules:
+        optional_suffix_match = pattern.endswith(" *") and command == pattern[:-2]
+        if optional_suffix_match or fnmatchcase(command, pattern):
+            action = candidate
+    return action
 
 
 def write_support_files(repo: Path) -> None:
@@ -605,30 +787,179 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             write_agent_definition(
                 repo / "opencode" / "agents" / "engineering-lead.md",
                 mode="primary",
-                permissions=(
-                    '  "*": ask\n'
-                    "  edit:\n"
-                    '    "*": ask\n'
-                    '    "docs/implementation-plans/**": ask\n'
-                    "  bash:\n"
-                    '    "*": ask\n'
-                    '    "*docs/implementation-plans*": deny\n'
-                    '    "pbcopy *": allow\n'
-                    '  "playwright_*": allow\n'
-                    '  "chrome-devtools_*": allow\n'
-                    '  "serena_*": allow\n'
-                    '  "context7_*": allow\n'
-                    '  "gh_grep_*": allow\n'
-                    '  "github_*": allow\n'
-                    "  task: deny\n"
-                    "  webfetch: ask\n"
-                    "  websearch: ask\n"
-                ),
+                permissions=render_lead_permissions(),
             )
 
             result = OpenCodeInstallService(repo, root / "config").validate()
 
             self.assertTrue(result.ok, result.errors)
+
+    def test_lead_git_rules_resolve_to_expected_v118_actions(self) -> None:
+        cases = {
+            "git status --short": "allow",
+            "git diff --cached": "allow",
+            "git log --oneline -10": "allow",
+            "git branch --list feature/*": "allow",
+            "git remote -v": "allow",
+            "git worktree list": "allow",
+            "git stash list": "allow",
+            "git add src/app.py": "allow",
+            "git commit": "allow",
+            "git commit -m message": "ask",
+            "git commit -m message src/app.py": "ask",
+            "git fetch": "allow",
+            "git fetch origin": "allow",
+            "git diff --output=patch.txt": "ask",
+            "git diff-tree --output=result HEAD": "ask",
+            "git diff-index --ext-diff HEAD": "ask",
+            "git reflog show --output=result": "ask",
+            "git stash list --output=result": "ask",
+            "git grep -Ocustom pattern": "ask",
+            "git commit --amend": "ask",
+            "git commit -m message --amend": "ask",
+            "git commit -a -m message": "ask",
+            "git fetch --prune origin": "ask",
+            "git fetch -fpP origin": "ask",
+            "git fetch -fu origin": "deny",
+            "git fetch ../other": "ask",
+            "git fetch ~/other": "ask",
+            "git fetch $HOME/other": "ask",
+            "git pull --ff-only": "ask",
+            "git rebase -i HEAD~2": "ask",
+            "git remote set-url origin example": "ask",
+            "git worktree add ../other": "ask",
+            "git status | tee status.txt": "ask",
+            "git hash-object -w file": "ask",
+            "git commit --no-verify -m message": "deny",
+            "git commit -n -m message": "deny",
+            "git fetch --update-head-ok origin": "deny",
+            "git fetch -u origin": "deny",
+            "git push --force origin main": "deny",
+            "git push -fv origin main": "deny",
+            "git push origin --delete old": "deny",
+        }
+
+        for command, expected in cases.items():
+            with self.subTest(command=command):
+                self.assertEqual(expected, resolve_v118_action(LEAD_GIT_RULES, command))
+
+    def test_validate_requires_exact_lead_git_rule_matrix(self) -> None:
+        mutations = {
+            "missing allow": LEAD_GIT_RULES[:-1],
+            "downgraded read": tuple(
+                (pattern, "ask") if pattern == "git status *" else (pattern, action)
+                for pattern, action in LEAD_GIT_RULES
+            ),
+            "weakened override": tuple(
+                (pattern, "allow")
+                if pattern == "git commit *--am*"
+                else (pattern, action)
+                for pattern, action in LEAD_GIT_RULES
+            ),
+            "extra broad allow": LEAD_GIT_RULES + (("git *", "allow"),),
+            "later weakening": LEAD_GIT_RULES + (("git*", "ask"),),
+        }
+        for label, git_rules in mutations.items():
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                repo = create_opencode_repo(
+                    root,
+                    agents=("engineering-lead.md",),
+                    commands=(),
+                )
+                write_agent_definition(
+                    repo / "opencode" / "agents" / "engineering-lead.md",
+                    mode="primary",
+                    permissions=render_lead_permissions(git_rules=git_rules),
+                )
+
+                result = OpenCodeInstallService(repo, root / "config").validate()
+
+                self.assertFalse(result.ok)
+                self.assertTrue(
+                    any("canonical git permissions" in error for error in result.errors),
+                    result.errors,
+                )
+
+    def test_validate_rejects_later_git_permission_weakening(self) -> None:
+        weakening_rules = (
+            ("*commit*", "ask"),
+            ("*delete*", "ask"),
+            ("*--mirror*", "ask"),
+            ("*no-post-rewrite*", "ask"),
+        )
+        for weakening_rule in weakening_rules:
+            with self.subTest(rule=weakening_rule), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                repo = create_opencode_repo(
+                    root,
+                    agents=("engineering-lead.md",),
+                    commands=(),
+                )
+                write_agent_definition(
+                    repo / "opencode" / "agents" / "engineering-lead.md",
+                    mode="primary",
+                    permissions=render_lead_permissions(
+                        git_rules=LEAD_GIT_RULES + (weakening_rule,)
+                    ),
+                )
+
+                result = OpenCodeInstallService(repo, root / "config").validate()
+
+                self.assertFalse(result.ok)
+                self.assertTrue(
+                    any("override git permissions" in error for error in result.errors),
+                    result.errors,
+                )
+
+    def test_validate_requires_lead_todowrite_allow(self) -> None:
+        for action in ("ask", "deny"):
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                repo = create_opencode_repo(
+                    root,
+                    agents=("engineering-lead.md",),
+                    commands=(),
+                )
+                write_agent_definition(
+                    repo / "opencode" / "agents" / "engineering-lead.md",
+                    mode="primary",
+                    permissions=render_lead_permissions(todowrite_action=action),
+                )
+
+                result = OpenCodeInstallService(repo, root / "config").validate()
+
+                self.assertFalse(result.ok)
+                self.assertTrue(
+                    any("todowrite" in error for error in result.errors),
+                    result.errors,
+                )
+
+    def test_validate_rejects_todowrite_allow_for_other_roles(self) -> None:
+        cases = (
+            "  todowrite: allow\n",
+            '  todowrite:\n    "*": allow\n',
+        )
+        for permission in cases:
+            with self.subTest(permission=permission), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                repo = create_opencode_repo(root)
+                agent = repo / "opencode" / "agents" / "reviewer.md"
+                agent.write_text(
+                    agent.read_text(encoding="utf-8").replace(
+                        "  task: deny",
+                        f"{permission}  task: deny",
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = OpenCodeInstallService(repo, root / "config").validate()
+
+                self.assertFalse(result.ok)
+                self.assertTrue(
+                    any("todowrite" in error for error in result.errors),
+                    result.errors,
+                )
 
     def test_validate_requires_all_lead_mcp_permissions(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -938,26 +1269,9 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             write_agent_definition(
                 repo / "opencode" / "agents" / "engineering-lead.md",
                 mode="primary",
-                permissions=(
-                    '  "*": ask\n'
-                    "  edit:\n"
-                    '    "*": ask\n'
-                    '    "docs/implementation-plans/**": ask\n'
-                    "  bash:\n"
-                    '    "*": ask\n'
-                    '    "*docs/implementation-plans*": deny\n'
-                    '    "pbcopy *": allow\n'
-                    '  "playwright_*": allow\n'
-                    '  "chrome-devtools_*": allow\n'
-                    '  "serena_*": allow\n'
-                    '  "context7_*": allow\n'
-                    '  "gh_grep_*": allow\n'
-                    '  "github_*": allow\n'
-                    "  task:\n"
-                    '    "*": deny\n'
-                    '    "worker": ask\n'
-                    "  webfetch: ask\n"
-                    "  websearch: ask\n"
+                permissions=render_lead_permissions().replace(
+                    "  task: deny\n",
+                    '  task:\n    "*": deny\n    "worker": ask\n',
                 ),
             )
             write_agent_definition(
