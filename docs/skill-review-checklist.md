@@ -23,6 +23,10 @@ tables or skill bodies here.
   do not create or maintain a changelog otherwise.
 - [ ] **Related-skill routing:** cross-links and cross-reference-map entries only
   exist when they change activation, execution, or validation choices.
+- [ ] **Runtime governance, when applicable:** guidance that mentions agents,
+  Task delegation, commands, durable plans, implementation, or review treats
+  skills as procedures rather than runtime IDs and matches the
+  [engineering agent governance guide](engineering-agent-governance.md).
 - [ ] **Examples:** examples and counterexamples are short, transferable,
   sanitized, and maintained by tests or easy manual validation where practical.
 - [ ] **Security evidence:** trust-boundary, secret, dependency, command, file

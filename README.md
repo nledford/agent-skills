@@ -105,6 +105,10 @@ baseline ordering, one-level Task topology, primary command ownership,
 implementation-plan templates. Command `agent:` values must be unquoted,
 lowercase IDs for tracked primary agents.
 
+See [Engineering Agent Governance](docs/engineering-agent-governance.md) for the
+role boundaries, command owners, Task-ID rules, and delivery/review handoffs that
+connect these definitions.
+
 The setup workflow manages these two links as one installation:
 
 ```text

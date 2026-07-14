@@ -5,6 +5,9 @@ editing skills or repository documentation, read [`README.md`](README.md),
 [`docs/skill-taxonomy.md`](docs/skill-taxonomy.md), and
 [`docs/cross-reference-map.md`](docs/cross-reference-map.md).
 
+Use the [engineering agent governance guide](docs/engineering-agent-governance.md)
+for OpenCode role authority, command ownership, Task boundaries, and handoffs.
+
 ## First-Party Skill Rules
 
 - Edit only first-party skills as repository source.

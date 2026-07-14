@@ -8,7 +8,10 @@ unloaded templates.
 ## Domain Model
 
 - **Skill:** A directory under `skills/` with `SKILL.md` frontmatter and focused
-  procedural guidance.
+  procedural guidance. A skill is loaded procedure, not a runtime Task agent ID,
+  and it grants no edit, delegation, review, or approval authority. Use the
+  [engineering agent governance guide](engineering-agent-governance.md) when a
+  skill routes work to an agent or command.
 - **Trigger:** The frontmatter `description` is routing metadata. It must name the
   task surface and the strongest trigger terms before the skill body is loaded.
 - **Instructions:** The body explains what the agent should inspect, decide,

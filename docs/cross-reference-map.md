@@ -27,6 +27,11 @@ Notation:
 - `—` means no required companion for the row; optional companions may still
   apply.
 
+Skill names in this matrix route reusable procedure; they are not runtime Task
+agent IDs and do not grant delegation authority. When a route crosses into an
+OpenCode agent or command, use the exact registered ID and boundaries documented
+in the [engineering agent governance guide](engineering-agent-governance.md).
+
 ## Routing Matrix
 
 ### Skill Authoring and Governance
