@@ -88,20 +88,51 @@ responsibility.
 
 ## Task Contract
 
-For each Task, use this compact packet:
+Keep `subagent_type` and `description` in their dedicated Task fields. Copy the
+exact runtime-visible registered ID into `subagent_type`; make the description a
+short action phrase, not a role name. Task permission is broad-deny then
+exact-allow. Do not broaden the roster or delegate recursively.
 
-- **subagent_type:** exact runtime-visible registered agent ID.
-- **agent_id:** textual packet record of the same ID, not a Task field alias.
-- **description:** short action phrase, not a role name.
-- **objective:** answer one decision-relevant review question.
-- **scope:** exact plan, diff, files, baseline, or subsystem.
-- **constraints:** read-only, applicable guidance, exclusions, and no delegation.
-- **expected output:** concrete findings or a no-finding conclusion with evidence.
-- **completion:** stop when the question is answered; return uncertainty and
-  skipped validation to the Board.
+Format every Task `prompt` as scannable Markdown, not a dense paragraph or
+comma-separated list. Put a blank line between sections and use bullets for
+multiple scope items, constraints, or evidence. Use this minimum packet:
 
-Task permission is broad-deny then exact-allow. Do not broaden the roster or
-delegate recursively.
+```markdown
+agent_id: `exact-runtime-visible-id`
+
+review_stage: `stage`
+
+## Review question
+
+State the one decision-relevant question.
+
+## Scope
+
+- Name the exact plan, diff, files, baseline, symbols, or subsystem.
+
+## Constraints
+
+- Read only; do not edit.
+- Follow applicable guidance and exclusions.
+- Do not delegate further.
+
+## Supplied evidence
+
+- List known evidence, validation, and uncertainties to resolve.
+
+## Required output
+
+Return evidence-backed findings or an explicit no-finding conclusion.
+
+## Completion
+
+- Stop when the question is answered.
+- Report uncertainty and skipped validation to the Board.
+```
+
+The textual `agent_id` must copy the `subagent_type` value exactly; it is not a
+Task field alias. Add the required evidence standard when it is not already
+clear from the review question.
 
 ## Runtime Selection and Failure Recovery
 

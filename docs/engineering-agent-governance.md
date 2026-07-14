@@ -78,6 +78,9 @@ Before changing role or command guidance:
   runtime-visible Task IDs. Repository prose cannot widen those controls.
 - Preserve one-level delegation. Critics and researchers do not delegate; the
   ERB never becomes a child of the Lead.
+- Keep delegated Task prompts scannable: use Markdown sections separated by
+  blank lines and bullets for multi-item scope, constraints, questions, and
+  evidence. Do not compress a delegation packet into one dense paragraph.
 - Keep implementation and durable-plan persistence separate. Only the worker
   implements delegated units, and only the Coordinator writes plan artifacts.
 - Check each command's primary owner, `subtask: false` setting, required evidence,

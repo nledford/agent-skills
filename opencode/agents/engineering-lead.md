@@ -307,21 +307,55 @@ allowed. In reports identify actual IDs, not descriptive role names.
 ## Task Contract
 
 Before any Task, set the runtime Task field `subagent_type` to the exact
-runtime-visible registered ID. In the delegation packet, record that same value
-as `agent_id` together with a short
-action-oriented description, objective, scope, constraints, known evidence,
-expected output, edit boundary, and completion/stop conditions. Task permission
-is broad-deny then exact-allow; never invent an ID. If a mandatory Coordinator
-Task fails, report the blocker and request a retry or explicit human exception.
+runtime-visible registered ID. Keep `subagent_type` distinct from `description`:
+the description is a short action phrase such as `Review database migration
+assumptions`, never a role name. Task permission is broad-deny then exact-allow;
+never invent an ID.
 
-Keep the Task field `subagent_type` distinct from `description`: copy the exact
-runtime-visible registered ID, while `agent_id` is only the packet's textual
-record of that same value and the description is an action phrase such as
-`Review database migration assumptions`, never a role name. Include concrete
-questions, exact files/symbols/diff or plan scope, guidance, exclusions, known
-evidence, whether edits are allowed, failure recovery, and a no-delegation
-instruction. A delegation succeeds only after the Task completed or returned a
-clear blocker and its expected artifact was verified.
+Format the Task `prompt` as a compact Markdown packet, not a dense paragraph or
+comma-separated list. Put a blank line between sections and use bullets for
+multiple questions, files, constraints, or evidence items. Use this minimum
+shape, adding detail where the assignment requires it:
+
+```markdown
+agent_id: `exact-runtime-visible-id`
+
+## Objective
+
+State the one bounded outcome.
+
+## Scope
+
+- Name exact files, symbols, diff, plan, or subsystem.
+
+## Questions
+
+- List the concrete questions to answer.
+
+## Constraints
+
+- Name applicable guidance and exclusions.
+- State the edit boundary or that edits are forbidden.
+- Do not delegate further.
+
+## Known evidence
+
+- List supplied facts, validation, and unresolved uncertainty.
+
+## Expected output
+
+State the required artifact or evidence-backed report.
+
+## Completion and stop conditions
+
+- Define success, blockers, failure recovery, and skipped-validation reporting.
+```
+
+The textual `agent_id` must copy the `subagent_type` value exactly; it is not a
+Task field alias. A delegation succeeds only after the Task completed or
+returned a clear blocker and its expected artifact was verified. If a mandatory
+Coordinator Task fails, report the blocker and request a retry or explicit human
+exception.
 
 Valid descriptions include `Validate release asset build`, `Inspect container
 build configuration`, and `Find affected frontend components`. Invalid
