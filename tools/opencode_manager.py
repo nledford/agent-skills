@@ -21,7 +21,9 @@ SUPPORT_FILE_RE = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)+$"
 )
 TOP_LEVEL_FIELD_RE = re.compile(r"^([a-z][A-Za-z0-9_]*):(?:\s(.*))?$")
-PERMISSION_LEVEL_RE = re.compile(r'^  (?:"(\*)"|([a-z][a-z0-9_]*)):(?:\s(.*))?$')
+PERMISSION_LEVEL_RE = re.compile(
+    r'^  (?:(?:"([^"\\]+)")|([a-z][a-z0-9_]*)):(?:\s(.*))?$'
+)
 PERMISSION_RULE_RE = re.compile(r'^    (?:"([^"\\]+)"|([a-z0-9][a-z0-9-]*)):\s*(allow|ask|deny)$')
 MODEL_VALUE_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$")
 AGENT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -75,6 +77,15 @@ SAFE_EXACT_GIT_BASH_ALLOWS = frozenset(
         "git ls-files",
         "pwd",
     }
+)
+ENGINEERING_LEAD_POST_PLAN_BASH_RULES = (("pbcopy *", "allow"),)
+ENGINEERING_LEAD_MCP_TOOL_PATTERNS = (
+    "playwright_*",
+    "chrome-devtools_*",
+    "serena_*",
+    "context7_*",
+    "gh_grep_*",
+    "github_*",
 )
 REQUIRED_SUPPORT_FILES = (
     "cleanup/weave-cleanup-checklist.md",
@@ -538,8 +549,8 @@ class OpenCodeInstallService:
                         f"{kind}: '{name}' permission fields must use canonical key-value fields"
                     )
                     continue
-                wildcard_key, named_key, value = permission_match.groups()
-                permission_key = wildcard_key or named_key
+                quoted_key, named_key, value = permission_match.groups()
+                permission_key = quoted_key or named_key
                 if permission_key in permissions:
                     errors.append(
                         f"{kind}: '{name}' has duplicate permission '{permission_key}'"
@@ -674,7 +685,10 @@ class OpenCodeInstallService:
         baseline: str,
     ) -> list[str]:
         errors: list[str] = []
-        unknown_tools = set(permissions) - KNOWN_PERMISSION_TOOLS
+        allowed_tools = set(KNOWN_PERMISSION_TOOLS)
+        if agent_id == "engineering-lead":
+            allowed_tools.update(ENGINEERING_LEAD_MCP_TOOL_PATTERNS)
+        unknown_tools = set(permissions) - allowed_tools
         if unknown_tools:
             errors.append(f"agents: '{name}' has unsupported permission tool")
 
@@ -690,6 +704,11 @@ class OpenCodeInstallService:
         elif isinstance(bash, tuple):
             for rule, action in bash:
                 if action == "allow" and any(marker in rule for marker in "*?["):
+                    if (
+                        agent_id == "engineering-lead"
+                        and (rule, action) in ENGINEERING_LEAD_POST_PLAN_BASH_RULES
+                    ):
+                        continue
                     errors.append(
                         f"agents: '{name}' bash permission must not allow wildcard rules"
                     )
@@ -710,6 +729,13 @@ class OpenCodeInstallService:
                     f"agents: '{name}' network permissions must be {expected_network_action}"
                 )
                 break
+        if agent_id == "engineering-lead" and any(
+            permissions.get(pattern) != "allow"
+            for pattern in ENGINEERING_LEAD_MCP_TOOL_PATTERNS
+        ):
+            errors.append(
+                f"agents: '{name}' must allow every configured MCP tool pattern"
+            )
         return errors
 
     @staticmethod
@@ -743,12 +769,16 @@ class OpenCodeInstallService:
 
         bash = permissions.get("bash")
         if agent_id in ROOT_ASK_AGENT_IDS:
-            if not isinstance(bash, tuple) or not bash or bash[-1] != (
-                PLAN_REDIRECTION_DENY_RULE,
-                "deny",
+            required_suffix = ((PLAN_REDIRECTION_DENY_RULE, "deny"),)
+            if agent_id == "engineering-lead":
+                required_suffix += ENGINEERING_LEAD_POST_PLAN_BASH_RULES
+            if (
+                not isinstance(bash, tuple)
+                or len(bash) < len(required_suffix)
+                or bash[-len(required_suffix) :] != required_suffix
             ):
                 errors.append(
-                    f"agents: '{name}' must end bash rules with the plan redirection deny"
+                    f"agents: '{name}' must preserve the plan redirection deny in its required bash suffix"
                 )
         return errors
 

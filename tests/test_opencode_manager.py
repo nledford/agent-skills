@@ -549,7 +549,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 self.assertFalse(result.ok)
                 self.assertTrue(any("core edit ownership" in error for error in result.errors))
 
-    def test_validate_requires_plan_redirection_deny_as_final_bash_rule(self) -> None:
+    def test_validate_requires_plan_redirection_deny_in_bash_suffix(self) -> None:
         for name in ("engineering-lead.md", "implementation-worker.md"):
             with self.subTest(agent=name), tempfile.TemporaryDirectory() as temp_dir:
                 root = Path(temp_dir)
@@ -592,6 +592,80 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertTrue(
                 any("bash permission must not allow wildcard rules" in error for error in result.errors)
+            )
+
+    def test_validate_accepts_lead_clipboard_and_mcp_permissions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_opencode_repo(
+                root,
+                agents=("engineering-lead.md",),
+                commands=(),
+            )
+            write_agent_definition(
+                repo / "opencode" / "agents" / "engineering-lead.md",
+                mode="primary",
+                permissions=(
+                    '  "*": ask\n'
+                    "  edit:\n"
+                    '    "*": ask\n'
+                    '    "docs/implementation-plans/**": ask\n'
+                    "  bash:\n"
+                    '    "*": ask\n'
+                    '    "*docs/implementation-plans*": deny\n'
+                    '    "pbcopy *": allow\n'
+                    '  "playwright_*": allow\n'
+                    '  "chrome-devtools_*": allow\n'
+                    '  "serena_*": allow\n'
+                    '  "context7_*": allow\n'
+                    '  "gh_grep_*": allow\n'
+                    '  "github_*": allow\n'
+                    "  task: deny\n"
+                    "  webfetch: ask\n"
+                    "  websearch: ask\n"
+                ),
+            )
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertTrue(result.ok, result.errors)
+
+    def test_validate_requires_all_lead_mcp_permissions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_opencode_repo(
+                root,
+                agents=("engineering-lead.md",),
+                commands=(),
+            )
+            write_agent_definition(
+                repo / "opencode" / "agents" / "engineering-lead.md",
+                mode="primary",
+                permissions=(
+                    '  "*": ask\n'
+                    "  edit:\n"
+                    '    "*": ask\n'
+                    '    "docs/implementation-plans/**": ask\n'
+                    "  bash:\n"
+                    '    "*": ask\n'
+                    '    "*docs/implementation-plans*": deny\n'
+                    '    "pbcopy *": allow\n'
+                    '  "playwright_*": allow\n'
+                    '  "chrome-devtools_*": allow\n'
+                    '  "serena_*": allow\n'
+                    '  "context7_*": allow\n'
+                    '  "gh_grep_*": allow\n'
+                    "  task: deny\n"
+                    "  webfetch: ask\n"
+                    "  websearch: ask\n"
+                ),
+            )
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertFalse(result.ok)
+            self.assertTrue(
+                any("configured MCP tool pattern" in error for error in result.errors)
             )
 
     def test_validate_rejects_unclosed_markdown_code_fence(self) -> None:
@@ -872,6 +946,13 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     "  bash:\n"
                     '    "*": ask\n'
                     '    "*docs/implementation-plans*": deny\n'
+                    '    "pbcopy *": allow\n'
+                    '  "playwright_*": allow\n'
+                    '  "chrome-devtools_*": allow\n'
+                    '  "serena_*": allow\n'
+                    '  "context7_*": allow\n'
+                    '  "gh_grep_*": allow\n'
+                    '  "github_*": allow\n'
                     "  task:\n"
                     '    "*": deny\n'
                     '    "worker": ask\n'

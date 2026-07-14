@@ -29,6 +29,17 @@ it uses only `implementation-worker`; when any durable plan field or history mus
 change, it uses only `planning-coordinator`. The ERB and its specialists stay on
 the review side of that boundary.
 
+### Maintainer-authorized Lead tools
+
+The human maintainer explicitly authorizes the Engineering Lead to use
+`pbcopy` and every tool exposed by the configured MCP servers. The Lead's
+permission map carries explicit MCP server-prefix rules, and repository
+validation protects both those rules and the clipboard exception. Routine
+reviews, audits, and refactors must not remove, downgrade, or override this
+baseline. Evidence-backed concerns may be reported for a human decision, but
+only a new explicit human instruction may change the authorization. Reconcile
+the prefix list and validator when the configured MCP server set changes.
+
 ## Handoffs
 
 For ordinary work, start with the Engineering Lead. A direct request may proceed

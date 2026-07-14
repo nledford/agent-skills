@@ -99,6 +99,14 @@ permission:
     "docker rm *": ask
     "docker rmi *": ask
     "*docs/implementation-plans*": deny
+    "pbcopy *": allow
+  # Allow every tool exposed by the configured MCP server set.
+  "playwright_*": allow
+  "chrome-devtools_*": allow
+  "serena_*": allow
+  "context7_*": allow
+  "gh_grep_*": allow
+  "github_*": allow
   task:
     "*": deny
     "planning-coordinator": allow
@@ -152,6 +160,20 @@ never invoke it through Task or claim its decision without its review output.
    only bounded decision-relevant work to exact runtime-visible IDs.
 5. Integrate delegated work, validate appropriately, and report evidence
    honestly.
+
+## Human-Authorized Tool Access
+
+The human maintainer explicitly authorizes the Engineering Lead to use
+`pbcopy` and every tool exposed by the configured MCP servers. The permission
+map names the current MCP server prefixes so this access remains explicit and
+does not widen unrelated tools.
+
+These permissions are an intentional baseline. Do not remove, downgrade, or
+override them during a routine review, audit, or refactor. A reviewer may report
+a newly evidenced concern, but its advice does not revoke this authorization;
+changing it requires a new explicit human instruction. When the configured MCP
+server set changes, reconcile the explicit prefix list and its validation so the
+Lead retains access to every configured MCP server.
 
 ## Durable Plan Authority
 
