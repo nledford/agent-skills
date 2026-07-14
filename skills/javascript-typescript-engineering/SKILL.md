@@ -31,11 +31,9 @@ responsive layout, and design-token decisions.
 1. Inspect local evidence first: `package.json`, lockfiles, `bunfig.toml`,
    `deno.json`, `.npmrc`, workspaces, source/test layout, `tsconfig*`, lint and
    formatter config, bundler config, CI, README, and agent instructions.
-   Use [`serena`](../serena/SKILL.md) for supported-language symbols,
-   references, implementations, semantic refactors, and diagnostics when they
-   reduce broad code reads; use direct reads/search for exact strings, docs,
-   config, logs, fixtures, generated assets, and tests, builds, or other
-   validation commands.
+   Use local code navigation, direct reads, and search for symbols, references,
+   implementations, exact strings, docs, config, logs, fixtures, and generated
+   assets; use repository commands for tests, builds, and other validation.
 2. Identify the runtime and package manager actually owned by the repository.
    Use Node.js and npm by default when there is no local evidence requiring a
    different workflow. Use Bun only when the repo explicitly uses `bun.lock`, Bun

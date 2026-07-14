@@ -36,11 +36,10 @@ Before reporting findings, apply
 4. Search for callers, trait impls, feature flags, generated mappings, tests,
    SQL migrations, docs, and CI recipes before claiming a contract is broken or
    unused.
-   Use [`serena`](../serena/SKILL.md) for supported-language references,
-   implementations, call relationships, and diagnostics when semantic evidence
-   helps. Use direct reads/search for exact strings, docs, config, logs, fixtures,
-   generated or macro-expanded code, and tests, builds, or other validation
-   commands.
+   Use local code navigation for references, implementations, call relationships,
+   and diagnostics when semantic evidence helps. Use direct reads/search for exact
+   strings, docs, config, logs, fixtures, and generated or macro-expanded code,
+   and repository commands for tests, builds, or other validation.
 5. Use the relevant implementation skill for deeper context:
    [`rust-engineering`](../rust-engineering/SKILL.md),
    [`rust-testing-quality`](../rust-testing-quality/SKILL.md),

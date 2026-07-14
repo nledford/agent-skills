@@ -57,11 +57,9 @@ and executable-generation commands in this skill.
 1. Inspect the local project first: `pyproject.toml`, `uv.lock`,
    `.python-version`, `requirements*.txt`, `tox.ini`, `noxfile.py`, CI, README,
    tests, package layout, and existing commands.
-   Use [`serena`](../serena/SKILL.md) for supported-language symbols,
-   references, implementations, semantic refactors, and diagnostics when they
-   reduce broad code reads; use direct reads/search for exact strings, docs,
-   config, logs, fixtures, generated assets, and tests, builds, or other
-   validation commands.
+   Use local code navigation, direct reads, and search for symbols, references,
+   implementations, exact strings, docs, config, logs, fixtures, and generated
+   assets; use repository commands for tests, builds, and other validation.
 2. Define the behavior before editing. Use TDD for new behavior and regressions;
    use BDD-style examples for externally observable workflows.
 3. Keep boundaries clear. Use DDD language where domain rules matter; keep I/O,

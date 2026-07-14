@@ -27,10 +27,10 @@ downgrade it, or rephrase it as a question. Do not ship soft accusations.
 
 - Read the actual changed code or document, not just a summary.
 - Search for usages before claiming something is unused, dead, or unreferenced.
-- Use [`serena`](../serena/SKILL.md) for supported-language references,
-  implementations, call relationships, and diagnostics when semantic evidence
-  helps. Use direct reads/search for exact strings, docs, config, logs, fixtures,
-  generated assets, and tests, builds, or other validation commands.
+- Use local code navigation for references, implementations, call relationships,
+  and diagnostics when semantic evidence helps. Use direct reads/search for exact
+  strings, docs, config, logs, fixtures, and generated assets, and repository
+  commands for tests, builds, or other validation.
 - Check whether validation, authorization, error handling, cleanup, or behavior
   coverage exists at a higher layer, middleware, caller, transaction boundary,
   database constraint, generated contract, test harness, or runbook.

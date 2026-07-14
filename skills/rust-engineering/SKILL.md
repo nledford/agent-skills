@@ -14,11 +14,10 @@ public contracts.
 1. Inspect the local shape first: `Cargo.toml`, workspace members, crate
    boundaries, feature flags, `rust-toolchain`, CI recipes, README/AGENTS docs,
    and nearby modules.
-   Use [`serena`](../serena/SKILL.md) for supported-language symbols,
-   references, implementations, semantic refactors, and diagnostics when they
-   reduce broad code reads; use direct reads/search for exact strings, docs,
-   config, logs, fixtures, generated assets, macro-generated surprises, and
-   tests, builds, or other validation commands.
+   Use local code navigation, direct reads, and search for symbols, references,
+   implementations, exact strings, docs, config, logs, fixtures, generated
+   assets, and macro-generated surprises; use repository commands for tests,
+   builds, and other validation.
 2. State the behavior or domain change in concrete terms. Use BDD-style
    examples for user-visible behavior and DDD language for boundaries,
    invariants, and aggregate-like rules.

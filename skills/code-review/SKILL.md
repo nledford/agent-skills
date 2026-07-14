@@ -80,10 +80,10 @@ impact is uncertain.
 5. **Review implementation.**
    - Verify the change satisfies intent, preserves invariants, keeps
      responsibilities in the right place, and avoids avoidable coupling.
-   - Use [`serena`](../serena/SKILL.md) for supported-language symbols,
-     references, implementations, call relationships, and diagnostics when they
-     matter. Keep direct reads/search for exact strings, docs, config, logs,
-     fixtures, generated assets, and tests, builds, or other validation commands.
+   - Use local code navigation for symbols, references, implementations, call
+     relationships, and diagnostics when they matter. Use direct reads/search
+     for exact strings, docs, config, logs, fixtures, and generated assets, and
+     repository commands for tests, builds, or other validation.
 
 6. **Review failure modes.**
    - Check validation, authorization, error mapping, retries, cleanup,
