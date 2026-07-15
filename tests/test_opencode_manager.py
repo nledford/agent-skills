@@ -211,39 +211,19 @@ def write_support_files(repo: Path) -> None:
             "# Plans\n\nUse `docs/implementation-plans/plans/<series>/<NN>-<slug>.md`.\n"
         ),
         "project-template/docs/implementation-plans/TEMPLATE.md": (
-            "---\n"
-            "plan_id: <series>-<NN>\n"
-            "series: <series>\n"
-            "sequence: <integer>\n"
-            "title: <human-readable title>\n"
-            "status: draft\n"
-            "revision: 1\n"
-            "review_decision: pending\n"
-            "reviewed_at:\n"
-            "approved_at:\n"
-            "approved_revision:\n"
-            "depends_on: []\n"
-            "baseline_commit: <commit or null>\n"
-            "execution_owner: engineering-lead\n"
-            "source_format: native\n"
-            "source_plan:\n"
-            "created: YYYY-MM-DD\n"
-            "updated: YYYY-MM-DD\n"
-            "completed_at:\n"
-            "---\n\n"
-            "# Plan\n\n"
-            "## Executive Summary\n\n"
+            "# <Title>\n\n"
+            "## TL;DR\n\n"
+            "## Context\n\n"
+            "**Original request:**\n\n"
+            "**Key repository findings:**\n\n"
+            "**Dependencies:**\n\n"
             "## Objectives\n\n"
-            "## Non-Goals\n\n"
-            "## Current-State Evidence\n\n"
-            "## Dependencies\n\n"
-            "## Implementation Sequence\n\n"
-            "## Test Strategy\n\n"
-            "## Open Decisions\n\n"
-            "## ERB Review History\n\n"
-            "## Approval History\n\n"
-            "## Amendments\n\n"
-            "## Execution Record\n"
+            "## Guardrails\n\n"
+            "## Deliverables\n\n"
+            "## Definition of Done\n\n"
+            "## TODOs\n\n"
+            "1. [ ] <bounded implementation step>\n\n"
+            "## Verification\n"
         ),
         "cleanup/weave-cleanup-checklist.md": "# Cleanup\n",
     }
@@ -1056,37 +1036,87 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("support file is missing or is not a regular file", result.errors[0])
 
-    def test_validate_requires_canonical_plan_template_metadata(self) -> None:
+    def test_validate_rejects_plan_template_frontmatter(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             repo = create_opencode_repo(root)
             template = repo / "opencode" / SUPPORT_FILES[-1]
             template.write_text(
-                template.read_text(encoding="utf-8").replace("revision: 1\n", ""),
+                "---\nstatus: draft\n---\n\n" + template.read_text(encoding="utf-8"),
                 encoding="utf-8",
             )
 
             result = OpenCodeInstallService(repo, root / "config").validate()
 
             self.assertFalse(result.ok)
-            self.assertIn("template metadata is not canonical", result.errors[0])
+            self.assertIn("template is not the canonical lean format", result.errors[0])
 
-    def test_validate_requires_canonical_plan_template_headings(self) -> None:
+    def test_validate_rejects_reordered_plan_template_heading(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             repo = create_opencode_repo(root)
             template = repo / "opencode" / SUPPORT_FILES[-1]
             template.write_text(
-                template.read_text(encoding="utf-8").replace("## Approval History\n\n", ""),
+                template.read_text(encoding="utf-8").replace(
+                    "## TL;DR\n\n## Context", "## Context\n\n## TL;DR"
+                ),
                 encoding="utf-8",
             )
-            root_template = repo / "docs" / "implementation-plans" / "TEMPLATE.md"
-            root_template.write_bytes(template.read_bytes())
 
             result = OpenCodeInstallService(repo, root / "config").validate()
 
             self.assertFalse(result.ok)
-            self.assertIn("template headings are not canonical", result.errors[0])
+            self.assertIn("template is not the canonical lean format", result.errors[0])
+
+    def test_validate_rejects_missing_plan_template_context_label(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_opencode_repo(root)
+            template = repo / "opencode" / SUPPORT_FILES[-1]
+            template.write_text(
+                template.read_text(encoding="utf-8").replace(
+                    "**Dependencies:**\n\n", ""
+                ),
+                encoding="utf-8",
+            )
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertFalse(result.ok)
+            self.assertIn("template is not the canonical lean format", result.errors[0])
+
+    def test_validate_rejects_non_numbered_plan_template_checkbox(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_opencode_repo(root)
+            template = repo / "opencode" / SUPPORT_FILES[-1]
+            template.write_text(
+                template.read_text(encoding="utf-8").replace(
+                    "1. [ ] <bounded implementation step>",
+                    "- [ ] <bounded implementation step>",
+                ),
+                encoding="utf-8",
+            )
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertFalse(result.ok)
+            self.assertIn("template is not the canonical lean format", result.errors[0])
+
+    def test_validate_rejects_extra_plan_template_history_heading(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_opencode_repo(root)
+            template = repo / "opencode" / SUPPORT_FILES[-1]
+            template.write_text(
+                template.read_text(encoding="utf-8") + "\n## Approval History\n",
+                encoding="utf-8",
+            )
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertFalse(result.ok)
+            self.assertIn("template is not the canonical lean format", result.errors[0])
 
     def test_validate_rejects_root_plan_template_drift(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1094,6 +1124,18 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             repo = create_opencode_repo(root)
             root_template = repo / "docs" / "implementation-plans" / "TEMPLATE.md"
             root_template.write_text("drift\n", encoding="utf-8")
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertFalse(result.ok)
+            self.assertIn("root implementation plan files differ", result.errors[0])
+
+    def test_validate_rejects_root_plan_readme_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_opencode_repo(root)
+            root_readme = repo / "docs" / "implementation-plans" / "README.md"
+            root_readme.write_text("drift\n", encoding="utf-8")
 
             result = OpenCodeInstallService(repo, root / "config").validate()
 

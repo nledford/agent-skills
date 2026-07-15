@@ -254,40 +254,50 @@ REQUIRED_SUPPORT_FILES = (
     "project-template/docs/implementation-plans/TEMPLATE.md",
 )
 PLAN_TEMPLATE_TOKENS = (
-    "plan_id: <series>-<NN>",
-    "series: <series>",
-    "sequence: <integer>",
-    "title: <human-readable title>",
-    "status: draft",
-    "revision: 1",
-    "review_decision: pending",
-    "reviewed_at:",
-    "approved_at:",
-    "approved_revision:",
-    "depends_on: []",
-    "baseline_commit: <commit or null>",
-    "execution_owner: engineering-lead",
-    "source_format: native",
-    "source_plan:",
-    "created: YYYY-MM-DD",
-    "updated: YYYY-MM-DD",
-    "completed_at:",
+    "# <Title>",
+    "**Original request:**",
+    "**Key repository findings:**",
+    "**Dependencies:**",
+    "1. [ ] <bounded implementation step>",
 )
 PLAN_PATH_TOKEN = "docs/implementation-plans/plans/<series>/<NN>-<slug>.md"
 PLAN_TEMPLATE_HEADINGS = (
-    "## Executive Summary",
+    "# <Title>",
+    "## TL;DR",
+    "## Context",
     "## Objectives",
-    "## Non-Goals",
-    "## Current-State Evidence",
-    "## Dependencies",
-    "## Implementation Sequence",
-    "## Test Strategy",
-    "## Open Decisions",
-    "## ERB Review History",
-    "## Approval History",
-    "## Amendments",
-    "## Execution Record",
+    "## Guardrails",
+    "## Deliverables",
+    "## Definition of Done",
+    "## TODOs",
+    "## Verification",
 )
+LEAN_PLAN_TEMPLATE = """# <Title>
+
+## TL;DR
+
+## Context
+
+**Original request:**
+
+**Key repository findings:**
+
+**Dependencies:**
+
+## Objectives
+
+## Guardrails
+
+## Deliverables
+
+## Definition of Done
+
+## TODOs
+
+1. [ ] <bounded implementation step>
+
+## Verification
+"""
 
 
 def resolve_v118_permission_action(
@@ -581,10 +591,15 @@ class OpenCodeInstallService:
             return errors
 
         template = contents["project-template/docs/implementation-plans/TEMPLATE.md"]
-        if not all(token in template for token in PLAN_TEMPLATE_TOKENS):
-            errors.append("implementation plan template metadata is not canonical")
-        if not all(heading in template for heading in PLAN_TEMPLATE_HEADINGS):
-            errors.append("implementation plan template headings are not canonical")
+        if (
+            template != LEAN_PLAN_TEMPLATE
+            or not all(token in template for token in PLAN_TEMPLATE_TOKENS)
+            or tuple(
+                line for line in template.splitlines() if line.startswith("#")
+            )
+            != PLAN_TEMPLATE_HEADINGS
+        ):
+            errors.append("implementation plan template is not the canonical lean format")
         for path in (
             "project-template/AGENTS-plan-workflow-snippet.md",
             "project-template/docs/implementation-plans/README.md",
