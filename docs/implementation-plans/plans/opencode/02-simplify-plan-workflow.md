@@ -2619,7 +2619,7 @@ scope_reconciliation: The prerequisite commit changes exactly the four files
   listed above. Current source and all approved target surfaces were reconciled
   against revision 6 with no overlap, destructive work, scope expansion,
   material baseline drift, dependency blocker, or unresolved decision.
-next_slice: 2
+next_slice: 3
 
 ### Slice 1 Accepted and Completed — 2026-07-15T05:30:00-04:00
 
@@ -2654,3 +2654,50 @@ validation:
   verification.
 scope_reconciliation: Commit `f51963b` changed exactly the six owned files listed
   above; no unowned source file changed.
+
+### Slice 2 Accepted and Completed — 2026-07-15T06:30:00-04:00
+
+plan_path: docs/implementation-plans/plans/opencode/02-simplify-plan-workflow.md
+plan_id: opencode-02
+revision: 6
+approved_revision: 6
+baseline_commit: 9bd28e3a15c237e1fb4cf6e1996da36b687db5e8
+slice: 2
+completed_at: 2026-07-15T06:30:00-04:00
+implementation_commit: 54a81be
+implementation_subject: feat(opencode): add plan orchestrator runtime
+worker_sessions:
+- `ses_09a791188ffeuFYIPem9NXQyH2` — agent boundaries, trusted state helper,
+  helper tests, exact state ignores, and Plan Orchestrator runtime contract.
+- `ses_09a6c56b7ffer7sp9tAeKEbet7` — runtime-helper inventory,
+  descriptor-bound three-link installer, manager validation/tests, and targeted
+  setup/governance guidance.
+acceptance: The primary Plan Orchestrator replacement, exact role/TODO/state
+  boundaries, fixed installed-helper CLI, provisional/final lock and pointer
+  contracts, canonical path and bounded-read controls, exact three-link
+  descriptor-bound install lifecycle, and one-item runtime-helper inventory were
+  accepted. Lead MCP, clipboard, Git, and generic unplanned TODO authorization
+  remain intact.
+validation:
+- `python3 -m unittest discover -s tests -p 'test_start_work_state.py' -v` — Lead
+  rerun passed, 21 tests in 0.382s.
+- `python3 -m unittest discover -s tests -p 'test_opencode_manager.py' -v` — Lead
+  rerun passed, 92 tests in 1.186s.
+- `just validate-opencode` — Lead rerun passed, `agents=23 commands=11`.
+- `just validate`, `just lint`, `git diff --check`, and staged diff check —
+  passed.
+- Serena diagnostics for changed Python files — no errors or warnings.
+skipped:
+- Live OpenCode permission/UI behavior, delegation/cancellation, definition
+  restart, and live mutating setup/uninstall were not run.
+- Security and concurrency critic Tasks failed before launch because the runtime
+  could not insert child sessions. The Lead performed direct evidence review and
+  required corrections before commit.
+residual_risk: Same-OS-user hostile tampering and exactly-once external effects
+  remain explicit non-goals. Live permission-pattern behavior remains unobserved.
+record_authoring_exception: The mandatory Planning Coordinator Task and one
+  human-authorized retry both failed before launch with the same child-session
+  database insertion error. The human explicitly authorized a one-time direct
+  write of only this verified slice-2 execution record.
+scope_reconciliation: Commit `54a81be` contains exactly the intended 15-file
+  slice; the worktree was clean after commit and no unrelated file was included.
