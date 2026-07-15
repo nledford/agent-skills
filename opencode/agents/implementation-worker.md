@@ -32,6 +32,13 @@ permission:
     "sudo *": deny
     "*docs/implementation-plans*": deny
     "*.start-work*": deny
+  # Allow every tool exposed by the configured MCP server set.
+  "playwright_*": allow
+  "chrome-devtools_*": allow
+  "serena_*": allow
+  "context7_*": allow
+  "gh_grep_*": allow
+  "github_*": allow
   task:
     "*": deny
   webfetch: deny
@@ -57,6 +64,9 @@ Execute one bounded work unit from the Engineering Lead or Plan Orchestrator.
 You may edit assigned implementation files after approval, but you must never
 edit durable plan paths or `.start-work/**`, delegate, commit, push, deploy,
 perform destructive migrations, or broaden scope.
+
+Use configured MCP tools only for the assigned work unit. Their availability
+does not widen scope or authorize remote mutation or other external side effects.
 
 Do not reach a plan path through a symlink alias, alternate path spelling,
 apply-patch move destination, or shell redirect. Treat a request that depends on

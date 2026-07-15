@@ -41,6 +41,7 @@ REQUIRED_AGENT_FIELDS = frozenset(
 PERMISSION_ACTIONS = frozenset({"allow", "ask", "deny"})
 REASONING_EFFORTS = frozenset({"low", "medium", "high", "xhigh"})
 ROOT_ASK_AGENT_IDS = frozenset({"engineering-lead", "implementation-worker"})
+MCP_ENABLED_AGENT_IDS = frozenset({"engineering-lead", "implementation-worker"})
 PLAN_PATH_EDIT_RULE = "docs/implementation-plans/**"
 PLAN_REDIRECTION_DENY_RULE = "*docs/implementation-plans*"
 STATE_PATH_EDIT_RULE = ".start-work/**"
@@ -472,7 +473,7 @@ ENGINEERING_LEAD_GIT_EFFECTIVE_ACTIONS = (
     ("git push -fv origin main", "deny"),
     ("git status | tee status.txt", "ask"),
 )
-ENGINEERING_LEAD_MCP_TOOL_PATTERNS = (
+CONFIGURED_MCP_TOOL_PATTERNS = (
     "playwright_*",
     "chrome-devtools_*",
     "serena_*",
@@ -1231,8 +1232,8 @@ class OpenCodeInstallService:
     ) -> list[str]:
         errors: list[str] = []
         allowed_tools = set(KNOWN_PERMISSION_TOOLS)
-        if agent_id == "engineering-lead":
-            allowed_tools.update(ENGINEERING_LEAD_MCP_TOOL_PATTERNS)
+        if agent_id in MCP_ENABLED_AGENT_IDS:
+            allowed_tools.update(CONFIGURED_MCP_TOOL_PATTERNS)
         unknown_tools = set(permissions) - allowed_tools
         if unknown_tools:
             errors.append(f"agents: '{name}' has unsupported permission tool")
@@ -1350,9 +1351,9 @@ class OpenCodeInstallService:
                     f"agents: '{name}' network permissions must be {expected_network_action}"
                 )
                 break
-        if agent_id == "engineering-lead" and any(
+        if agent_id in MCP_ENABLED_AGENT_IDS and any(
             permissions.get(pattern) != "allow"
-            for pattern in ENGINEERING_LEAD_MCP_TOOL_PATTERNS
+            for pattern in CONFIGURED_MCP_TOOL_PATTERNS
         ):
             errors.append(
                 f"agents: '{name}' must allow every configured MCP tool pattern"

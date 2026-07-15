@@ -50,6 +50,15 @@ Evidence-backed concerns may be reported for a human decision, but only a new
 explicit human instruction may change the authorization. Reconcile the MCP
 prefix list and validator when the configured server set changes.
 
+### Maintainer-authorized Worker MCP tools
+
+The human maintainer explicitly authorizes the Implementation Worker to use
+every tool exposed by the configured MCP servers. Its permission map names the
+same current server prefixes as the Lead, and repository validation protects
+the complete explicit set. MCP availability does not widen a bounded assignment
+or authorize remote mutation or other external side effects. Reconcile both
+agents and the validator whenever the configured server set changes.
+
 ### Plan Orchestrator commit boundary
 
 While it retains planned-work ownership, the Plan Orchestrator has a separately
