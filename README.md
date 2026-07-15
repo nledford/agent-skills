@@ -22,6 +22,7 @@ agent-skills/
   opencode/
     agents/
     commands/
+    workflow-tools/
     manifest.json
   tools/
   tests/
@@ -97,10 +98,11 @@ symlink to another location.
 ## OpenCode Agents And Commands
 
 Custom OpenCode definitions are tracked under `opencode/agents/` and
-`opencode/commands/`. `opencode/manifest.json` is the reviewed inventory for
-agents, commands, and supporting templates. Validation uses a documented,
-fail-closed subset of YAML frontmatter. It checks definition metadata, permission
-baseline ordering, one-level Task topology, primary command ownership,
+`opencode/commands/`; `opencode/workflow-tools/` contains the trusted helper
+used by planned work. `opencode/manifest.json` is the reviewed inventory for
+agents, commands, runtime helpers, and supporting templates. Validation uses a
+documented, fail-closed subset of YAML frontmatter. It checks definition metadata,
+permission baseline ordering, one-level Task topology, primary command ownership,
 `subtask: false`, balanced Markdown fences, support-file safety, and synchronized
 implementation-plan templates. Command `agent:` values must be unquoted,
 lowercase IDs for tracked primary agents.
@@ -109,11 +111,12 @@ See [Engineering Agent Governance](docs/engineering-agent-governance.md) for the
 role boundaries, command owners, Task-ID rules, and delivery/review handoffs that
 connect these definitions.
 
-The setup workflow manages these two links as one installation:
+The setup workflow manages these three links as one installation:
 
 ```text
-~/.config/opencode/agents   -> <repository>/opencode/agents
-~/.config/opencode/commands -> <repository>/opencode/commands
+~/.config/opencode/agents         -> <repository>/opencode/agents
+~/.config/opencode/commands       -> <repository>/opencode/commands
+~/.config/opencode/workflow-tools -> <repository>/opencode/workflow-tools
 ```
 
 Preview setup before changing the global configuration:
@@ -126,17 +129,23 @@ just verify-opencode
 ```
 
 Setup is fail-closed. It will not move, merge, back up, or replace an existing
-file, directory, broken symlink, or symlink to another location. For an initial
-migration, review and import the intended Markdown files first, manually move
-the existing `agents/` and `commands/` directories outside the repository and
-OpenCode discovery tree, and then rerun setup. If either destination is unsafe,
-neither new link is installed.
+file, directory, broken symlink, or symlink to another location. It validates
+and binds the owned OpenCode configuration root before mutation, then rechecks
+the root and each destination; aliases, root substitution, mixed ownership, and
+unsafe destinations stop the operation. For an initial migration, review and
+import the intended Markdown files first, manually move the existing `agents/`,
+`commands/`, and `workflow-tools/` directories outside the repository and
+OpenCode discovery tree, and then rerun setup. If any destination is unsafe,
+none of the new links is installed.
 
 Treat the linked checkout as live configuration: newly tracked or modified
-agent and command files take effect the next time OpenCode starts. Do not use the
-linked checkout for unreviewed branches. Keep provider credentials, secrets,
-packages, backups, runtime state, and the rest of `~/.config/opencode` outside
-this repository.
+agent, command, and trusted helper files take effect the next time OpenCode
+starts. The helper remains linked from reviewed checkout source; it is not copied
+into target repositories or registered as an OpenCode custom tool. Setup and
+uninstall do not create, remove, or modify target-repository `.start-work` state.
+Do not use the linked checkout for unreviewed branches. Keep provider credentials,
+secrets, packages, backups, runtime state, and the rest of `~/.config/opencode`
+outside this repository.
 
 ## Durable Plan Workflow
 
@@ -144,8 +153,8 @@ The repository includes a project-neutral implementation-plan contract in
 [`docs/implementation-plans/README.md`](docs/implementation-plans/README.md),
 with synchronized starter copies under
 [`opencode/project-template/`](opencode/project-template/). Plans use canonical
-series paths, Coordinator-only durable writes, read-only ERB review, explicit
-human approval, and dependency-aware execution. See the
+series paths; the top-level Plan Orchestrator owns durable plan writes and trusted
+state, while the ERB remains read-only advisory review. See the
 [legacy Weave cleanup checklist](opencode/cleanup/weave-cleanup-checklist.md)
 when migrating prior workflow material.
 
@@ -167,7 +176,7 @@ agents, and any required plugins or tools. Quit and restart OpenCode after setup
 or definition changes because configuration is loaded at startup.
 
 `just uninstall-opencode-dry-run` previews removal. `just uninstall-opencode`
-removes both links only when both still point to this checkout; it never removes
+removes all three links only when all still point to this checkout; it never removes
 the repository definitions or restores old directories.
 
 ## Third-Party Updates

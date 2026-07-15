@@ -20,14 +20,14 @@ lists the tracked definitions.
 | --- | --- | --- |
 | [Engineering Lead](../opencode/agents/engineering-lead.md) | Request intake, process selection, direct or bounded delivery, integration, validation, and independent-review handoff. | Invoke the ERB as a Task child, claim a Board decision without its output, or write a durable plan directly. |
 | [Engineering Review Board](../opencode/agents/engineering-review-board.md) | Independent read-only review, specialist selection, evidence synthesis, severity, and stage decisions. Invoke it as a separate primary agent. | Edit the repository, implement a fix, change plan metadata, or turn `ready` review evidence into human approval. |
-| [Planning Coordinator](../opencode/agents/planning-coordinator.md) | Every durable plan write under `docs/implementation-plans/**`, including creation, revision, review records, approval records, lifecycle state, and execution history. | Implement source changes, delegate, or make a missing product or architecture decision. |
-| [Implementation Worker](../opencode/agents/implementation-worker.md) | One bounded implementation unit assigned by the Lead, plus focused validation and an evidence report. It is the only implementation subagent. | Edit durable plans, delegate, commit, push, deploy, broaden scope, or perform destructive migrations. |
+| [Plan Orchestrator](../opencode/agents/plan-orchestrator.md) | Safe lean-plan creation and updates, trusted planned-work state, planned execution, integration, validation, and native planned-work TODOs. | Act as a Task child, delegate to anything other than the Worker, or claim ERB advisory evidence is approval. |
+| [Implementation Worker](../opencode/agents/implementation-worker.md) | One bounded implementation unit assigned by the Lead or Plan Orchestrator, plus focused validation and an evidence report. It is the only implementation subagent. | Edit durable plans or `.start-work/**`, delegate, commit, push, deploy, broaden scope, or perform destructive migrations. |
 | Review and research specialists | Bounded, decision-relevant analysis for the Lead or ERB using exact runtime-visible IDs. | Implement changes, simulate the ERB, approve plans, or treat advisory output as final authority. |
 
-The Lead may complete narrow work directly. When it delegates implementation,
-it uses only `implementation-worker`; when any durable plan field or history must
-change, it uses only `planning-coordinator`. The ERB and its specialists stay on
-the review side of that boundary.
+The Lead may complete narrow unplanned work directly. When it delegates
+implementation, it uses only `implementation-worker`; durable plan or
+`.start-work` work routes to the top-level Plan Orchestrator rather than a Task
+child. The ERB and its specialists stay on the review side of that boundary.
 
 ### Maintainer-authorized Lead tools
 
@@ -50,29 +50,25 @@ prefix list and validator when the configured server set changes.
 ## Handoffs
 
 For ordinary work, start with the Engineering Lead. A direct request may proceed
-under its Trivial or Bounded process; `/prepare-work <request>` performs
-classification without implementation and creates a draft through the
-Coordinator only when durable planning is warranted.
+under its Trivial or Bounded process. Durable planning, trusted state, planned
+execution, and planned-work TODOs route to the top-level Plan Orchestrator.
 
 The canonical planned-work sequence is documented in
 [`implementation-plans/README.md`](implementation-plans/README.md):
 
-1. The Lead prepares evidence and the Coordinator writes the draft.
-2. A separate ERB session runs `/review-plan <path>`.
-3. The Lead persists that record with `/record-plan-review <path>`. Required
-   corrections return through `/revise-plan <path>` and another ERB review.
-4. A human invokes `/approve-plan <path>` only after a matching persisted ERB
-   `ready` record exists.
-5. The Lead runs `/execute-plan <path>` through bounded worker units, then a
-   separate ERB session runs `/review-implementation <path>`.
+1. The Plan Orchestrator acquires trusted provisional state and writes the draft.
+2. A separate ERB session may provide independent advisory review.
+3. The Plan Orchestrator executes bounded worker units and records only observed
+   plan and state evidence.
 
 An ERB decision is independent review evidence. It is not implementation
-authority, and plan readiness never replaces explicit human approval.
+authority or approval.
 
 ## Command Ownership
 
-All tracked commands use `subtask: false` and route to one of the two primary
-agents.
+All tracked commands use `subtask: false`. The temporary command inventory and
+definitions remain unchanged until the command migration; do not infer current
+Plan Orchestrator authority from a legacy command route.
 
 | Command | Primary agent | Job |
 | --- | --- | --- |
@@ -99,8 +95,10 @@ Before changing role or command guidance:
 - Keep delegated Task prompts scannable: use Markdown sections separated by
   blank lines and bullets for multi-item scope, constraints, questions, and
   evidence. Do not compress a delegation packet into one dense paragraph.
-- Keep implementation and durable-plan persistence separate. Only the worker
-  implements delegated units, and only the Coordinator writes plan artifacts.
+- Keep implementation and durable-plan persistence separate. The Worker owns one
+  bounded implementation unit; the top-level Plan Orchestrator owns plan and
+  trusted state mutations through the linked helper, never copied into a target
+  repository or exposed as a custom tool.
 - Check each command's primary owner, `subtask: false` setting, required evidence,
   and next handoff. A `ready` plan review still requires persistence and explicit
   human approval.

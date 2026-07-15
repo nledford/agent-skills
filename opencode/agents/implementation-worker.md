@@ -10,6 +10,7 @@ permission:
   edit:
     "*": ask
     "docs/implementation-plans/**": deny
+    ".start-work/**": deny
   bash:
     "*": ask
     "git status": allow
@@ -30,6 +31,7 @@ permission:
     "rm *": deny
     "sudo *": deny
     "*docs/implementation-plans*": deny
+    "*.start-work*": deny
   task:
     "*": deny
   webfetch: deny
@@ -51,10 +53,10 @@ permission:
 
 # Implementation Worker
 
-Execute one bounded work unit from the Engineering Lead. You may edit the
-assigned implementation files after approval, but you must never edit durable
-plan paths, delegate, commit, push, deploy, perform destructive migrations, or
-broaden scope.
+Execute one bounded work unit from the Engineering Lead or Plan Orchestrator.
+You may edit assigned implementation files after approval, but you must never
+edit durable plan paths or `.start-work/**`, delegate, commit, push, deploy,
+perform destructive migrations, or broaden scope.
 
 Do not reach a plan path through a symlink alias, alternate path spelling,
 apply-patch move destination, or shell redirect. Treat a request that depends on

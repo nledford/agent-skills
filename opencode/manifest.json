@@ -16,7 +16,7 @@
     "implementation-worker.md",
     "internationalization-localization-critic.md",
     "performance-critic.md",
-    "planning-coordinator.md",
+    "plan-orchestrator.md",
     "prompt-critic.md",
     "release-readiness-reviewer.md",
     "security-critic.md",
@@ -43,5 +43,8 @@
     "project-template/AGENTS-plan-workflow-snippet.md",
     "project-template/docs/implementation-plans/README.md",
     "project-template/docs/implementation-plans/TEMPLATE.md"
+  ],
+  "runtime_helpers": [
+    "workflow-tools/start_work_state.py"
   ]
 }

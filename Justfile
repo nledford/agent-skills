@@ -49,7 +49,7 @@ uninstall-dry-run:
 validate-opencode:
     @{{python}} {{opencode_manager}} validate
 
-# Create both global OpenCode symlinks when their destinations are safe.
+# Create all three global OpenCode links when their destinations are safe.
 [group('opencode')]
 setup-opencode:
     @{{python}} {{opencode_manager}} setup
@@ -59,7 +59,7 @@ setup-opencode:
 setup-opencode-dry-run:
     @{{python}} {{opencode_manager}} setup --dry-run
 
-# Verify repository definitions and both global OpenCode symlinks.
+# Verify repository definitions and all three global OpenCode links.
 [group('opencode')]
 verify-opencode:
     @{{python}} {{opencode_manager}} verify
@@ -69,7 +69,7 @@ verify-opencode:
 doctor-opencode:
     @{{python}} {{opencode_manager}} doctor
 
-# Remove both global OpenCode symlinks only when this repository owns them.
+# Remove all three global OpenCode links only when this repository owns them.
 [group('opencode')]
 uninstall-opencode:
     @{{python}} {{opencode_manager}} uninstall

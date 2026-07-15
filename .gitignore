@@ -15,3 +15,7 @@ __pycache__/
 
 # Local CortexKit/Magic Context state.
 /.cortexkit/
+
+# Local trusted plan-orchestration state.
+/.start-work/resume.json
+/.start-work/lock/

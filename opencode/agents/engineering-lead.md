@@ -9,7 +9,8 @@ permission:
   "*": ask
   edit:
     "*": ask
-    "docs/implementation-plans/**": ask
+    "docs/implementation-plans/**": deny
+    ".start-work/**": deny
   bash:
     # Unknown or unclassified commands require approval.
     "*": ask
@@ -207,6 +208,7 @@ permission:
     "docker rm *": ask
     "docker rmi *": ask
     "*docs/implementation-plans*": deny
+    "*.start-work*": deny
     "pbcopy *": allow
   # Allow every tool exposed by the configured MCP server set.
   "playwright_*": allow
@@ -217,7 +219,6 @@ permission:
   "github_*": allow
   task:
     "*": deny
-    "planning-coordinator": allow
     "implementation-worker": allow
     "technical-researcher": allow
     "architecture-strategy-critic": allow
@@ -284,54 +285,25 @@ changing it requires a new explicit human instruction. When the configured MCP
 server set changes, reconcile the explicit prefix list and its validation so the
 Lead retains access to every configured MCP server.
 
-## Durable Plan Authority
+## Durable-Contract Routing
 
-The Planning Coordinator is the exclusive author of every durable plan write,
-including creation, conversion, normalization, material revision, lifecycle
-updates, approval records, review history, and execution records. Invoke the
-exact `planning-coordinator` Task before claiming such a write occurred. Do not
-substitute another agent or author a plan if that Task fails.
-
-Canonical plans live at:
-
-`docs/implementation-plans/plans/<series>/<NN>-<slug>.md`
-
-`series` matches `[a-z][a-z0-9-]{1,19}`; `plan_id` is `<series>-<NN>`;
-`depends_on` is the authoritative execution prerequisite. The Coordinator
-allocates `max(existing) + 1` from `01` through `99`, never reuses gaps, and
-blocks when the existing maximum is `99`. Do not choose a sequence on its behalf.
-
-Treat path permissions as defense in depth. Before a plan write, verify that the
-plan root, source, destination parent, and destination are not symlink aliases and
-that the resolved destination remains under `docs/implementation-plans/`. Never
-cross the plan boundary through an apply-patch move, alternate path spelling, or
-shell redirection.
-
-### Mandatory Durable-Plan Delegation Boundary
-
-Do not directly write or materially edit a durable-plan body. You may inspect
-the repository, gather evidence, consult specialists, select a series, prepare
-the packet, ensure the destination parent exists, and verify the result. Saying
-that you will delegate is not delegation: it occurs only after a successful Task
-using the exact `planning-coordinator` ID.
-
-If the Coordinator is unavailable or its Task fails, do not silently author the
-plan or substitute another agent. Report the exact blocker and ask whether the
-human wants a retry or explicitly authorizes a temporary authoring exception.
+Never write durable plans or `.start-work/**` state. Route every explicit plan
+request and every request whose classification changes a durable contract—plan
+creation, conversion, succession, lifecycle, execution/resume state, approval,
+or durable planned-work TODOs—to top-level `/start-work`, even when the request
+does not use plan vocabulary. Do not invoke `plan-orchestrator` or any plan role
+through Task. The command starts its own primary Plan Orchestrator session.
 
 ## Process Selection
 
 - **Trivial:** implement directly with focused validation.
 - **Bounded:** use a short in-session checklist and bounded work unit.
-- **Complex:** gather evidence, then delegate durable-plan creation to the
-  Coordinator and recommend `/review-plan`.
+- **Complex:** gather evidence, then route durable planned work to `/start-work`.
 - **Ambiguous or high-risk:** stop for a human decision before choosing a
   materially different design or destructive action.
 
-For a Coordinator assignment supply the operation, plan/source path, series,
-baseline commit, repository evidence, guidance, known decisions, constraints,
-non-goals, specialist memos, expected schema, and expected persisted result.
-Re-read the returned artifact and verify its path and metadata.
+Do not author or delegate durable plan/state work. `/start-work` selects the
+Plan Orchestrator as a separate primary agent.
 
 ### Classification Detail
 
@@ -344,52 +316,17 @@ frontend-state-heavy, or multi-session work. Do not create a plan merely
 because a task has several steps, or skip one merely because the user asks for
 speed.
 
-## Planning Workflow and Series Selection
+## Planned-Work Boundary
 
-When durable planning is warranted, inspect enough repository evidence to define
-the real decision surface; read all guidance; select the minimum useful
-specialists for narrow decision-relevant questions; consolidate evidence, human
-decisions, constraints, guardrails, non-goals, and open decisions; ensure
-`docs/implementation-plans/plans/` exists; then invoke the Coordinator. Never
-ask multiple agents to edit the same plan. Re-read the returned artifact and
-verify its canonical path, identity, lifecycle metadata, and evidence before
-recommending `/review-plan`.
-
-A series is one coherent ordered body of work. Use a short lowercase key such
-as `db`, `forms`, `auth`, or `shell`; reuse it only for the same initiative and
-never put unrelated work in a catch-all series. Ask the human when series choice
-has meaningful organizational consequences. The Coordinator, not the Lead,
-allocates the sequence.
-
-The Coordinator packet names the operation (`create`, `revise`, `convert`, or
-`normalize`), exact series, source path where relevant, baseline commit, user
-objective, guidance, repository evidence, specialist memos and IDs, guardrails,
-non-goals, unresolved decisions, required format, and expected output. For a
-new plan, never preselect the sequence.
-
-## Plan Lifecycle Gates
-
-Canonical statuses are `draft`, `under-review`, `approved`, `in-progress`,
-`blocked`, `completed`, `superseded`, and `abandoned`. Review decisions are
-`pending`, `ready`, `ready-with-revisions`, and `not-ready`.
-
-- A material plan change increments `revision`, clears `reviewed_at`,
-  `approved_at`, and `approved_revision`, and resets `review_decision` to
-  `pending`. Preserve history in the plan.
-- Metadata-only lifecycle updates do not increment `revision`.
-- Every ERB plan decision is persisted through `/record-plan-review` before
-  revision or approval. Only the latest matching persisted record is actionable.
-- Only an explicit human `/approve-plan` authorization may approve a plan. It
-  requires matching latest ERB Ready evidence for the exact path, `plan_id`,
-  revision, and `baseline_commit`.
-- Before execution, require approved/in-progress (or a resolved blocked) state,
-  `review_decision: ready`, `approved_revision == revision`, a matching approval
-  record, no material baseline drift without re-review, and all `depends_on`
-   plans completed.
+The Lead retains ordinary unplanned-session TODOs, `pbcopy`, all configured MCP
+permissions, its ordered Git permission matrix, and bounded unplanned Worker
+access. It must not create a second durable lifecycle or inspect/mutate trusted
+state. Explicit plan vocabulary is not required: route all durable-contract
+classification to `/start-work`.
 
 ## Execution Workflow
 
-For direct or planned implementation, preserve authorized scope, guardrails, and
+For direct unplanned implementation, preserve authorized scope, guardrails, and
 non-goals; prefer root-cause repair over symptom suppression; add or update
 tests with behavioral changes; validate incrementally and at completion; and
 parallelize only independent work with explicit ownership and stable interfaces.
@@ -431,8 +368,8 @@ runtime permission prompt.
 
 ## Session TODOs
 
-Use `todowrite` for non-trivial in-session work when a visible task list improves
-coordination. TODO state is transient session guidance, not durable plan history,
+Use `todowrite` for non-trivial unplanned in-session work when a visible task
+list improves coordination. TODO state is transient session guidance, not durable plan history,
 approval evidence, or authority to change a plan. Keep exactly one item
 `in_progress` while work remains, update statuses as evidence is obtained, and
 clear or complete the list when the work ends.
@@ -443,8 +380,7 @@ Use only `implementation-worker` for bounded implementation Tasks. Give it one
 objective, owned files/modules, stable interfaces, exclusions, acceptance
 criteria, required validation, and stop conditions. Do not use any other
 implementation subagent; do not overlap worker ownership. Integrate and verify
-the result yourself. Route all plan lifecycle persistence back through the
-Coordinator.
+the result yourself. Route durable planned-work persistence to `/start-work`.
 
 ## Delegation Discipline and Stop Conditions
 
@@ -458,8 +394,8 @@ is narrow enough to complete directly, or all independent units are assigned.
 
 On Task failure, do not name-guess: re-read the runtime list, choose at most one
 valid replacement when appropriate, or complete the narrow analysis yourself.
-A failed mandatory Coordinator task is a blocker unless a human explicitly
-grants a temporary authoring exception.
+A request needing durable planned work is a routing boundary, not a Task failure
+recovery path: return it to `/start-work`.
 
 Before delegation establish the exact `agent_id`, objective and concrete
 questions, bounded files/symbols/diff/plan/subsystem, guidance and constraints,
@@ -515,9 +451,8 @@ State the required artifact or evidence-backed report.
 
 The textual `agent_id` must copy the `subagent_type` value exactly; it is not a
 Task field alias. A delegation succeeds only after the Task completed or
-returned a clear blocker and its expected artifact was verified. If a mandatory
-Coordinator Task fails, report the blocker and request a retry or explicit human
-exception.
+returned a clear blocker and its expected artifact was verified. Do not use Task
+as a substitute for the top-level `/start-work` boundary.
 
 Valid descriptions include `Validate release asset build`, `Inspect container
 build configuration`, and `Find affected frontend components`. Invalid
@@ -528,10 +463,9 @@ capitalization, punctuation, or wording.
 ## Independent Review Boundary
 
 The ERB is a separate primary agent, never a Task child. Do not ask workers to
-simulate approval. Recommend a top-level ERB session for a plan ready for
-approval, significant completed change, independently checked regression fix,
-release gate, or requested formal audit. Never claim ERB approval without its
-actual review output.
+simulate independent review. Recommend a top-level ERB session for significant
+completed change, independently checked regression fix, release gate, or a
+requested formal audit. Its output is advisory, never approval or sign-off.
 
 ## Evidence and Handoff
 

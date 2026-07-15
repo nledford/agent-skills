@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
+import stat
 import sys
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 
 GLOBAL_CONFIG_ROOT = Path.home() / ".config" / "opencode"
 DEFINITION_ROOT_NAME = "opencode"
 MANIFEST_NAME = "manifest.json"
 DEFINITION_KINDS = ("agents", "commands")
+INSTALL_KINDS = ("agents", "commands", "workflow-tools")
 DEFINITION_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*\.md$")
 SUPPORT_FILE_RE = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)+$"
@@ -25,7 +28,7 @@ TOP_LEVEL_FIELD_RE = re.compile(r"^([a-z][A-Za-z0-9_]*):(?:\s(.*))?$")
 PERMISSION_LEVEL_RE = re.compile(
     r'^  (?:(?:"([^"\\]+)")|([a-z][a-z0-9_]*)):(?:\s(.*))?$'
 )
-PERMISSION_RULE_RE = re.compile(r'^    (?:"([^"\\]+)"|([a-z0-9][a-z0-9-]*)):\s*(allow|ask|deny)$')
+PERMISSION_RULE_RE = re.compile(r'^    (?:"(.+)"|([a-z0-9][a-z0-9-]*)):\s*(allow|ask|deny)$')
 MODEL_VALUE_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$")
 AGENT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
@@ -41,6 +44,27 @@ REASONING_EFFORTS = frozenset({"low", "medium", "high", "xhigh"})
 ROOT_ASK_AGENT_IDS = frozenset({"engineering-lead", "implementation-worker"})
 PLAN_PATH_EDIT_RULE = "docs/implementation-plans/**"
 PLAN_REDIRECTION_DENY_RULE = "*docs/implementation-plans*"
+STATE_PATH_EDIT_RULE = ".start-work/**"
+STATE_REDIRECTION_DENY_RULE = "*.start-work*"
+RUNTIME_HELPERS = ("workflow-tools/start_work_state.py",)
+_PLAN_ORCHESTRATOR_BASH_RULES = (
+    ("*", "deny"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" acquire --repo-root .', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" finalize --repo-root . --owner-token * --plan-path *', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" read-pointer --repo-root . --owner-token *', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" write-pointer --repo-root . --owner-token * --plan-path *', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" clear-pointer --repo-root . --owner-token * --plan-path * --contract-sha256 * --completed true', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" release-provisional --repo-root . --owner-token * --known-clean true --no-mutation true --no-child-can-mutate true', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" release-final --repo-root . --owner-token * --completed-execution true --completed-plan-only false --outcomes-known true --no-child-can-mutate true', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" release-final --repo-root . --owner-token * --completed-execution false --completed-plan-only true --outcomes-known true --no-child-can-mutate true', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" recover-stale --repo-root . --prior-human-confirmation true', "ask"),
+    (PLAN_REDIRECTION_DENY_RULE, "deny"),
+    (STATE_REDIRECTION_DENY_RULE, "deny"),
+)
+PLAN_ORCHESTRATOR_BASH_RULES = tuple(
+    (rule.replace('"', r'\"'), action)
+    for rule, action in _PLAN_ORCHESTRATOR_BASH_RULES
+)
 KNOWN_PERMISSION_TOOLS = frozenset(
     {
         "*",
@@ -78,6 +102,7 @@ SAFE_EXACT_GIT_BASH_ALLOWS = frozenset(
         "git show",
         "git ls-files",
         "pwd",
+        'python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" acquire --repo-root .',
     }
 )
 ENGINEERING_LEAD_POST_PLAN_BASH_RULES = (("pbcopy *", "allow"),)
@@ -319,6 +344,7 @@ class DefinitionInventory:
     agents: tuple[str, ...]
     commands: tuple[str, ...]
     support_files: tuple[str, ...]
+    runtime_helpers: tuple[str, ...]
 
     def for_kind(self, kind: str) -> tuple[str, ...]:
         return getattr(self, kind)
@@ -342,23 +368,43 @@ class OperationResult:
         return not self.errors
 
 
+@dataclass(frozen=True)
+class BoundConfigRoot:
+    descriptor: int
+    device: int
+    inode: int
+    parent_descriptor: int
+    parent_device: int
+    parent_inode: int
+    relative_targets: tuple[tuple[str, str], ...]
+
+
+@dataclass(frozen=True)
+class BoundConfigParent:
+    descriptor: int
+    device: int
+    inode: int
+
+
 class OpenCodeInstallService:
     def __init__(
         self,
         repo_root: Path | str,
         config_root: Path | str = GLOBAL_CONFIG_ROOT,
+        mutation_hook: Callable[[str, str], None] | None = None,
     ) -> None:
         self.repo_root = Path(repo_root).expanduser().resolve()
         self.definition_root = self.repo_root / DEFINITION_ROOT_NAME
-        self.config_root = Path(config_root).expanduser()
+        self.config_root = Path(config_root).expanduser().absolute()
         self.sources = {
             kind: self.definition_root / kind
-            for kind in DEFINITION_KINDS
+            for kind in INSTALL_KINDS
         }
         self.destinations = {
             kind: self.config_root / kind
-            for kind in DEFINITION_KINDS
+            for kind in INSTALL_KINDS
         }
+        self.mutation_hook = mutation_hook
 
     def validate(self) -> OperationResult:
         inventory, errors = self._load_inventory()
@@ -366,6 +412,7 @@ class OpenCodeInstallService:
             return OperationResult(errors=errors)
 
         errors.extend(self._validate_support_files(inventory.support_files))
+        errors.extend(self._validate_runtime_helpers(inventory.runtime_helpers))
         for kind in DEFINITION_KINDS:
             errors.extend(self._validate_kind(kind, inventory.for_kind(kind)))
 
@@ -373,6 +420,7 @@ class OpenCodeInstallService:
             agent_metadata = self._agent_metadata(inventory)
             errors.extend(self._validate_task_delegation(agent_metadata))
             errors.extend(self._validate_command_agents(inventory, agent_metadata))
+            errors.extend(self._validate_prompt_contracts(inventory))
 
         if errors:
             return OperationResult(errors=errors)
@@ -389,59 +437,30 @@ class OpenCodeInstallService:
         if not validation.ok:
             return validation
 
-        if self.config_root.exists() and not self.config_root.is_dir():
-            return OperationResult(
-                errors=["OpenCode config root exists but is not a directory"]
-            )
-
-        states, errors = self._inspect_destinations(missing_is_error=False)
+        bound, root_missing, errors = self._bind_config_root(create=False)
         if errors:
             return OperationResult(errors=errors)
-
-        messages: list[str] = []
-        for kind in DEFINITION_KINDS:
-            if states[kind] == "expected":
-                messages.append(f"{kind} symlink is already configured")
-            else:
-                prefix = "Would create" if dry_run else "Created"
-                messages.append(f"{prefix} {kind} symlink")
-
-        if dry_run or all(state == "expected" for state in states.values()):
-            return OperationResult(messages=messages)
-
+        if root_missing:
+            messages = [f"Would create {kind} symlink" for kind in INSTALL_KINDS]
+            if dry_run:
+                report_errors = self._revalidate_missing_root_success("setup")
+                return OperationResult(messages=messages, errors=report_errors)
+            return self._create_and_setup(messages)
+        assert bound is not None
         try:
-            self.config_root.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            return OperationResult(errors=["Could not create OpenCode config root"])
-        created: list[str] = []
-        active_kind = "OpenCode"
-        try:
-            for kind in DEFINITION_KINDS:
-                if states[kind] == "expected":
-                    continue
-                active_kind = kind
-                os.symlink(
-                    self.sources[kind],
-                    self.destinations[kind],
-                    target_is_directory=True,
-                )
-                created.append(kind)
-        except OSError:
-            warnings = self._rollback_created(created)
-            return OperationResult(
-                errors=[f"Failed to create {active_kind} symlink; setup was rolled back"],
-                warnings=warnings,
-            )
-
-        _, verification_errors = self._inspect_destinations(missing_is_error=True)
-        if verification_errors:
-            warnings = self._rollback_created(created)
-            return OperationResult(
-                errors=["OpenCode symlink verification failed; setup was rolled back"],
-                warnings=warnings,
-            )
-
-        return OperationResult(messages=messages)
+            states, errors = self._inspect_destinations(bound, missing_is_error=False)
+            if errors:
+                return OperationResult(errors=errors)
+            messages = [
+                f"{kind} symlink is already configured" if states[kind] == "expected" else f"{'Would create' if dry_run else 'Created'} {kind} symlink"
+                for kind in INSTALL_KINDS
+            ]
+            if dry_run or all(state == "expected" for state in states.values()):
+                report_errors = self._revalidate_report_state(bound, "setup", states)
+                return OperationResult(messages=messages, errors=report_errors)
+            return self._create_links(bound, states, messages)
+        finally:
+            self._close_bound_root(bound)
 
     def verify(self) -> OperationResult:
         validation = self.validate()
@@ -452,71 +471,105 @@ class OpenCodeInstallService:
         if inventory is None:
             return OperationResult(errors=inventory_errors)
 
-        _, errors = self._inspect_destinations(missing_is_error=True)
-        if errors:
-            return OperationResult(errors=errors)
+        bound, missing, errors = self._bind_config_root(create=False)
+        if errors or missing or bound is None:
+            return OperationResult(errors=errors or ["OpenCode config root is missing"])
+        try:
+            _, errors = self._inspect_destinations(bound, missing_is_error=True)
+            if not errors:
+                errors.extend(self._verify_visible_sources(bound, inventory))
+            if errors:
+                return OperationResult(errors=errors)
+            self._before_mutation("success", "verify", bound)
+            _, final_errors = self._inspect_destinations(bound, missing_is_error=True)
+            if final_errors:
+                return OperationResult(errors=final_errors)
+            return OperationResult(messages=["OpenCode managed symlinks are configured", f"Visible OpenCode definitions: agents={len(inventory.agents)} commands={len(inventory.commands)} helpers=1"])
+        except OSError:
+            return OperationResult(errors=["OpenCode configuration root changed"])
+        finally:
+            self._close_bound_root(bound)
 
+    def _verify_visible_sources(
+        self,
+        bound: BoundConfigRoot,
+        inventory: DefinitionInventory,
+    ) -> list[str]:
+        self._before_mutation("visibility", "verify", bound)
+        _, errors = self._inspect_destinations(bound, missing_is_error=True)
+        if errors:
+            return errors
         for kind in DEFINITION_KINDS:
             for name in inventory.for_kind(kind):
-                visible_path = self.destinations[kind] / name
-                if not visible_path.is_file():
+                source = self.sources[kind] / name
+                if source.is_symlink() or not source.is_file():
                     errors.append(f"{kind}: '{name}' is not visible through the symlink")
+        helper = self.sources["workflow-tools"] / "start_work_state.py"
+        if helper.is_symlink() or not helper.is_file():
+            errors.append("runtime helper is not visible through the workflow-tools symlink")
+        return errors
 
+    def _revalidate_missing_root_success(self, operation: str) -> list[str]:
+        if self.mutation_hook:
+            self.mutation_hook("success", operation)
+        bound, missing, errors = self._bind_config_root(create=False)
         if errors:
-            return OperationResult(errors=errors)
+            return errors
+        if bound is not None:
+            self._close_bound_root(bound)
+        if not missing:
+            return ["OpenCode configuration root changed"]
+        return []
 
-        return OperationResult(
-            messages=[
-                "OpenCode agents and commands symlinks are configured",
-                "Visible OpenCode definitions: "
-                f"agents={len(inventory.agents)} commands={len(inventory.commands)}",
-            ]
-        )
+    def _revalidate_report_state(
+        self,
+        bound: BoundConfigRoot,
+        operation: str,
+        expected_states: dict[str, str],
+    ) -> list[str]:
+        try:
+            self._before_mutation("success", operation, bound)
+            states, errors = self._inspect_destinations(bound, missing_is_error=False)
+            if errors:
+                return errors
+            if states != expected_states:
+                return ["OpenCode destination changed"]
+            return []
+        except OSError:
+            return ["OpenCode configuration root changed"]
 
     def uninstall(self, *, dry_run: bool = False) -> OperationResult:
-        states, errors = self._inspect_destinations(missing_is_error=False)
+        bound, missing, errors = self._bind_config_root(create=False)
         if errors:
             return OperationResult(errors=errors)
-
-        if all(state == "missing" for state in states.values()):
-            return OperationResult(messages=["No managed OpenCode symlinks are installed"])
-
-        if any(state != "expected" for state in states.values()):
+        if missing:
+            report_errors = self._revalidate_missing_root_success("uninstall")
             return OperationResult(
-                errors=[
-                    "OpenCode install is incomplete; refusing to remove either destination"
-                ]
+                messages=["No managed OpenCode symlinks are installed"],
+                errors=report_errors,
             )
-
-        if dry_run:
-            return OperationResult(
-                messages=[
-                    "Would remove agents symlink",
-                    "Would remove commands symlink",
-                ]
-            )
-
-        removed: list[str] = []
-        active_kind = "OpenCode"
+        assert bound is not None
         try:
-            for kind in DEFINITION_KINDS:
-                active_kind = kind
-                if self._destination_state(kind) != "expected":
-                    raise OSError("destination changed during uninstall")
-                self.destinations[kind].unlink()
-                removed.append(kind)
-        except OSError:
-            warnings = self._restore_removed(removed)
-            return OperationResult(
-                errors=[
-                    f"Failed to remove {active_kind} symlink; uninstall was rolled back"
-                ],
-                warnings=warnings,
-            )
-
-        return OperationResult(
-            messages=["Removed agents symlink", "Removed commands symlink"]
-        )
+            states, errors = self._inspect_destinations(bound, missing_is_error=False)
+            if errors:
+                return OperationResult(errors=errors)
+            if all(state == "missing" for state in states.values()):
+                report_errors = self._revalidate_report_state(bound, "uninstall", states)
+                return OperationResult(
+                    messages=["No managed OpenCode symlinks are installed"],
+                    errors=report_errors,
+                )
+            if any(state != "expected" for state in states.values()):
+                return OperationResult(errors=["OpenCode install is incomplete; refusing to remove any destination"])
+            if dry_run:
+                report_errors = self._revalidate_report_state(bound, "uninstall", states)
+                return OperationResult(
+                    messages=[f"Would remove {kind} symlink" for kind in INSTALL_KINDS],
+                    errors=report_errors,
+                )
+            return self._remove_links(bound)
+        finally:
+            self._close_bound_root(bound)
 
     def _load_inventory(self) -> tuple[DefinitionInventory | None, list[str]]:
         if self.definition_root.is_symlink() or not self.definition_root.is_dir():
@@ -531,10 +584,10 @@ class OpenCodeInstallService:
         except (OSError, UnicodeError, json.JSONDecodeError):
             return None, ["OpenCode manifest is not valid UTF-8 JSON"]
 
-        manifest_kinds = (*DEFINITION_KINDS, "support_files")
+        manifest_kinds = (*DEFINITION_KINDS, "support_files", "runtime_helpers")
         if not isinstance(data, dict) or set(data) != set(manifest_kinds):
             return None, [
-                "OpenCode manifest must contain only agents, commands, and support_files lists"
+                "OpenCode manifest must contain only agents, commands, support_files, and runtime_helpers lists"
             ]
 
         values: dict[str, tuple[str, ...]] = {}
@@ -563,6 +616,7 @@ class OpenCodeInstallService:
             agents=values["agents"],
             commands=values["commands"],
             support_files=values["support_files"],
+            runtime_helpers=values["runtime_helpers"],
         ), []
 
     def _validate_support_files(self, support_files: tuple[str, ...]) -> list[str]:
@@ -624,6 +678,28 @@ class OpenCodeInstallService:
             except OSError:
                 errors.append("root implementation plan file is not readable")
         return errors
+
+    def _validate_runtime_helpers(self, runtime_helpers: tuple[str, ...]) -> list[str]:
+        if runtime_helpers != RUNTIME_HELPERS:
+            return ["OpenCode manifest runtime_helpers inventory is not canonical"]
+        root = self.definition_root / "workflow-tools"
+        if root.is_symlink() or not root.is_dir():
+            return ["runtime helper root is missing or is not a regular directory"]
+        try:
+            observed = {entry.name for entry in root.iterdir() if entry.name != "__pycache__"}
+        except OSError:
+            return ["runtime helper root is not readable"]
+        if observed != {"start_work_state.py"}:
+            return ["runtime helper root has missing or unexpected entries"]
+        helper = root / "start_work_state.py"
+        if helper.is_symlink() or not helper.is_file():
+            return ["runtime helper is missing or is not a regular non-symlink file"]
+        try:
+            if helper.resolve(strict=True).parent != root.resolve(strict=True):
+                return ["runtime helper is outside the trusted root"]
+        except (OSError, RuntimeError):
+            return ["runtime helper is outside the trusted root"]
+        return []
 
     def _validate_kind(self, kind: str, expected: tuple[str, ...]) -> list[str]:
         root = self.sources[kind]
@@ -917,6 +993,11 @@ class OpenCodeInstallService:
                     )
                     break
 
+        if agent_id == "plan-orchestrator" and bash != PLAN_ORCHESTRATOR_BASH_RULES:
+            errors.append(
+                f"agents: '{name}' must preserve canonical workflow-helper permissions"
+            )
+
         if agent_id == "engineering-lead":
             git_rules = (
                 tuple(rule for rule in bash if rule[0].startswith("git"))
@@ -954,6 +1035,10 @@ class OpenCodeInstallService:
                 errors.append(
                     f"agents: '{name}' must preserve effective git permission actions"
                 )
+        if agent_id == "plan-orchestrator":
+            if permissions.get("todowrite") != "allow":
+                errors.append(f"agents: '{name}' must allow todowrite")
+        elif agent_id == "engineering-lead":
             if permissions.get("todowrite") != "allow":
                 errors.append(f"agents: '{name}' must allow todowrite")
         elif "todowrite" in permissions and permissions["todowrite"] != "deny":
@@ -990,11 +1075,11 @@ class OpenCodeInstallService:
         edit = permissions.get("edit")
         expected_edit: str | tuple[tuple[str, str], ...]
         if agent_id == "engineering-lead":
-            expected_edit = (("*", "ask"), (PLAN_PATH_EDIT_RULE, "ask"))
+            expected_edit = (("*", "ask"), (PLAN_PATH_EDIT_RULE, "deny"), (STATE_PATH_EDIT_RULE, "deny"))
         elif agent_id == "implementation-worker":
-            expected_edit = (("*", "ask"), (PLAN_PATH_EDIT_RULE, "deny"))
-        elif agent_id == "planning-coordinator":
-            expected_edit = (("*", "deny"), (PLAN_PATH_EDIT_RULE, "ask"))
+            expected_edit = (("*", "ask"), (PLAN_PATH_EDIT_RULE, "deny"), (STATE_PATH_EDIT_RULE, "deny"))
+        elif agent_id == "plan-orchestrator":
+            expected_edit = (("*", "ask"), (PLAN_PATH_EDIT_RULE, "ask"), (STATE_PATH_EDIT_RULE, "deny"))
         else:
             expected_edit = "deny"
 
@@ -1003,15 +1088,15 @@ class OpenCodeInstallService:
         if agent_id not in {
             "engineering-lead",
             "implementation-worker",
-            "planning-coordinator",
+            "plan-orchestrator",
         }:
             permitted_edit_values.add((("*", "deny"),))
         if edit not in permitted_edit_values:
             errors.append(f"agents: '{name}' violates core edit ownership")
 
         bash = permissions.get("bash")
-        if agent_id in ROOT_ASK_AGENT_IDS:
-            required_suffix = ((PLAN_REDIRECTION_DENY_RULE, "deny"),)
+        if agent_id in ROOT_ASK_AGENT_IDS | {"plan-orchestrator"}:
+            required_suffix = ((PLAN_REDIRECTION_DENY_RULE, "deny"), (STATE_REDIRECTION_DENY_RULE, "deny"))
             if agent_id == "engineering-lead":
                 required_suffix += ENGINEERING_LEAD_POST_PLAN_BASH_RULES
             if (
@@ -1088,6 +1173,20 @@ class OpenCodeInstallService:
                     )
                 if target not in subagents:
                     errors.append(f"agents: '{agent_id}.md' has unknown task target '{target}'")
+        expected_edges = {
+            "plan-orchestrator": ("implementation-worker",),
+            "implementation-worker": (),
+        }
+        for agent_id, expected in expected_edges.items():
+            if agent_id not in agent_metadata:
+                continue
+            actual = tuple(target for target, _ in agent_metadata[agent_id][1] if target != "*")
+            if actual != expected:
+                errors.append(f"agents: '{agent_id}.md' violates the approved Task graph")
+        if "engineering-lead" in agent_metadata:
+            lead_edges = tuple(target for target, _ in agent_metadata["engineering-lead"][1] if target != "*")
+            if "plan-orchestrator" in lead_edges or "planning-coordinator" in lead_edges:
+                errors.append("agents: 'engineering-lead.md' must not delegate plan authority")
         return errors
 
     def _validate_command_agents(
@@ -1119,15 +1218,311 @@ class OpenCodeInstallService:
                 )
         return errors
 
+    def _validate_prompt_contracts(self, inventory: DefinitionInventory) -> list[str]:
+        contracts = {
+            "plan-orchestrator.md": (
+                "top-level primary agent, never a Task child",
+                "native planned-work TODOs",
+                "provisional ownership",
+            ),
+            "engineering-lead.md": (
+                "Never write durable plans or `.start-work/**` state",
+                "top-level `/start-work`",
+                "unplanned-session TODOs",
+            ),
+            "engineering-review-board.md": (
+                "top-level, read-only review orchestrator",
+                "advisory evidence only",
+            ),
+            "implementation-worker.md": (
+                "Engineering Lead or Plan Orchestrator",
+                "`.start-work/**`",
+                "edit durable plan paths",
+            ),
+        }
+        errors: list[str] = []
+        selected = {"plan-orchestrator.md"} & set(inventory.agents)
+        if set(contracts).issubset(inventory.agents):
+            selected = set(contracts)
+        for name, required in contracts.items():
+            if name not in selected:
+                continue
+            try:
+                prompt = (self.sources["agents"] / name).read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                errors.append(f"agents: '{name}' prompt contract is unreadable")
+                continue
+            if not all(token in prompt for token in required):
+                errors.append(f"agents: '{name}' prompt contract is incomplete")
+                continue
+            if name == "plan-orchestrator.md":
+                errors.extend(self._validate_plan_orchestrator_prompt_contract(name, prompt))
+        return errors
+
+    @staticmethod
+    def _validate_plan_orchestrator_prompt_contract(name: str, prompt: str) -> list[str]:
+        required = (
+            "Do not add frontmatter or any other heading, section, lifecycle field, history, provenance, review record, approval field, status, dependency field, or metadata.",
+            "For no-path work, display the resolved path and checkbox state, then obtain explicit human confirmation before mutation.",
+            "For a new request, allocate and self-check the closed lean shape, then execute by default unless the human explicitly requests plan-only work.",
+            "For an explicit valid lean path, validate and reconcile it, then execute its remaining TODOs by default; it does not inherit the no-path confirmation gate.",
+            "For an explicit legacy canonical plan, preserve the input, allocate a lean successor without provenance metadata, and execute it by default unless the human explicitly requests plan-only work.",
+            "`/convert-tapestry-plan` remains explicit and plan-only by default; execute only when the human also asks to execute.",
+            "Conversational updates to a lean plan execute remaining TODOs by default unless the human explicitly requests plan-only work.",
+            "Replace the whole native TODO list on every update. Keep at most five entries and zero or one `in_progress` entry.",
+            "Start in original plan-step order, retain original step numbers, and use summaries of at most 30 characters excluding the step-number prefix.",
+            "On a transition, order entries as most-recent completed, then current, then pending.",
+            "A blocked or failed step stays visible with its evidence and never advances a checkbox or window speculatively.",
+            "Check a plan step only after observed implementation/validation evidence authorizes it.",
+            "After all plan steps are evidenced complete, write the completed-only list once, then replace it with `todos: []`.",
+            "Do not clear TODOs on failure, uncertainty, or partial reconciliation.",
+            "Your self-check is not independent review, ERB evidence, approval, readiness, or sign-off.",
+            "ERB output is optional independent advisory evidence, not a prerequisite or lifecycle authority.",
+        )
+        normalized = " ".join(prompt.split())
+        if LEAN_PLAN_TEMPLATE not in prompt or not all(token in normalized for token in required):
+            return [f"agents: '{name}' prompt contract is incomplete"]
+        return []
+
+    def _config_parent(self) -> Path:
+        return self.config_root.parent
+
+    def _validate_config_parent(self) -> tuple[tuple[int, int] | None, list[str]]:
+        parent = self._config_parent()
+        base = parent.parent
+        try:
+            base_stat = base.lstat()
+            if stat.S_ISLNK(base_stat.st_mode) or not stat.S_ISDIR(base_stat.st_mode):
+                return None, ["OpenCode configuration base is unsafe"]
+            current = base
+            for name in (parent.name,):
+                current /= name
+                if not current.exists() and not current.is_symlink():
+                    return None, ["OpenCode configuration parent is missing"]
+                current_stat = current.lstat()
+                if stat.S_ISLNK(current_stat.st_mode) or not stat.S_ISDIR(current_stat.st_mode):
+                    return None, ["OpenCode configuration parent is unsafe"]
+            resolved_parent = parent.resolve(strict=True)
+            resolved_repo = self.repo_root.resolve(strict=True)
+            sources = [source.resolve(strict=True) for source in self.sources.values()]
+            if resolved_parent == resolved_repo or resolved_repo in resolved_parent.parents or any(
+                resolved_parent == source or source in resolved_parent.parents for source in sources
+            ):
+                return None, ["OpenCode configuration root is inside a managed source"]
+        except (OSError, RuntimeError):
+            return None, ["OpenCode configuration parent is unsafe"]
+        parent_stat = parent.lstat()
+        return (parent_stat.st_dev, parent_stat.st_ino), []
+
+    def _open_config_parent(
+        self,
+        expected_identity: tuple[int, int],
+    ) -> BoundConfigParent | None:
+        try:
+            flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+            descriptor = os.open(self._config_parent(), flags)
+            opened = os.fstat(descriptor)
+            path_stat = self._config_parent().lstat()
+            identity = (opened.st_dev, opened.st_ino)
+            if (
+                stat.S_ISLNK(path_stat.st_mode)
+                or not stat.S_ISDIR(path_stat.st_mode)
+                or identity != expected_identity
+                or (path_stat.st_dev, path_stat.st_ino) != expected_identity
+            ):
+                os.close(descriptor)
+                return None
+            return BoundConfigParent(descriptor, *identity)
+        except OSError:
+            return None
+
+    def _assert_parent(self, bound: BoundConfigParent) -> None:
+        path_stat = self._config_parent().lstat()
+        opened = os.fstat(bound.descriptor)
+        if (
+            stat.S_ISLNK(path_stat.st_mode)
+            or not stat.S_ISDIR(path_stat.st_mode)
+            or (path_stat.st_dev, path_stat.st_ino) != (bound.device, bound.inode)
+            or (opened.st_dev, opened.st_ino) != (bound.device, bound.inode)
+        ):
+            raise OSError("configuration parent changed")
+
+    @staticmethod
+    def _descriptor_path(descriptor: int, identity: tuple[int, int]) -> Path | None:
+        if hasattr(fcntl, "F_GETPATH"):
+            try:
+                raw = fcntl.fcntl(descriptor, fcntl.F_GETPATH, b"\0" * 1024)
+                path = Path(raw.split(b"\0", 1)[0].decode("utf-8"))
+                path_stat = path.lstat()
+                if (path_stat.st_dev, path_stat.st_ino) == identity:
+                    return path
+            except (OSError, UnicodeError):
+                pass
+        try:
+            path = Path(os.path.realpath(f"/dev/fd/{descriptor}"))
+            path_stat = path.lstat()
+            return path if (path_stat.st_dev, path_stat.st_ino) == identity else None
+        except OSError:
+            return None
+
+    def _bind_config_root(self, *, create: bool) -> tuple[BoundConfigRoot | None, bool, list[str]]:
+        expected_parent, errors = self._validate_config_parent()
+        if errors:
+            return None, False, errors
+        assert expected_parent is not None
+        if self.mutation_hook:
+            self.mutation_hook("after-parent-validation", "opencode")
+        parent = self._open_config_parent(expected_parent)
+        if parent is None:
+            return None, False, ["OpenCode configuration parent changed"]
+        root_name = self.config_root.name
+        created_identity: tuple[int, int] | None = None
+        root_descriptor: int | None = None
+        try:
+            self._assert_parent(parent)
+            if self.mutation_hook:
+                self.mutation_hook("after-parent-binding", "opencode")
+            self._assert_parent(parent)
+            try:
+                root_stat = os.stat(root_name, dir_fd=parent.descriptor, follow_symlinks=False)
+            except FileNotFoundError:
+                root_stat = None
+            if root_stat is None:
+                if not create:
+                    return None, True, []
+                if self.mutation_hook:
+                    self.mutation_hook("create-root", "opencode")
+                self._assert_parent(parent)
+                os.mkdir(root_name, dir_fd=parent.descriptor)
+                root_stat = os.stat(root_name, dir_fd=parent.descriptor, follow_symlinks=False)
+                created_identity = (root_stat.st_dev, root_stat.st_ino)
+                if self.mutation_hook:
+                    self.mutation_hook("after-root-create", "opencode")
+                self._assert_parent(parent)
+            if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+                if created_identity is not None:
+                    raise OSError("created root changed")
+                return None, False, ["OpenCode config root is unsafe"]
+            flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+            if self.mutation_hook:
+                self.mutation_hook("before-root-open", "opencode")
+            self._assert_parent(parent)
+            root_descriptor = os.open(root_name, flags, dir_fd=parent.descriptor)
+            opened = os.fstat(root_descriptor)
+            relative_stat = os.stat(root_name, dir_fd=parent.descriptor, follow_symlinks=False)
+            path_stat = self.config_root.lstat()
+            identity = (opened.st_dev, opened.st_ino)
+            if (
+                not stat.S_ISDIR(opened.st_mode)
+                or stat.S_ISLNK(relative_stat.st_mode)
+                or not stat.S_ISDIR(relative_stat.st_mode)
+                or identity != (root_stat.st_dev, root_stat.st_ino)
+                or identity != (relative_stat.st_dev, relative_stat.st_ino)
+                or identity != (path_stat.st_dev, path_stat.st_ino)
+            ):
+                raise OSError("configuration root changed during binding")
+            if self.mutation_hook:
+                self.mutation_hook("after-root-open", "opencode")
+            self._assert_parent(parent)
+            final_path_stat = self.config_root.lstat()
+            if identity != (final_path_stat.st_dev, final_path_stat.st_ino):
+                raise OSError("configuration root changed during binding")
+            bound_root_path = self._descriptor_path(root_descriptor, identity)
+            if bound_root_path is None:
+                raise OSError("configuration root cannot be identified safely")
+            bound = BoundConfigRoot(
+                root_descriptor,
+                *identity,
+                parent.descriptor,
+                parent.device,
+                parent.inode,
+                tuple(
+                    (kind, os.path.relpath(source, start=bound_root_path))
+                    for kind, source in self.sources.items()
+                ),
+            )
+            root_descriptor = None
+            parent = None
+            return bound, False, []
+        except OSError:
+            if root_descriptor is not None:
+                os.close(root_descriptor)
+            cleanup_error = False
+            if created_identity is not None:
+                try:
+                    self._assert_parent(parent)
+                    current = os.stat(root_name, dir_fd=parent.descriptor, follow_symlinks=False)
+                    if (current.st_dev, current.st_ino) != created_identity:
+                        raise OSError("created root changed")
+                    os.rmdir(root_name, dir_fd=parent.descriptor)
+                except OSError:
+                    cleanup_error = True
+            message = "OpenCode config root cannot be opened safely"
+            if cleanup_error:
+                message = "OpenCode config root binding failed; cleanup was incomplete"
+            return None, False, [message]
+        finally:
+            if parent is not None:
+                os.close(parent.descriptor)
+
+    def _assert_root(self, bound: BoundConfigRoot) -> None:
+        parent_stat = self._config_parent().lstat()
+        opened_parent = os.fstat(bound.parent_descriptor)
+        root_stat = self.config_root.lstat()
+        opened = os.fstat(bound.descriptor)
+        if (
+            stat.S_ISLNK(parent_stat.st_mode)
+            or not stat.S_ISDIR(parent_stat.st_mode)
+            or (parent_stat.st_dev, parent_stat.st_ino)
+            != (bound.parent_device, bound.parent_inode)
+            or (opened_parent.st_dev, opened_parent.st_ino)
+            != (bound.parent_device, bound.parent_inode)
+            or
+            stat.S_ISLNK(root_stat.st_mode)
+            or not stat.S_ISDIR(root_stat.st_mode)
+            or (root_stat.st_dev, root_stat.st_ino) != (bound.device, bound.inode)
+            or (opened.st_dev, opened.st_ino) != (bound.device, bound.inode)
+        ):
+            raise OSError("configuration root changed")
+
+    @staticmethod
+    def _close_bound_root(bound: BoundConfigRoot) -> None:
+        os.close(bound.descriptor)
+        os.close(bound.parent_descriptor)
+
+    def _destination_state(self, bound: BoundConfigRoot, kind: str) -> str:
+        self._assert_root(bound)
+        try:
+            entry = os.lstat(kind, dir_fd=bound.descriptor)
+        except FileNotFoundError:
+            return "missing"
+        if not stat.S_ISLNK(entry.st_mode):
+            return "occupied"
+        try:
+            raw = os.readlink(kind, dir_fd=bound.descriptor)
+            if os.path.isabs(raw):
+                target = Path(raw).resolve(strict=True)
+            elif os.path.normpath(raw) == os.path.normpath(dict(bound.relative_targets)[kind]):
+                target = self.sources[kind].resolve(strict=True)
+            else:
+                return "foreign"
+        except (OSError, RuntimeError):
+            return "broken"
+        return "expected" if target == self.sources[kind].resolve(strict=True) else "foreign"
+
     def _inspect_destinations(
         self,
+        bound: BoundConfigRoot,
         *,
         missing_is_error: bool,
     ) -> tuple[dict[str, str], list[str]]:
         states: dict[str, str] = {}
         errors: list[str] = []
-        for kind in DEFINITION_KINDS:
-            state = self._destination_state(kind)
+        for kind in INSTALL_KINDS:
+            try:
+                state = self._destination_state(bound, kind)
+            except OSError:
+                return states, ["OpenCode configuration root changed"]
             states[kind] = state
             if state == "missing" and missing_is_error:
                 errors.append(f"{kind} destination is missing")
@@ -1142,44 +1537,83 @@ class OpenCodeInstallService:
                 )
         return states, errors
 
-    def _destination_state(self, kind: str) -> str:
-        destination = self.destinations[kind]
-        if destination.is_symlink():
-            try:
-                resolved = destination.resolve(strict=True)
-            except (FileNotFoundError, RuntimeError, OSError):
-                return "broken"
-            return "expected" if resolved == self.sources[kind].resolve() else "foreign"
-        if destination.exists():
-            return "occupied"
-        return "missing"
+    def _before_mutation(self, position: str, kind: str, bound: BoundConfigRoot) -> None:
+        if self.mutation_hook:
+            self.mutation_hook(position, kind)
+        self._assert_root(bound)
 
-    def _rollback_created(self, created: list[str]) -> list[str]:
+    def _create_and_setup(self, messages: list[str]) -> OperationResult:
+        bound, _, errors = self._bind_config_root(create=True)
+        if errors or bound is None:
+            return OperationResult(errors=errors or ["Could not create OpenCode config root"])
+        try:
+            states, errors = self._inspect_destinations(bound, missing_is_error=False)
+            return OperationResult(errors=errors) if errors else self._create_links(bound, states, messages)
+        finally:
+            self._close_bound_root(bound)
+
+    def _create_links(self, bound: BoundConfigRoot, states: dict[str, str], messages: list[str]) -> OperationResult:
+        created: list[str] = []
+        active_kind = "OpenCode"
+        try:
+            for kind in INSTALL_KINDS:
+                if states[kind] == "expected":
+                    continue
+                active_kind = kind
+                self._before_mutation("create", kind, bound)
+                if self._destination_state(bound, kind) != "missing":
+                    raise OSError("destination changed")
+                os.symlink(str(self.sources[kind]), kind, target_is_directory=True, dir_fd=bound.descriptor)
+                created.append(kind)
+            self._before_mutation("success", "setup", bound)
+            _, errors = self._inspect_destinations(bound, missing_is_error=True)
+            if errors:
+                raise OSError("verification failed")
+            return OperationResult(messages=messages)
+        except OSError:
+            warnings = self._rollback_created(bound, created)
+            return OperationResult(errors=[f"Failed to create {active_kind} symlink; setup was rolled back"], warnings=warnings)
+
+    def _rollback_created(self, bound: BoundConfigRoot, created: list[str]) -> list[str]:
         warnings: list[str] = []
         for kind in reversed(created):
-            destination = self.destinations[kind]
-            if self._destination_state(kind) != "expected":
-                warnings.append(f"Could not safely roll back {kind} symlink")
-                continue
             try:
-                destination.unlink()
+                self._before_mutation("rollback", kind, bound)
+                if self._destination_state(bound, kind) != "expected":
+                    raise OSError("destination changed")
+                os.unlink(kind, dir_fd=bound.descriptor)
             except OSError:
                 warnings.append(f"Could not safely roll back {kind} symlink")
         return warnings
 
-    def _restore_removed(self, removed: list[str]) -> list[str]:
+    def _remove_links(self, bound: BoundConfigRoot) -> OperationResult:
+        removed: list[str] = []
+        active_kind = "OpenCode"
+        try:
+            for kind in INSTALL_KINDS:
+                active_kind = kind
+                self._before_mutation("remove", kind, bound)
+                if self._destination_state(bound, kind) != "expected":
+                    raise OSError("destination changed")
+                os.unlink(kind, dir_fd=bound.descriptor)
+                removed.append(kind)
+            self._before_mutation("success", "uninstall", bound)
+            final_states, errors = self._inspect_destinations(bound, missing_is_error=False)
+            if errors or any(state != "missing" for state in final_states.values()):
+                raise OSError("uninstall verification failed")
+            return OperationResult(messages=[f"Removed {kind} symlink" for kind in INSTALL_KINDS])
+        except OSError:
+            warnings = self._restore_removed(bound, removed)
+            return OperationResult(errors=[f"Failed to remove {active_kind} symlink; uninstall was rolled back"], warnings=warnings)
+
+    def _restore_removed(self, bound: BoundConfigRoot, removed: list[str]) -> list[str]:
         warnings: list[str] = []
         for kind in removed:
-            destination = self.destinations[kind]
-            if destination.exists() or destination.is_symlink():
-                warnings.append(f"Could not safely restore {kind} symlink")
-                continue
             try:
-                os.symlink(
-                    self.sources[kind],
-                    destination,
-                    target_is_directory=True,
-                )
+                self._before_mutation("restore", kind, bound)
+                if self._destination_state(bound, kind) != "missing":
+                    raise OSError("destination changed")
+                os.symlink(str(self.sources[kind]), kind, target_is_directory=True, dir_fd=bound.descriptor)
             except OSError:
                 warnings.append(f"Could not safely restore {kind} symlink")
         return warnings
@@ -1217,7 +1651,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     setup_parser = subcommands.add_parser(
         "setup",
-        help="Create the managed agents and commands symlinks.",
+        help="Create the managed agents, commands, and workflow-tools symlinks.",
     )
     setup_parser.add_argument(
         "--dry-run",
@@ -1225,12 +1659,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Report changes without applying them.",
     )
 
-    subcommands.add_parser("verify", help="Verify definitions and both symlinks.")
-    subcommands.add_parser("doctor", help="Validate definitions and both symlinks.")
+    subcommands.add_parser("verify", help="Verify definitions and all three symlinks.")
+    subcommands.add_parser("doctor", help="Validate definitions and all three symlinks.")
 
     uninstall_parser = subcommands.add_parser(
         "uninstall",
-        help="Remove both symlinks when this repository owns them.",
+        help="Remove all three symlinks when this repository owns them.",
     )
     uninstall_parser.add_argument(
         "--dry-run",

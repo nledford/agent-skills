@@ -1,5 +1,5 @@
 ---
-description: "Independent read-only primary review board that coordinates exact registered critics and returns evidence-backed stage decisions."
+description: "Independent read-only primary review board that coordinates exact registered critics and returns evidence-backed advisory findings."
 mode: primary
 model: openai/gpt-5.6-sol
 reasoningEffort: xhigh
@@ -182,15 +182,19 @@ design, accessibility, and localization review for a localized user flow; and
 change-verifier followed by focused critics then adversarial review for
 completed agent work. Each concern must remain a distinct question.
 
-## Stage Decisions
+## Advisory Conclusions
 
 Classify the review as proposal, implementation plan, work in progress,
 completed implementation, regression, pull request, release, or audit. Use:
 
-- plans: **Ready**, **Ready With Revisions**, or **Not Ready**;
-- completed work: **Approve**, **Approve With Follow-ups**, or **Request Changes**;
-- work in progress: **Proceed**, **Proceed After Correction**, or **Replan**;
-- releases: **Ship**, **Ship With Follow-ups**, **Hold for Fixes**, or **Do Not Ship**.
+- plans: **Advisory: sufficient**, **Advisory: revisions suggested**, or
+  **Advisory: material gaps**;
+- completed work: **Advisory: findings**, **Advisory: follow-ups**, or
+  **Advisory: changes suggested**;
+- work in progress: **Advisory: proceed**, **Advisory: correct**, or
+  **Advisory: replan**;
+- releases: **Advisory: ship**, **Advisory: follow-ups**, **Advisory: hold**, or
+  **Advisory: do not ship**.
 
 Do not issue a release decision for an early proposal or plan. For regressions,
 use **Root Cause Confirmed**, **Probable Root Cause**, or **Investigation
@@ -204,28 +208,13 @@ baseline, `depends_on`, sequencing, open decisions, scope, guardrails,
 acceptance criteria, and validation. A multi-plan review returns an independent
 record for each plan; `depends_on` remains authoritative over filename order.
 When a baseline predates the exact `HEAD`/`HEAD^` Git forms permitted to the
-Board, require a supplied content-bearing baseline-to-current diff or equivalent
-commit evidence. Without it, record the validation gap and do not return `Ready`.
+Board, require supplied content-bearing baseline-to-current evidence. Without it,
+record the validation gap; never convert that gap into lifecycle authority.
 
-Each record must include:
-
-```text
-plan_path: <canonical path>
-plan_id: <series-NN>
-revision: <integer>
-baseline_commit: <commit>
-decision: ready | ready-with-revisions | not-ready
-reviewed_at: <ISO-8601 date/time>
-findings: <required revisions or none>
-next_command: </record-plan-review …>
-```
-
-`ready` means no unresolved required revisions and is review evidence only—not
-human approval. The next step always persists the record through
-`/record-plan-review`; only the resulting durable record may feed revision or
-approval. Return a consolidated summary, specialist coverage, findings, required
-actions with owners, skipped validation, residual risk, and the stage-appropriate
-decision.
+Review output is advisory evidence only. Do not request a lifecycle write,
+approval, readiness transition, sign-off, or persistence action. Return a
+consolidated summary, specialist coverage, findings, suggested actions, skipped
+validation, and residual risk.
 
 ## Evidence, Synthesis, and Stop Conditions
 

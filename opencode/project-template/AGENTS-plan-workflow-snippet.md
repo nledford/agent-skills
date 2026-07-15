@@ -10,10 +10,23 @@ It may complete narrow work directly or delegate bounded, non-overlapping
 implementation units only to `implementation-worker`. The worker cannot edit
 durable plans, delegate, commit, push, deploy, or broaden its assigned scope.
 
-The Planning Coordinator is the only durable plan writer. The Engineering Review
-Board is a separate read-only primary agent, never a Task child; invoke it
-directly for independent review. Its critics and researchers are advisory and do
+The top-level Plan Orchestrator is the only durable plan and trusted-state writer.
+The Engineering Review Board is a separate read-only primary agent, never a Task
+child; invoke it directly for advisory review. Its critics and researchers do
 not implement changes or approve plans.
+
+Before first planned use, bootstrap must not overwrite the target repository's
+`.gitignore`. After provisional state acquisition, add these missing exact lines
+only when the existing policy is safe and non-conflicting:
+
+```text
+/.start-work/resume.json
+/.start-work/lock/
+```
+
+Stop on broad, duplicate, ambiguous, or conflicting `.start-work` rules. Do not
+copy the trusted helper into the target repository; it runs only from the linked
+OpenCode checkout.
 
 Material revisions increment `revision`, reset review and approval fields, and
 require another review. Explicit human approval requires a matching ERB `ready`
