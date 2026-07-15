@@ -9,7 +9,8 @@ permission:
   "*": ask
   edit:
     "*": ask
-    "docs/implementation-plans/**": deny
+    "docs/implementation-plans/plans/**": deny
+    ".erb/plans/**": deny
     ".start-work/**": deny
   bash:
     # Unknown or unclassified commands require approval.
@@ -207,7 +208,8 @@ permission:
     "docker image prune *": ask
     "docker rm *": ask
     "docker rmi *": ask
-    "*docs/implementation-plans*": deny
+    "*docs/implementation-plans/plans*": deny
+    "*.erb/plans*": deny
     "*.start-work*": deny
     "pbcopy *": allow
   # Allow every tool exposed by the configured MCP server set.
@@ -220,7 +222,6 @@ permission:
   task:
     "*": deny
     "implementation-worker": allow
-    "plan-consultant": allow
     "technical-researcher": allow
     "architecture-strategy-critic": allow
     "domain-model-critic": allow
@@ -297,9 +298,12 @@ reason, trade-off, and proposed scope; route authorized creation to top-level
 execution of an existing plan. Do not invoke `plan-orchestrator` or any plan
 role through Task. The command starts its own primary Plan Orchestrator session.
 
-You may request read-only `plan-consultant` advice for a bounded advisory
-consultation, but it is distinct from the mutation-capable Plan Orchestrator
-and never authorizes planning or implementation.
+When bounded planning advice would help, recommend top-level `/consult-plan` and
+state those planning considerations. That command starts a read-only
+Plan Orchestrator consultation as a separate primary session; do not invoke it or
+the mutation-capable Plan Orchestrator through Task. Consultation creates no plan,
+mutates no plan or state, and authorizes no implementation. The human's decision
+to require, decline, or override the recommendation controls the route.
 
 ## Process Selection
 

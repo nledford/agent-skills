@@ -23,13 +23,29 @@ put human input into a helper-launch shell string or add a helper argument for
 it. Do not use concatenation, redirection, pipes, substitution, or an extra
 shell operation.
 
-After trusted acquisition, validate the request from repository evidence and
-allocate a safe canonical lean path using the existing maximum sequence number.
-Create and persist a closed lean plan only: it creates and persists a plan only,
-does not execute TODOs. Use edit tools rather than Bash, re-read every write,
-validate the regular contained non-symlinked path and strict UTF-8 content, and
-verify the required `.gitignore` state before pointer persistence. Do not
-delegate implementation, advance checkboxes, or invoke `/start-work`.
+After trusted acquisition, validate the request from repository evidence and use
+the smallest safe layout. Create one plan directly at `.erb/plans/<slug>.md`
+without a subject directory or numeric prefix. Create multiple plan documents
+only when the request genuinely requires separately managed plans; multiple
+TODOs in one bounded plan are not sufficient. A genuine multi-plan series uses
+`.erb/plans/<subject>/<NN>-<slug>.md`, one contained subject, zero-padded
+max-plus-one numbering across live files and registered history from `01`
+through `99`, no gap or deleted-sequence reuse, and fail-closed collision and
+exhaustion handling. Former-root plans are immutable legacy
+artifacts and do not affect new-root allocation or authorize migration.
+
+Create and persist closed lean plans only: this command creates and persists a
+plan only and does not execute TODOs. Use edit tools rather than Bash, re-read
+every write, validate each regular contained non-symlinked path and strict UTF-8
+content, and leave every TODO and Verification checkbox unchecked. Finalize each
+created path under the held owner, then use the trusted helper's `register-plans`
+operation to register the immutable contracts before release. Do not delegate
+implementation, advance checkboxes, or invoke `/start-work`.
+
+Repository users may choose to add `.erb/plans/` to their own `.gitignore`.
+Never require or automatically add that rule merely because this command uses
+the canonical plan root. Continue to verify the required narrow `.start-work`
+ignore rules before trusted-state persistence.
 
 Keep the lock through every plan and pointer mutation. After all mutation
 outcomes are known and no child can mutate, release with a known plan-only

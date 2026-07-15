@@ -153,8 +153,10 @@ The repository includes a project-neutral implementation-plan contract in
 [`docs/implementation-plans/README.md`](docs/implementation-plans/README.md),
 with synchronized starter copies under
 [`opencode/project-template/`](opencode/project-template/). Plans use canonical
-series paths; the top-level Plan Orchestrator owns durable plan writes and trusted
-state, while the ERB remains read-only advisory review. See the
+single-plan `.erb/plans/<slug>.md` paths or, only for genuinely separately managed
+work, `.erb/plans/<subject>/<NN>-<slug>.md` series paths. The top-level Plan
+Orchestrator owns durable plan writes and trusted state, while the ERB remains
+read-only advisory review. See the
 [legacy Weave cleanup checklist](opencode/cleanup/weave-cleanup-checklist.md)
 when migrating prior workflow material.
 
@@ -166,11 +168,13 @@ validation are adequate; (2) an explicit `/create-plan` request creates and
 persists a plan only; and (3) `/start-work <existing-plan-path>` executes an
 existing canonical lean plan, while no arguments resume only from a validated
 pointer after explicit human confirmation. Complexity may justify recommending a
-plan, never automatic creation.
-The Lead or ERB may request read-only `plan-consultant` advice, which neither
-creates nor authorizes work. Explicit plan-only updates and
-`/convert-tapestry-plan` remain plan-only; conversion execution requires a later
-human `/start-work <destination>` choice.
+plan, never automatic creation. The Lead or ERB may recommend top-level
+`/consult-plan` with a reason, trade-off, and proposed scope; it provides
+non-mutating Plan Orchestrator advice and neither creates nor authorizes work.
+The human controls whether to require, decline, or override that recommendation.
+Existing plan bodies are immutable except for evidenced checkbox advancement.
+`/convert-tapestry-plan` remains plan-only; conversion execution requires a
+later human `/start-work <destination>` choice.
 
 To bootstrap a repository that does not already have plan guidance, copy
 `opencode/project-template/docs/implementation-plans/` to the target repository's

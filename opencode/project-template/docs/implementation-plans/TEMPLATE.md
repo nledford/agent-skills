@@ -23,3 +23,5 @@
 1. [ ] <bounded implementation step>
 
 ## Verification
+
+1. [ ] <verification step>

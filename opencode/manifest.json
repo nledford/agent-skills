@@ -16,7 +16,6 @@
     "implementation-worker.md",
     "internationalization-localization-critic.md",
     "performance-critic.md",
-    "plan-consultant.md",
     "plan-orchestrator.md",
     "prompt-critic.md",
     "release-readiness-reviewer.md",
@@ -27,6 +26,7 @@
   ],
   "commands": [
     "audit-technical-debt.md",
+    "consult-plan.md",
     "convert-tapestry-plan.md",
     "create-plan.md",
     "investigate-regression.md",

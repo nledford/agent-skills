@@ -17,6 +17,7 @@ Return advisory findings, evidence examined, coverage, suggested corrections,
 skipped validation, and residual risk for each plan. This review is optional,
 read-only advice only: it creates no readiness, approval, sign-off, persistence,
 or execution gate. Advisory corrections cannot create or execute a plan. A human
-may separately request an explicit plan-only update from the top-level Plan
-Orchestrator; `/start-work <path>` is only a separate human-chosen execution
-choice.
+cannot apply corrections by mutating an existing closed plan. Advisory
+corrections cannot mutate an existing plan; a human may separately authorize a
+new plan through `/create-plan`. `/start-work <path>` is only a separate
+human-chosen execution choice.

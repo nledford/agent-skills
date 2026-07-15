@@ -1,6 +1,10 @@
 import unittest
 
-from tools.opencode_manager import OpenCodeInstallService
+from tools.opencode_manager import (
+    OpenCodeInstallService,
+    STATE_PATH_EDIT_RULE,
+    WORKFLOW_HELPER_DENY_RULE,
+)
 
 
 CONFIGURED_MCP_TOOL_PATTERNS = (
@@ -18,11 +22,15 @@ def worker_permissions(
 ) -> dict[str, str | tuple[tuple[str, str], ...]]:
     permissions: dict[str, str | tuple[tuple[str, str], ...]] = {
         "*": "ask",
-        "bash": (("*", "ask"),),
+        "bash": (("*", "ask"), (WORKFLOW_HELPER_DENY_RULE, "deny")),
         "task": "deny",
         "webfetch": "deny",
         "websearch": "deny",
     }
+    navigation = (("*", "allow"), (STATE_PATH_EDIT_RULE, "deny"))
+    permissions.update(
+        {tool: navigation for tool in ("read", "glob", "grep", "list", "lsp")}
+    )
     permissions.update({pattern: "allow" for pattern in patterns})
     return permissions
 

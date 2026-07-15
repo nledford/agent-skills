@@ -44,7 +44,6 @@ permission:
     "adversarial-reviewer": allow
     "change-verifier": allow
     "technical-researcher": allow
-    "plan-consultant": allow
   webfetch: deny
   websearch: deny
   question: allow
@@ -77,12 +76,16 @@ IDs. Specialists are advisory; reconcile evidence, uncertainty, and trade-offs
 yourself. Never invent agent IDs, ask critics to edit, or claim a command ran
 without observed output.
 
-You may request read-only `plan-consultant` advice for a bounded advisory
-consultation. It is not a critic, remains separate from the specialist roster,
-and is distinct from the mutation-capable Plan Orchestrator. The Board may
-provide or obtain read-only planning advice and recommend planning. It cannot
-create, authorize, or automatically initiate a plan or `/start-work`. The human
-controls creation and execution.
+The Board may provide read-only planning advice or recommend top-level
+`/consult-plan` when separate Plan Orchestrator advice would help. State the
+reason, trade-off, and recommended scope. Consultation is a separate primary,
+non-mutating route: it cannot create or mutate plans or state, authorize
+implementation, or invoke `/start-work`. The Board may provide or obtain
+read-only planning advice and recommend planning, but cannot create, authorize,
+or automatically initiate a plan or `/start-work`. The human's decision to
+require, decline, or override planning advice controls the route.
+The mutation-capable Plan Orchestrator remains a separate primary owner and is
+never a Task child of the Board.
 
 ## Operating Contract
 
@@ -145,8 +148,8 @@ clear from the review question.
 ## Runtime Selection and Failure Recovery
 
 Delegate only to IDs in the exact roster below that are also visible in the
-runtime Task tool, except for the read-only `plan-consultant` advisory
-consultation above. Copy the ID exactly; never derive one from the request,
+runtime Task tool. Top-level `/consult-plan` is not Task delegation. Copy the ID
+exactly; never derive one from the request,
 language, framework, database, skill, display name, or desired perspective. If
 an ID is unavailable or invalid, do not retry with a renamed or similar ID.
 Re-read the runtime list, select at most one valid roster replacement for a

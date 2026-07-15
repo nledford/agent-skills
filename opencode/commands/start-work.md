@@ -28,12 +28,14 @@ immutable legacy inputs. It does not create, succeed, convert, or
 conversationally update plans.
 
 - With no path, resume only from a validated pointer. Display the resolved
-  canonical path and its checked and unchecked numbered TODOs, then obtain
+  canonical path and its checked and unchecked numbered TODOs and dedicated
+  Verification checkboxes, then obtain
   explicit human confirmation before any plan, sidebar, delegation, or
   implementation mutation.
 - With an explicit path, validate the existing canonical lean plan and reconcile
   the pointer, worktree, plan checkboxes, and native TODO state before executing
-  its remaining TODOs. It does not inherit the no-path confirmation gate.
+  its remaining TODOs. Reject an unregistered contract instead of inventing or
+  migrating trusted state. It does not inherit the no-path confirmation gate.
 - Reject a free-form request, a nonexistent or unsafe path, an immutable legacy
   input, and a request to create or update a plan. Direct human-authorized plan
   creation to `/create-plan`; direct legacy conversion to
@@ -49,6 +51,14 @@ Derive validation independently from trusted repository guidance using structure
 non-shell handling. Keep the lock through every plan, pointer, checkbox, sidebar,
 delegation, and implementation mutation; release it only under the helper's
 matching-owner, known-outcome rules.
+
+The plan body is immutable after creation. Change only an existing `[ ]` marker
+to `[x]` after observed evidence supports that TODO or Verification step. Do not
+add, remove, rewrite, reorder, or renumber plan content. Complete and persist
+every TODO before beginning or checking any dedicated Verification step; focused
+validation needed to evidence an individual TODO may run before checking that
+TODO. Stop for human-controlled routing when material work, validation, or a
+design decision falls outside the closed plan.
 
 Optional ERB advice is read-only and never an approval, readiness, sign-off,
 persistence, or execution gate. Report the selected route, canonical identity

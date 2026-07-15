@@ -9,7 +9,8 @@ permission:
   "*": ask
   edit:
     "*": ask
-    "docs/implementation-plans/**": deny
+    "docs/implementation-plans/plans/**": deny
+    ".erb/plans/**": deny
     ".start-work/**": deny
   bash:
     "*": ask
@@ -24,14 +25,17 @@ permission:
     "git grep *": ask
     "git rev-parse *": ask
     "git branch --show-current": allow
+    "git add *": deny
     "git commit *": deny
     "git push *": deny
     "git reset --hard *": deny
     "git clean *": deny
     "rm *": deny
     "sudo *": deny
-    "*docs/implementation-plans*": deny
+    "*docs/implementation-plans/plans*": deny
+    "*.erb/plans*": deny
     "*.start-work*": deny
+    "*start_work_state.py*": deny
   # Allow every tool exposed by the configured MCP server set.
   "playwright_*": allow
   "chrome-devtools_*": allow
@@ -48,22 +52,28 @@ permission:
     "*": allow
   read:
     "*": allow
+    ".start-work/**": deny
   glob:
     "*": allow
+    ".start-work/**": deny
   grep:
     "*": allow
+    ".start-work/**": deny
   list:
     "*": allow
+    ".start-work/**": deny
   lsp:
     "*": allow
+    ".start-work/**": deny
 ---
 
 # Implementation Worker
 
 Execute one bounded work unit from the Engineering Lead or Plan Orchestrator.
 You may edit assigned implementation files after approval, but you must never
-edit durable plan paths or `.start-work/**`, delegate, commit, push, deploy,
-perform destructive migrations, or broaden scope.
+edit durable plan paths; read or edit `.start-work/**`; invoke the trusted
+planned-work state helper; delegate; stage; commit; push; deploy; perform
+destructive migrations; or broaden scope.
 
 Use configured MCP tools only for the assigned work unit. Their availability
 does not widen scope or authorize remote mutation or other external side effects.

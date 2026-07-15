@@ -41,10 +41,10 @@ remain authoritative.
 | Route | Handoff |
 | --- | --- |
 | Direct delivery | The Engineering Lead may implement directly whenever scope, safety, and validation are adequate. Complexity may justify recommending planning, never automatic plan creation or `/start-work`. |
-| Read-only consultation | Only the Engineering Lead and ERB may Task `plan-consultant` for bounded read-only advice. It is non-recursive, cannot inspect `.start-work/**`, and cannot mutate, delegate, create, authorize, or execute work. |
-| Explicit plan creation | A human explicitly chooses top-level `/create-plan`; the Plan Orchestrator creates and persists a plan only. |
+| Read-only consultation | The Engineering Lead or ERB may recommend top-level `/consult-plan` with the reason, trade-off, and proposed scope. The separate primary Plan Orchestrator provides non-mutating advice without acquiring or inspecting `.start-work/**`, creating a plan, delegating, authorizing, or executing work. The human controls the route. |
+| Explicit plan creation | A human explicitly chooses top-level `/create-plan`; the Plan Orchestrator creates and registers one `.erb/plans/<slug>.md` plan or, only for genuinely separately managed work, a `.erb/plans/<subject>/<NN>-<slug>.md` series. Creation is plan-only. |
 | Existing-plan execution | A separate human chooses execution-only `/start-work <existing-plan-path>`. With no arguments, `/start-work` requires a validated resume pointer and explicit confirmation. It does not create or update plans. |
-| Plan-only operations | Explicit plan-only updates are top-level Plan Orchestrator requests, not `/create-plan` or `/start-work`; `/convert-tapestry-plan` is plan-only and execution needs a separate `/start-work <destination>` choice. |
+| Plan-only operations | Existing plan bodies are immutable except for evidenced existing checkbox advancement during execution. Material discoveries need a new human decision and, when authorized, a new `/create-plan`; `/convert-tapestry-plan` is plan-only and execution needs a separate `/start-work <destination>` choice. |
 
 ## Routing Matrix
 

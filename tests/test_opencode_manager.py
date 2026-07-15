@@ -217,12 +217,14 @@ def render_lead_permissions(
         '  "*": ask\n'
         "  edit:\n"
         '    "*": ask\n'
-        '    "docs/implementation-plans/**": deny\n'
+        '    "docs/implementation-plans/plans/**": deny\n'
+        '    ".erb/plans/**": deny\n'
         '    ".start-work/**": deny\n'
         "  bash:\n"
         '    "*": ask\n'
         f"{rendered_git_rules}"
-        '    "*docs/implementation-plans*": deny\n'
+        '    "*docs/implementation-plans/plans*": deny\n'
+        '    "*.erb/plans*": deny\n'
         '    "*.start-work*": deny\n'
         '    "pbcopy *": allow\n'
         '  "playwright_*": allow\n'
@@ -248,10 +250,12 @@ def write_support_files(repo: Path) -> None:
     contents = {
         "config/opencode.merge-fragment.jsonc": "{\n  // OpenCode merge fragment\n}\n",
         "project-template/AGENTS-plan-workflow-snippet.md": (
-            "Use plans in `docs/implementation-plans/plans/<series>/<NN>-<slug>.md`.\n"
+            "Use one plan at `.erb/plans/<slug>.md` or a genuine multi-plan series at "
+            "`.erb/plans/<subject>/<NN>-<slug>.md`.\n"
         ),
         "project-template/docs/implementation-plans/README.md": (
-            "# Plans\n\nUse `docs/implementation-plans/plans/<series>/<NN>-<slug>.md`.\n"
+            "# Plans\n\nUse `.erb/plans/<slug>.md` or "
+            "`.erb/plans/<subject>/<NN>-<slug>.md`.\n"
         ),
         "project-template/docs/implementation-plans/TEMPLATE.md": (
             "# <Title>\n\n"
@@ -266,7 +270,8 @@ def write_support_files(repo: Path) -> None:
             "## Definition of Done\n\n"
             "## TODOs\n\n"
             "1. [ ] <bounded implementation step>\n\n"
-            "## Verification\n"
+            "## Verification\n\n"
+            "1. [ ] <verification step>\n"
         ),
         "cleanup/weave-cleanup-checklist.md": "# Cleanup\n",
     }
@@ -758,30 +763,34 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 '  "*": ask\n'
                 "  edit:\n"
                 '    "*": ask\n'
-                '    "docs/implementation-plans/**": ask\n'
+                '    "docs/implementation-plans/plans/**": deny\n'
+                '    ".erb/plans/**": ask\n'
                 "  bash:\n"
                 '    "*": ask\n'
-                '    "*docs/implementation-plans*": deny\n',
-                ('    "docs/implementation-plans/**": ask', '    "docs/implementation-plans/**": deny'),
+                '    "*docs/implementation-plans/plans*": deny\n'
+                '    "*.erb/plans*": deny\n',
+                ('    ".erb/plans/**": ask', '    ".erb/plans/**": deny'),
             ),
             "implementation-worker.md": (
                 '  "*": ask\n'
                 "  edit:\n"
                 '    "*": ask\n'
-                '    "docs/implementation-plans/**": deny\n'
+                '    "docs/implementation-plans/plans/**": deny\n'
+                '    ".erb/plans/**": deny\n'
                 "  bash:\n"
                 '    "*": ask\n'
-                '    "*docs/implementation-plans*": deny\n',
-                ('    "docs/implementation-plans/**": deny', '    "docs/implementation-plans/**": ask'),
+                '    "*docs/implementation-plans/plans*": deny\n'
+                '    "*.erb/plans*": deny\n',
+                ('    ".erb/plans/**": deny', '    ".erb/plans/**": ask'),
             ),
             "planning-coordinator.md": (
                 '  "*": deny\n'
                 "  edit:\n"
                 '    "*": deny\n'
-                '    "docs/implementation-plans/**": ask\n'
+                '    ".erb/plans/**": ask\n'
                 "  bash:\n"
                 '    "*": deny\n',
-                ('    "docs/implementation-plans/**": ask', '    "docs/implementation-plans/**": deny'),
+                ('    ".erb/plans/**": ask', '    ".erb/plans/**": deny'),
             ),
         }
         for name, (permissions, (old_rule, new_rule)) in cases.items():
@@ -821,10 +830,12 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                         '  "*": ask\n'
                         "  edit:\n"
                         '    "*": ask\n'
-                        f'    "docs/implementation-plans/**": {"ask" if name.startswith("engineering") else "deny"}\n'
+                        '    "docs/implementation-plans/plans/**": deny\n'
+                        '    ".erb/plans/**": deny\n'
                         "  bash:\n"
                         '    "*": ask\n'
-                        '    "*docs/implementation-plans*": ask\n',
+                        '    "*docs/implementation-plans/plans*": deny\n'
+                        '    "*.erb/plans*": ask\n',
                     ),
                     encoding="utf-8",
                 )
@@ -1031,8 +1042,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "git config --get gpg.format": "allow",
             "git add -- AGENTS.md": "ask",
             "git add -- src/changed.py": "ask",
-            "git add -- docs/implementation-plans/plans/work/01-example.md": "ask",
-            "git add -- docs/implementation-plans/plans/opencode/03-complete-plan-workflow-migration.md": "ask",
+            "git add -- .erb/plans/example.md": "ask",
+            "git add -- .erb/plans/opencode/03-complete-plan-workflow-migration.md": "ask",
             "git commit": "allow",
             "git commit -m 'approved message'": "ask",
             "git add src/changed.py": "deny",
@@ -1042,8 +1053,9 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "git add -- ../outside": "deny",
             "git add -- /tmp/outside": "deny",
             "git add -- .start-work/resume.json": "deny",
-            "git add -- docs/implementation-plans/plans/work/deep/01-example.md": "deny",
-            "git diff > docs/implementation-plans/plans/work/01-example.md": "deny",
+            "git add -- .erb/plans/work/deep/01-example.md": "deny",
+            "git add -- docs/implementation-plans/plans/work/01-example.md": "deny",
+            "git diff > .erb/plans/work/01-example.md": "deny",
             "git commit --amend": "deny",
             "git commit --no-verify -m message": "deny",
             "git commit --no-gpg-sign -m message": "deny",
@@ -1069,7 +1081,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "git add -- src/file?.py": "ask",
             "git add -- src/[ab].py": "deny",
             "git add -- src/{a,b}.py": "deny",
-            "git add -- docs/implementation-plans/plans/work/01-*.md": "ask",
+            "git add -- .erb/plans/work/01-*.md": "ask",
         }
 
         for command, expected in cases.items():
@@ -1089,15 +1101,15 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 1,
             ),
             "broad git allow": source.replace(
-                '    "*docs/implementation-plans*": deny\n',
-                '    "git *": allow\n    "*docs/implementation-plans*": deny\n',
+                '    "*.erb/plans*": deny\n',
+                '    "git *": allow\n    "*.erb/plans*": deny\n',
                 1,
             ),
             "reordered plan exception": source.replace(
-                '    "*docs/implementation-plans*": deny\n'
-                '    "git add -- docs/implementation-plans/plans/*/*.md": ask\n',
-                '    "git add -- docs/implementation-plans/plans/*/*.md": ask\n'
-                '    "*docs/implementation-plans*": deny\n',
+                '    "*.erb/plans*": deny\n'
+                '    "git add -- .erb/plans/*.md": ask\n',
+                '    "git add -- .erb/plans/*.md": ask\n'
+                '    "*.erb/plans*": deny\n',
                 1,
             ),
             "later weakening": source.replace(
@@ -1183,10 +1195,14 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     '  "*": ask\n'
                     "  edit:\n"
                     '    "*": ask\n'
-                    '    "docs/implementation-plans/**": ask\n'
+                    '    "docs/implementation-plans/plans/**": deny\n'
+                    '    ".erb/plans/**": deny\n'
+                    '    ".start-work/**": deny\n'
                     "  bash:\n"
                     '    "*": ask\n'
-                    '    "*docs/implementation-plans*": deny\n'
+                    '    "*docs/implementation-plans/plans*": deny\n'
+                    '    "*.erb/plans*": deny\n'
+                    '    "*.start-work*": deny\n'
                     '    "pbcopy *": allow\n'
                     '  "playwright_*": allow\n'
                     '  "chrome-devtools_*": allow\n'
@@ -1330,6 +1346,24 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertIn("template is not the canonical lean format", result.errors[0])
 
+    def test_validate_rejects_missing_or_non_numbered_verification_checkbox(self) -> None:
+        for replacement in ("", "- [ ] <verification step>"):
+            with self.subTest(replacement=replacement), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                repo = create_opencode_repo(root)
+                template = repo / "opencode" / SUPPORT_FILES[-1]
+                template.write_text(
+                    template.read_text(encoding="utf-8").replace(
+                        "1. [ ] <verification step>", replacement
+                    ),
+                    encoding="utf-8",
+                )
+
+                result = OpenCodeInstallService(repo, root / "config").validate()
+
+                self.assertFalse(result.ok)
+                self.assertIn("template is not the canonical lean format", result.errors[0])
+
     def test_validate_rejects_extra_plan_template_history_heading(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -1457,10 +1491,14 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 '  "*": ask\n'
                 "  edit:\n"
                 '    "*": ask\n'
-                '    "docs/implementation-plans/**": ask\n'
+                '    "docs/implementation-plans/plans/**": deny\n'
+                '    ".erb/plans/**": deny\n'
+                '    ".start-work/**": deny\n'
                 "  bash:\n"
                 '    "*": ask\n'
-                '    "*docs/implementation-plans*": deny\n'
+                '    "*docs/implementation-plans/plans*": deny\n'
+                '    "*.erb/plans*": deny\n'
+                '    "*.start-work*": deny\n'
                 "  task: deny\n"
                 "  webfetch: ask\n"
                 "  websearch: ask\n"
@@ -1472,10 +1510,14 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 '  "*": ask\n'
                 "  edit:\n"
                 '    "*": ask\n'
-                '    "docs/implementation-plans/**": deny\n'
+                '    "docs/implementation-plans/plans/**": deny\n'
+                '    ".erb/plans/**": deny\n'
+                '    ".start-work/**": deny\n'
                 "  bash:\n"
                 '    "*": ask\n'
-                '    "*docs/implementation-plans*": deny\n'
+                '    "*docs/implementation-plans/plans*": deny\n'
+                '    "*.erb/plans*": deny\n'
+                '    "*.start-work*": deny\n'
                 "  task: deny\n"
                 "  webfetch: deny\n"
                 "  websearch: deny\n"
@@ -1512,11 +1554,15 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     '  "*": ask\n'
                     "  edit:\n"
                     '    "*": ask\n'
-                    '    "docs/implementation-plans/**": ask\n'
+                    '    "docs/implementation-plans/plans/**": deny\n'
+                    '    ".erb/plans/**": deny\n'
+                    '    ".start-work/**": deny\n'
                     "  bash:\n"
                     '    "*": ask\n'
                     '    "just test-web": allow\n'
-                    '    "*docs/implementation-plans*": deny\n'
+                    '    "*docs/implementation-plans/plans*": deny\n'
+                    '    "*.erb/plans*": deny\n'
+                    '    "*.start-work*": deny\n'
                     "  task: deny\n"
                     "  webfetch: ask\n"
                     "  websearch: ask\n"
@@ -2703,6 +2749,95 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     result.errors,
                 )
 
+    def test_checked_in_planned_commit_ownership_requires_current_human_request(self) -> None:
+        project_root = Path(__file__).parents[1]
+        orchestrator_text = re.sub(
+            r"\s+",
+            " ",
+            (project_root / "opencode/agents/plan-orchestrator.md").read_text(
+                encoding="utf-8"
+            ),
+        )
+        self.assertIn("only after an explicit current human request", orchestrator_text)
+        self.assertIn("during implementation or after implementation completes", orchestrator_text)
+        self.assertNotIn("explicit bounded plan TODO", orchestrator_text)
+
+        worker = OpenCodeInstallService._parse_frontmatter(
+            "agents",
+            "implementation-worker.md",
+            (project_root / "opencode/agents/implementation-worker.md").read_text(
+                encoding="utf-8"
+            ),
+        )[0]
+        assert worker is not None
+        bash = worker.permissions["bash"]
+        self.assertIsInstance(bash, tuple)
+        assert isinstance(bash, tuple)
+        self.assertEqual(resolve_opencode_action(bash, "git add -- src/work.py"), "deny")
+        self.assertEqual(resolve_opencode_action(bash, "git commit"), "deny")
+        self.assertEqual(
+            resolve_opencode_action(
+                bash,
+                'python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" '
+                "finalize --repo-root . --owner-token " + "0" * 64 + " --plan-path .erb/plans/work.md",
+            ),
+            "deny",
+        )
+        for tool in ("read", "glob", "grep", "list", "lsp"):
+            rules = worker.permissions[tool]
+            self.assertIsInstance(rules, tuple)
+            assert isinstance(rules, tuple)
+            self.assertEqual(
+                resolve_opencode_action(
+                    rules, ".start-work/resume.json", baseline="deny"
+                ),
+                "deny",
+            )
+        self.assertIn("must never stage or commit", orchestrator_text)
+
+    def test_validate_requires_worker_state_and_helper_isolation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_canonical_active_workflow_repo(root)
+            worker = repo / "opencode/agents/implementation-worker.md"
+            original = worker.read_text(encoding="utf-8")
+            self.assertTrue(OpenCodeInstallService(repo, root / "config").validate().ok)
+
+            mutations = (
+                (
+                    original.replace('    "*start_work_state.py*": deny\n', "", 1),
+                    "trusted workflow helper",
+                ),
+                (
+                    original.replace(
+                        '  read:\n    "*": allow\n    ".start-work/**": deny\n',
+                        '  read:\n    "*": allow\n',
+                        1,
+                    ),
+                    "trusted state navigation",
+                ),
+                (
+                    original.replace(
+                        '    "*start_work_state.py*": deny\n',
+                        '    "*start_work_state.py*": deny\n'
+                        '    "*start_work_state.py* recover-stale*": ask\n',
+                        1,
+                    ),
+                    "trusted workflow helper",
+                ),
+            )
+            for mutation, expected in mutations:
+                with self.subTest(expected=expected):
+                    self.assertNotEqual(mutation, original)
+                    worker.write_text(mutation, encoding="utf-8")
+                    result = OpenCodeInstallService(repo, root / "config").validate()
+                    self.assertFalse(result.ok)
+                    self.assertTrue(
+                        any(expected in error for error in result.errors),
+                        result.errors,
+                    )
+            worker.write_text(original, encoding="utf-8")
+
     def test_validate_rejects_each_retired_lifecycle_token_in_active_inventory(self) -> None:
         for relative_path, token in STALE_LIFECYCLE_MUTATIONS:
             with self.subTest(relative_path=relative_path, token=token), tempfile.TemporaryDirectory() as temp_dir:
@@ -2830,6 +2965,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         manifest = json.loads((project_root / "opencode/manifest.json").read_text(encoding="utf-8"))
         expected_commands = (
             "audit-technical-debt.md",
+            "consult-plan.md",
             "convert-tapestry-plan.md",
             "create-plan.md",
             "investigate-regression.md",
@@ -2839,6 +2975,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         )
         expected_owners = {
             "audit-technical-debt.md": "engineering-review-board",
+            "consult-plan.md": "plan-orchestrator",
             "convert-tapestry-plan.md": "plan-orchestrator",
             "create-plan.md": "plan-orchestrator",
             "investigate-regression.md": "engineering-review-board",
@@ -2847,7 +2984,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "start-work.md": "plan-orchestrator",
         }
 
-        self.assertEqual(len(manifest["agents"]), 24)
+        self.assertEqual(len(manifest["agents"]), 23)
         self.assertEqual(tuple(manifest["commands"]), expected_commands)
         self.assertEqual(tuple(manifest["runtime_helpers"]), RUNTIME_HELPERS)
         command_root = project_root / "opencode/commands"
@@ -2885,6 +3022,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 "Prefer direct unplanned implementation when safe.",
                 "Complexity may justify recommending a plan but never automatically creates one or invokes `/start-work`.",
                 "Only explicit human authorization controls plan creation.",
+                "recommend top-level `/consult-plan`",
+                "reason, trade-off, and proposed scope",
             ),
             (
                 "Route every explicit plan request and every request whose classification changes a durable contract",
@@ -2897,6 +3036,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             (
                 "may provide or obtain read-only planning advice and recommend planning",
                 "cannot create, authorize, or automatically initiate a plan or `/start-work`.",
+                "recommend top-level `/consult-plan`",
+                "human's decision",
             ),
         )
         assert_contract(
@@ -2914,6 +3055,15 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         )
 
         command_contracts = {
+            "consult-plan.md": {
+                "required": (
+                    "top-level read-only Plan Orchestrator consultation",
+                    "does not acquire planned-work ownership",
+                    "must not create or mutate a plan or trusted state",
+                    "The human controls whether to proceed directly, create a plan, or decline the recommendation.",
+                ),
+                "forbidden": ("register-plans", "write-pointer", "implementation-worker"),
+            },
             "create-plan.md": {
                 "required": (
                     "invocation is explicit human authorization",
@@ -2963,7 +3113,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             ),
             "review-plan.md": (
                 "Advisory corrections cannot create or execute a plan.",
-                "A human may separately request an explicit plan-only update from the top-level Plan Orchestrator;",
+                "Advisory corrections cannot mutate an existing plan;",
+                "a human may separately authorize a new plan through `/create-plan`.",
                 "`/start-work <path>` is only a separate human-chosen execution choice.",
             ),
             "review-implementation.md": (
@@ -3022,12 +3173,13 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 result.errors,
             )
 
-    def test_checked_in_plan_consultant_topology_is_read_only(self) -> None:
-        """Protect the consultant's manifested, read-only Task topology."""
+    def test_checked_in_plan_consultation_is_top_level_and_non_mutating(self) -> None:
+        """Protect top-level Plan Orchestrator consultation and forbid Task routing."""
         project_root = Path(__file__).parents[1]
         manifest = json.loads((project_root / "opencode/manifest.json").read_text(encoding="utf-8"))
-        consultant_name = "plan-consultant.md"
-        self.assertIn(consultant_name, manifest["agents"])
+        self.assertNotIn("plan-consultant.md", manifest["agents"])
+        self.assertIn("consult-plan.md", manifest["commands"])
+        self.assertFalse((project_root / "opencode/agents/plan-consultant.md").exists())
 
         agent_root = project_root / "opencode/agents"
 
@@ -3041,122 +3193,52 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             assert parsed is not None
             return parsed
 
-        consultant = parse_agent(consultant_name)
-        self.assertEqual(consultant.fields["mode"], "subagent")
-        self.assertEqual(consultant.permissions["*"], "deny")
-
-        def permission_action(permission: str, target: str) -> str:
-            value = consultant.permissions[permission]
-            if isinstance(value, tuple):
-                return resolve_opencode_action(value, target, baseline="deny")
-            return value
-
-        for permission in (
-            "edit",
-            "bash",
-            "task",
-            "todowrite",
-            "webfetch",
-            "websearch",
-            "question",
-        ):
-            with self.subTest(permission=permission):
-                value = consultant.permissions[permission]
-                if isinstance(value, tuple):
-                    self.assertIn(("*", "deny"), value)
-                    self.assertTrue(all(action == "deny" for _, action in value))
-                else:
-                    self.assertEqual(value, "deny")
-
-        for permission in ("read", "glob", "grep", "list", "lsp"):
-            with self.subTest(permission=permission, target="ordinary-source"):
-                self.assertEqual(permission_action(permission, "opencode/manifest.json"), "allow")
-            with self.subTest(permission=permission, target="planned-work-state"):
-                self.assertEqual(permission_action(permission, ".start-work/resume.json"), "deny")
-        self.assertEqual(permission_action("skill", "test-driven-development"), "allow")
-
-        for permission, targets in {
-            "edit": (
-                "docs/implementation-plans/plans/opencode/01-contract.md",
-                ".start-work/resume.json",
-            ),
-            "bash": (
-                "git add -- opencode/manifest.json",
-                "git commit",
-            ),
-            "task": ("implementation-worker",),
-        }.items():
-            for target in targets:
-                with self.subTest(permission=permission, target=target):
-                    self.assertEqual(permission_action(permission, target), "deny")
-
-        consultant_mutations = {
-            "root wildcard": (
-                '  "*": deny\n  read:',
-                '  "*": allow\n  read:',
-                "permission wildcard baseline must be deny",
-            ),
-            "trusted-state read": (
-                '    ".start-work/**": deny',
-                '    ".start-work/**": allow',
-                "must allow repository navigation and deny .start-work state",
-            ),
-            "edit": (
-                "  edit: deny",
-                "  edit: ask",
-                "violates core edit ownership",
-            ),
-            "bash": (
-                "  bash: deny",
-                "  bash: ask",
-                "must deny mutation and delegation tools",
-            ),
-            "recursive task topology": (
-                "  task: deny",
-                '  task:\n    "*": deny\n    "plan-consultant": allow',
-                "must deny mutation and delegation tools",
-            ),
-            "TODO": (
-                "  todowrite: deny",
-                "  todowrite: allow",
-                "must not allow todowrite for this role",
-            ),
-            "network": (
-                "  webfetch: deny",
-                "  webfetch: ask",
-                "network permissions must be deny",
-            ),
-        }
-        for label, (old, new, expected_error) in consultant_mutations.items():
-            with self.subTest(mutation=label), tempfile.TemporaryDirectory() as temp_dir:
-                root = Path(temp_dir)
-                repo = create_canonical_active_workflow_repo(root)
-                consultant_path = repo / "opencode/agents/plan-consultant.md"
-                source = consultant_path.read_text(encoding="utf-8")
-                mutated, count = source.replace(old, new, 1), source.count(old)
-                self.assertGreaterEqual(count, 1)
-                consultant_path.write_text(mutated, encoding="utf-8")
-
-                result = OpenCodeInstallService(repo, root / "config").validate()
-
-                self.assertFalse(result.ok)
-                self.assertTrue(
-                    any(expected_error in error for error in result.errors),
-                    result.errors,
-                )
-
-        parents = {name: parse_agent(f"{name}.md") for name in ("engineering-lead", "engineering-review-board")}
-        for name, parent in parents.items():
-            with self.subTest(parent=name):
-                rules = parent.permissions["task"]
-                self.assertIsInstance(rules, tuple)
-                assert isinstance(rules, tuple)
-                self.assertIn(("plan-consultant", "allow"), rules)
-                self.assertNotIn(("plan-orchestrator", "allow"), rules)
+        for name in ("engineering-lead.md", "engineering-review-board.md"):
+            parent = parse_agent(name)
+            rules = parent.permissions["task"]
+            self.assertIsInstance(rules, tuple)
+            assert isinstance(rules, tuple)
+            self.assertNotIn(("plan-consultant", "allow"), rules)
+            self.assertNotIn(("plan-orchestrator", "allow"), rules)
 
         orchestrator = parse_agent("plan-orchestrator.md")
         self.assertEqual(orchestrator.fields["mode"], "primary")
-        self.assertTrue(OpenCodeInstallService(project_root, project_root / "test-config").validate().ok)
+        for permission in ("read", "glob", "grep", "list", "lsp"):
+            rules = orchestrator.permissions[permission]
+            self.assertIsInstance(rules, tuple)
+            assert isinstance(rules, tuple)
+            self.assertEqual(
+                resolve_opencode_action(rules, ".start-work/resume.json", baseline="deny"),
+                "deny",
+            )
+
+        command_path = project_root / "opencode/commands/consult-plan.md"
+        parsed, errors = OpenCodeInstallService._parse_frontmatter(
+            "commands", "consult-plan.md", command_path.read_text(encoding="utf-8")
+        )
+        self.assertEqual(errors, [])
+        assert parsed is not None
+        self.assertEqual(parsed.fields["agent"], "plan-orchestrator")
+        self.assertEqual(parsed.fields["subtask"], "false")
+        normalized = re.sub(r"\s+", " ", command_path.read_text(encoding="utf-8")).strip()
+        for required in (
+            "top-level read-only Plan Orchestrator consultation",
+            "does not acquire planned-work ownership",
+            "must not create or mutate a plan or trusted state",
+            "must not delegate implementation, implement, stage, or commit",
+            "The human controls whether to proceed directly, create a plan, or decline the recommendation.",
+        ):
+            self.assertIn(required, normalized)
+        for forbidden in (
+            "register-plans",
+            "write-pointer",
+            'python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py"',
+        ):
+            self.assertNotIn(forbidden, command_path.read_text(encoding="utf-8"))
+
+        self.assertTrue(
+            OpenCodeInstallService(project_root, project_root / "test-config").validate().ok
+        )
 
     def test_checked_in_command_contract_validator_rejects_route_drift(self) -> None:
         """Exercise only checked-in prompt contracts, not agent execution or UI behavior."""
@@ -3189,6 +3271,12 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 "engineering-lead.md": (
                     "Only explicit human authorization controls plan creation.",
                     "route authorized creation to top-level `/create-plan`.",
+                    "recommend top-level `/consult-plan`",
+                    "reason, trade-off, and proposed scope",
+                ),
+                "engineering-review-board.md": (
+                    "recommend top-level `/consult-plan`",
+                    "The human's decision to require, decline, or override planning advice controls the route.",
                 ),
                 "plan-orchestrator.md": (
                     "The lifecycle distinguishes read-only consultation, explicit plan-only creation, and execution.",
@@ -3196,18 +3284,13 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     "Only a read-only explanation with no mutation is exempt from acquisition.",
                     "Parse locators and read pointer, source, allocation, plan, worktree, and execution evidence only after complete provisional child-lock ownership.",
                     "On uncertain outcomes or any mutation retain the lock;",
-                    "Before pointer persistence, require the repository-owned helper to verify a regular non-symlinked `.gitignore`",
-                    "For plan-only work, persist a pointer when needed, then release only after all mutation outcomes are known and no child can mutate;",
+                    "Before trusted-state persistence, require the repository-owned helper to verify a regular non-symlinked `.gitignore`",
+                    "register every newly created plan contract before releasing plan-only ownership",
                     "Execution reconciles the pointer, worktree, plan checkboxes, and TODO state before each at-least-once step.",
                     "Before every mutable phase, freshly reload the pointer, plan, and worktree evidence while holding the lock; never rely on stale evidence.",
-                    "or equally explicit current top-level human plan-creation or update request",
-                ),
-                "plan-consultant.md": (
-                    "must not create a plan",
-                    "invoke `/start-work`",
-                    "authorize or begin implementation",
-                    "mutate a durable artifact",
-                    "or delegate.",
+                    "or equally explicit current top-level human plan-creation request",
+                    "must complete every planned TODO before beginning any dedicated Verification step",
+                    "must not add, remove, rewrite, reorder, or renumber plan content",
                 ),
             }
             for name, tokens in agent_tokens.items():

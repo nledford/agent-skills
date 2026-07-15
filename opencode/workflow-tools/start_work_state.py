@@ -16,19 +16,43 @@ from typing import Callable, NoReturn, Sequence
 
 
 MAX_BYTES = 1_048_576
-MAX_POINTER_BYTES = 4_096
+MAX_OWNER_BYTES = 65_536
+MAX_STATE_BYTES = 1_048_576
+MAX_POINTER_BYTES = MAX_STATE_BYTES
 MAX_UNTRUSTED_LOCATOR_BYTES = 4_096
 OWNER_NAME = "owner.json"
 LOCK_NAME = "lock"
 RESUME_NAME = "resume.json"
 TOKEN_RE = re.compile(r"[0-9a-f]{64}\Z")
-TODO_RE = re.compile(br"(?m)^(\s*\d+\.\s+)\[[ xX]\]")
-PLAN_PREFIX = PurePosixPath("docs/implementation-plans/plans")
-PLAN_PATH_RE = re.compile(
-    r"docs/implementation-plans/plans/"
-    r"(?P<series>[a-z][a-z0-9-]{1,19})/"
+PLAN_CHECKBOX_RE = re.compile(br"(?m)^(\d+\. )\[[ x]\](?= \S)")
+CHECKLIST_LINE_RE = re.compile(
+    r"^(?P<number>[1-9][0-9]*)\. \[(?P<mark>[ x])\] (?P<body>\S.*)$"
+)
+NUMBERED_CHECKBOX_LINE_RE = re.compile(r"^[1-9][0-9]*\. \[[ xX]\](?: |$)")
+SINGLE_PLAN_PATH_RE = re.compile(
+    r"\.erb/plans/(?P<slug>[a-z][a-z0-9]*(?:-[a-z0-9]+)*)\.md\Z"
+)
+MULTI_PLAN_PATH_RE = re.compile(
+    r"\.erb/plans/"
+    r"(?P<subject>[a-z][a-z0-9-]{1,19})/"
     r"(?P<sequence>0[1-9]|[1-9][0-9])-"
-    r"(?P<slug>[a-z0-9]+(?:-[a-z0-9]+)*)\.md\Z"
+    r"(?P<slug>[a-z][a-z0-9]*(?:-[a-z0-9]+)*)\.md\Z"
+)
+PLAN_PREFIX = PurePosixPath(".erb/plans")
+PLAN_HEADINGS = (
+    "## TL;DR",
+    "## Context",
+    "## Objectives",
+    "## Guardrails",
+    "## Deliverables",
+    "## Definition of Done",
+    "## TODOs",
+    "## Verification",
+)
+CONTEXT_LABELS = (
+    "**Original request:**",
+    "**Key repository findings:**",
+    "**Dependencies:**",
 )
 UNTRUSTED_RELATIVE_PATH_RE = re.compile(
     r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*\Z"
@@ -52,7 +76,15 @@ class StateError(RuntimeError):
 class OwnerMetadata:
     version: int
     owner_token: str
-    plan_path: str | None
+    plan_paths: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class PlanContract:
+    plan_path: str
+    contract_sha256: str
+    todo_progress: str
+    verification_progress: str
 
 
 @dataclass(frozen=True)
@@ -60,6 +92,15 @@ class ResumePointer:
     version: int
     plan_path: str
     contract_sha256: str
+    todo_progress: str
+    verification_progress: str
+
+
+@dataclass(frozen=True)
+class ResumeState:
+    version: int
+    active_plan_path: str | None
+    plans: tuple[PlanContract, ...]
 
 
 def _error(message: str) -> StateError:
@@ -246,9 +287,22 @@ def _untrusted_regular_bytes(
 
 
 def _canonical_plan_path(plan_path: str) -> str:
-    if not isinstance(plan_path, str) or not PLAN_PATH_RE.fullmatch(plan_path):
+    if not isinstance(plan_path, str) or not (
+        SINGLE_PLAN_PATH_RE.fullmatch(plan_path)
+        or MULTI_PLAN_PATH_RE.fullmatch(plan_path)
+    ):
         raise _error("plan path is outside the canonical plan namespace")
     return plan_path
+
+
+def _plan_layout(plan_path: str) -> tuple[str, str | None, int | None]:
+    canonical = _canonical_plan_path(plan_path)
+    single = SINGLE_PLAN_PATH_RE.fullmatch(canonical)
+    if single is not None:
+        return "single", None, None
+    multi = MULTI_PLAN_PATH_RE.fullmatch(canonical)
+    assert multi is not None
+    return "multi", multi.group("subject"), int(multi.group("sequence"))
 
 
 def _plan_bytes(root: Path, plan_path: str) -> bytes:
@@ -262,28 +316,109 @@ def _plan_bytes(root: Path, plan_path: str) -> bytes:
 
 
 def contract_sha256(root: Path, plan_path: str) -> str:
-    """Hash a stable strict-UTF-8 plan, ignoring numbered TODO completion marks."""
+    """Hash stable strict-UTF-8 plan bytes, ignoring canonical checkbox marks."""
     raw = _plan_bytes(_repo_root(root), plan_path)
     try:
         raw.decode("utf-8", "strict")
     except UnicodeDecodeError as exc:
         raise _error("plan is not strict UTF-8") from exc
-    normalized = TODO_RE.sub(br"\1[ ]", raw)
+    normalized = PLAN_CHECKBOX_RE.sub(br"\1[ ]", raw)
     return hashlib.sha256(normalized).hexdigest()
 
 
+def _checklist_progress(lines: list[str], *, name: str) -> str:
+    progress: list[str] = []
+    for line in lines:
+        if not line:
+            continue
+        match = CHECKLIST_LINE_RE.fullmatch(line)
+        if match is None:
+            raise _error(f"{name} must contain only numbered canonical checkboxes")
+        expected = len(progress) + 1
+        if int(match.group("number")) != expected:
+            raise _error(f"{name} checkbox numbering is not sequential")
+        progress.append("1" if match.group("mark") == "x" else "0")
+    if not progress:
+        raise _error(f"{name} must contain at least one checkbox")
+    return "".join(progress)
+
+
+def _plan_contract(root: Path, plan_path: str) -> PlanContract:
+    canonical = _canonical_plan_path(plan_path)
+    raw = _plan_bytes(root, canonical)
+    try:
+        text = raw.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise _error("plan is not strict UTF-8") from exc
+    lines = text.splitlines()
+    if not lines or not lines[0].startswith("# ") or len(lines[0]) <= 2:
+        raise _error("plan title is invalid")
+    headings = tuple(line for line in lines[1:] if line.startswith("#"))
+    if headings != PLAN_HEADINGS:
+        raise _error("plan headings do not match the closed lean contract")
+
+    indices = {heading: lines.index(heading) for heading in PLAN_HEADINGS}
+    context_start = indices["## Context"]
+    context_end = indices["## Objectives"]
+    label_positions: list[int] = []
+    for label in CONTEXT_LABELS:
+        positions = [index for index, line in enumerate(lines) if line == label]
+        if len(positions) != 1 or not context_start < positions[0] < context_end:
+            raise _error("plan context labels do not match the closed lean contract")
+        label_positions.append(positions[0])
+    if label_positions != sorted(label_positions):
+        raise _error("plan context labels are out of order")
+
+    todo_start = indices["## TODOs"] + 1
+    verification_heading = indices["## Verification"]
+    if any(NUMBERED_CHECKBOX_LINE_RE.match(line) for line in lines[:todo_start]):
+        raise _error("numbered checkboxes are allowed only in checklist sections")
+    todo_progress = _checklist_progress(
+        lines[todo_start:verification_heading], name="TODO section"
+    )
+    verification_progress = _checklist_progress(
+        lines[verification_heading + 1 :], name="Verification section"
+    )
+    if "1" in verification_progress and "0" in todo_progress:
+        raise _error("verification cannot advance before every TODO is complete")
+
+    digest = hashlib.sha256(PLAN_CHECKBOX_RE.sub(br"\1[ ]", raw)).hexdigest()
+    return PlanContract(
+        plan_path=canonical,
+        contract_sha256=digest,
+        todo_progress=todo_progress,
+        verification_progress=verification_progress,
+    )
+
+
 def _owner_from_bytes(data: bytes) -> OwnerMetadata:
-    value = _strict_json(data, limit=512)
-    if set(value) != {"version", "owner_token", "plan_path"}:
+    value = _strict_json(data, limit=MAX_OWNER_BYTES)
+    if set(value) != {"version", "owner_token", "plan_paths"}:
         raise _error("owner metadata has unsupported fields")
-    version, token, plan_path = value["version"], value["owner_token"], value["plan_path"]
-    if type(version) is not int or version != 1 or not isinstance(token, str) or not TOKEN_RE.fullmatch(token):
+    version = value["version"]
+    token = value["owner_token"]
+    plan_paths = value["plan_paths"]
+    if (
+        type(version) is not int
+        or version != 2
+        or not isinstance(token, str)
+        or not TOKEN_RE.fullmatch(token)
+        or not isinstance(plan_paths, list)
+        or len(plan_paths) > 99
+    ):
         raise _error("owner metadata is invalid")
-    if plan_path is not None:
+    canonical_paths: list[str] = []
+    for plan_path in plan_paths:
         if not isinstance(plan_path, str):
             raise _error("owner metadata is invalid")
-        plan_path = _canonical_plan_path(plan_path)
-    return OwnerMetadata(version=1, owner_token=token, plan_path=plan_path)
+        canonical_paths.append(_canonical_plan_path(plan_path))
+    if len(canonical_paths) != len(set(canonical_paths)):
+        raise _error("owner metadata contains duplicate plan paths")
+    return OwnerMetadata(
+        version=2,
+        owner_token=token,
+        plan_paths=tuple(canonical_paths),
+    )
 
 
 def _read_owner(lock: Path) -> OwnerMetadata:
@@ -291,7 +426,9 @@ def _read_owner(lock: Path) -> OwnerMetadata:
     entries = {entry.name for entry in lock.iterdir()}
     if entries != {OWNER_NAME}:
         raise _error("lock metadata is missing or corrupt")
-    return _owner_from_bytes(_read_regular_bytes(lock / OWNER_NAME, limit=512))
+    return _owner_from_bytes(
+        _read_regular_bytes(lock / OWNER_NAME, limit=MAX_OWNER_BYTES)
+    )
 
 
 def _atomic_write(path: Path, data: bytes) -> None:
@@ -311,7 +448,15 @@ def _atomic_write(path: Path, data: bytes) -> None:
 
 
 def _owner_bytes(owner: OwnerMetadata) -> bytes:
-    return json.dumps(owner.__dict__, separators=(",", ":"), sort_keys=False).encode("utf-8")
+    return json.dumps(
+        {
+            "version": owner.version,
+            "owner_token": owner.owner_token,
+            "plan_paths": list(owner.plan_paths),
+        },
+        separators=(",", ":"),
+        sort_keys=False,
+    ).encode("utf-8")
 
 
 def acquire_provisional(
@@ -333,7 +478,7 @@ def acquire_provisional(
     token = token_factory(32)
     if not isinstance(token, str) or not TOKEN_RE.fullmatch(token):
         raise _error("token factory returned an invalid token")
-    owner = OwnerMetadata(version=1, owner_token=token, plan_path=None)
+    owner = OwnerMetadata(version=2, owner_token=token, plan_paths=())
     _atomic_write(lock / OWNER_NAME, _owner_bytes(owner))
     return owner
 
@@ -380,15 +525,20 @@ def read_secondary_reference(repo_root: Path, owner_token: str, reference: str |
 
 
 def finalize_owner(repo_root: Path, owner_token: str, plan_path: str) -> OwnerMetadata:
-    """Bind a provisional lock to one canonical plan path exactly once."""
+    """Bind a held lock to one or more validated canonical plan paths."""
     root = _repo_root(repo_root)
     canonical = _canonical_plan_path(plan_path)
     lock, owner = _matching_owner(root, owner_token)
-    if owner.plan_path == canonical:
+    _plan_contract(root, canonical)
+    if canonical in owner.plan_paths:
         return owner
-    if owner.plan_path is not None:
-        raise _error("lock is already finalized for another plan")
-    final = OwnerMetadata(version=1, owner_token=owner.owner_token, plan_path=canonical)
+    if len(owner.plan_paths) >= 99:
+        raise _error("lock cannot own more plan paths")
+    final = OwnerMetadata(
+        version=2,
+        owner_token=owner.owner_token,
+        plan_paths=(*owner.plan_paths, canonical),
+    )
     _atomic_write(lock / OWNER_NAME, _owner_bytes(final))
     return final
 
@@ -404,10 +554,9 @@ def release_provisional(
     """Release only a clean provisional lock before any mutable child exists."""
     root = _repo_root(repo_root)
     lock, owner = _matching_owner(root, owner_token)
-    entries = _state_entries(_state_root(root, create=False))
+    _state_entries(_state_root(root, create=False))
     if (
-        owner.plan_path is not None
-        or RESUME_NAME in entries
+        owner.plan_paths
         or not known_clean
         or mutation_occurred
         or child_can_mutate
@@ -430,27 +579,191 @@ def release_final(
     root = _repo_root(repo_root)
     lock, owner = _matching_owner(root, owner_token)
     if (
-        owner.plan_path is None
+        not owner.plan_paths
         or (completed_execution == completed_plan_only)
         or not outcomes_known
         or child_can_mutate
     ):
         raise _error("final release requires known completed outcomes")
+    resume_state = _read_resume_state(root)
+    registered = {contract.plan_path: contract for contract in resume_state.plans}
+    for plan_path in owner.plan_paths:
+        contract = registered.get(plan_path)
+        if contract is None or contract != _plan_contract(root, plan_path):
+            raise _error("final release requires registered immutable plan contracts")
+    if completed_execution:
+        if len(owner.plan_paths) != 1 or resume_state.active_plan_path is not None:
+            raise _error("execution release requires one completed inactive plan")
+        contract = registered[owner.plan_paths[0]]
+        if "0" in contract.todo_progress or "0" in contract.verification_progress:
+            raise _error("execution release requires completed plan checklists")
+    elif resume_state.active_plan_path is not None:
+        raise _error("plan-only release cannot replace active execution")
     (lock / OWNER_NAME).unlink()
     lock.rmdir()
 
 
-def _resume_from_bytes(data: bytes) -> ResumePointer:
-    value = _strict_json(data)
-    if set(value) != {"version", "plan_path", "contract_sha256"}:
-        raise _error("resume pointer has unsupported fields")
-    version, plan_path, digest = value["version"], value["plan_path"], value["contract_sha256"]
-    if type(version) is not int or version != 1 or not isinstance(plan_path, str) or not isinstance(digest, str):
-        raise _error("resume pointer is invalid")
-    canonical = _canonical_plan_path(plan_path)
-    if not re.fullmatch(r"[0-9a-f]{64}", digest):
-        raise _error("resume pointer hash is invalid")
-    return ResumePointer(version=1, plan_path=canonical, contract_sha256=digest)
+def _plan_contract_from_value(value: object) -> PlanContract:
+    if not isinstance(value, dict) or set(value) != {
+        "plan_path",
+        "contract_sha256",
+        "todo_progress",
+        "verification_progress",
+    }:
+        raise _error("resume state plan contract has unsupported fields")
+    plan_path = value["plan_path"]
+    digest = value["contract_sha256"]
+    todo_progress = value["todo_progress"]
+    verification_progress = value["verification_progress"]
+    if (
+        not isinstance(plan_path, str)
+        or not isinstance(digest, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", digest)
+        or not isinstance(todo_progress, str)
+        or not re.fullmatch(r"[01]+", todo_progress)
+        or not isinstance(verification_progress, str)
+        or not re.fullmatch(r"[01]+", verification_progress)
+    ):
+        raise _error("resume state plan contract is invalid")
+    if "1" in verification_progress and "0" in todo_progress:
+        raise _error("resume state verification cannot precede TODO completion")
+    return PlanContract(
+        plan_path=_canonical_plan_path(plan_path),
+        contract_sha256=digest,
+        todo_progress=todo_progress,
+        verification_progress=verification_progress,
+    )
+
+
+def _resume_state_from_bytes(data: bytes) -> ResumeState:
+    value = _strict_json(data, limit=MAX_STATE_BYTES)
+    if set(value) != {"version", "active_plan_path", "plans"}:
+        raise _error("resume state has unsupported fields")
+    version = value["version"]
+    active_plan_path = value["active_plan_path"]
+    plans = value["plans"]
+    if type(version) is not int or version != 2 or not isinstance(plans, list):
+        raise _error("resume state is invalid")
+    contracts = tuple(_plan_contract_from_value(plan) for plan in plans)
+    paths = tuple(contract.plan_path for contract in contracts)
+    if len(paths) != len(set(paths)):
+        raise _error("resume state contains duplicate plan contracts")
+    if active_plan_path is not None:
+        if not isinstance(active_plan_path, str):
+            raise _error("resume state is invalid")
+        active_plan_path = _canonical_plan_path(active_plan_path)
+        if active_plan_path not in paths:
+            raise _error("resume state active plan is not registered")
+    return ResumeState(
+        version=2,
+        active_plan_path=active_plan_path,
+        plans=contracts,
+    )
+
+
+def _resume_state_bytes(resume_state: ResumeState) -> bytes:
+    data = json.dumps(
+        {
+            "version": resume_state.version,
+            "active_plan_path": resume_state.active_plan_path,
+            "plans": [contract.__dict__ for contract in resume_state.plans],
+        },
+        separators=(",", ":"),
+        sort_keys=False,
+    ).encode("utf-8")
+    if len(data) > MAX_STATE_BYTES:
+        raise _error("resume state exceeds the size limit")
+    return data
+
+
+def _read_resume_state(root: Path) -> ResumeState:
+    state = _state_root(root, create=False)
+    _state_entries(state)
+    return _resume_state_from_bytes(
+        _read_regular_bytes(state / RESUME_NAME, limit=MAX_STATE_BYTES)
+    )
+
+
+def _write_resume_state(root: Path, resume_state: ResumeState) -> None:
+    state = _state_root(root, create=False)
+    _state_entries(state)
+    _atomic_write(state / RESUME_NAME, _resume_state_bytes(resume_state))
+
+
+def _pointer(contract: PlanContract) -> ResumePointer:
+    return ResumePointer(version=2, **contract.__dict__)
+
+
+def _validate_registration_layout(
+    root: Path,
+    plan_paths: tuple[str, ...],
+    registered_contracts: tuple[PlanContract, ...],
+) -> None:
+    layouts = [_plan_layout(plan_path) for plan_path in plan_paths]
+    if all(layout[0] == "single" for layout in layouts):
+        if len(plan_paths) != 1:
+            raise _error("multiple plans require one subject series")
+        return
+    if any(layout[0] != "multi" for layout in layouts):
+        raise _error("single-plan and multi-plan layouts cannot be mixed")
+    subjects = {layout[1] for layout in layouts}
+    if len(subjects) != 1:
+        raise _error("multiple plans must share one subject series")
+    subject = next(iter(subjects))
+    assert subject is not None
+    subject_root = root / ".erb" / "plans" / subject
+    _directory(subject_root)
+    inventory: dict[str, int] = {}
+    sequence_owners: dict[int, str] = {}
+    for entry in subject_root.iterdir():
+        data = _lstat(entry)
+        if stat.S_ISLNK(data.st_mode) or not stat.S_ISREG(data.st_mode):
+            raise _error("multi-plan series contains an unsafe entry")
+        relative = entry.relative_to(root).as_posix()
+        match = MULTI_PLAN_PATH_RE.fullmatch(relative)
+        if match is None:
+            raise _error("multi-plan series contains a non-canonical entry")
+        sequence = int(match.group("sequence"))
+        if sequence in sequence_owners:
+            raise _error("multi-plan series contains a sequence collision")
+        inventory[relative] = sequence
+        sequence_owners[sequence] = relative
+
+    historical_sequence_owners: dict[int, str] = {}
+    for contract in registered_contracts:
+        layout, registered_subject, sequence = _plan_layout(contract.plan_path)
+        if layout != "multi" or registered_subject != subject:
+            continue
+        assert sequence is not None
+        prior = historical_sequence_owners.get(sequence)
+        if prior is not None and prior != contract.plan_path:
+            raise _error("registered multi-plan series contains a sequence collision")
+        historical_sequence_owners[sequence] = contract.plan_path
+    for sequence, current_path in sequence_owners.items():
+        historical_path = historical_sequence_owners.get(sequence)
+        if historical_path is not None and historical_path != current_path:
+            raise _error("multi-plan sequence collides with registered history")
+
+    owned = set(plan_paths)
+    if any(path not in inventory for path in plan_paths):
+        raise _error("owned multi-plan path is missing from the series inventory")
+    owned_sequences = sorted(inventory[path] for path in plan_paths)
+    unowned_sequences = {
+        sequence for path, sequence in inventory.items() if path not in owned
+    }
+    unowned_sequences.update(
+        sequence
+        for sequence, path in historical_sequence_owners.items()
+        if path not in owned
+    )
+    if len(plan_paths) == 1 and not unowned_sequences:
+        raise _error("one plan must use the single-plan root layout")
+    first = max(unowned_sequences, default=0) + 1
+    expected = list(range(first, first + len(plan_paths)))
+    if expected[-1] > 99:
+        raise _error("multi-plan series is exhausted")
+    if owned_sequences != expected:
+        raise _error("multi-plan allocation is not sequential max-plus-one")
 
 
 def _verify_ignore(root: Path) -> None:
@@ -469,32 +782,121 @@ def _verify_ignore(root: Path) -> None:
         raise _error("ignore rules are unsafe")
 
 
+def register_plan_contracts(
+    repo_root: Path, owner_token: str
+) -> tuple[PlanContract, ...]:
+    """Register immutable unchecked contracts for every plan owned by this lock."""
+    root = _repo_root(repo_root)
+    _, owner = _matching_owner(root, owner_token)
+    if not owner.plan_paths:
+        raise _error("plan registration requires finalized owner paths")
+    _verify_ignore(root)
+    state_root = _state_root(root, create=False)
+    entries = _state_entries(state_root)
+    if RESUME_NAME in entries:
+        resume_state = _read_resume_state(root)
+    else:
+        resume_state = ResumeState(version=2, active_plan_path=None, plans=())
+    if resume_state.active_plan_path is not None:
+        raise _error("plan creation cannot replace active execution")
+    _validate_registration_layout(
+        root, owner.plan_paths, resume_state.plans
+    )
+    contracts = tuple(_plan_contract(root, path) for path in owner.plan_paths)
+    if any(
+        "1" in contract.todo_progress or "1" in contract.verification_progress
+        for contract in contracts
+    ):
+        raise _error("new plan contracts must begin with unchecked checklists")
+    registered = {contract.plan_path: contract for contract in resume_state.plans}
+    merged = list(resume_state.plans)
+    for contract in contracts:
+        existing = registered.get(contract.plan_path)
+        if existing is not None and existing != contract:
+            raise _error("plan registration collides with an existing contract")
+        if existing is None:
+            merged.append(contract)
+    _write_resume_state(
+        root,
+        ResumeState(version=2, active_plan_path=None, plans=tuple(merged)),
+    )
+    return contracts
+
+
+def _validate_progress_transition(
+    previous: PlanContract, current: PlanContract
+) -> None:
+    if not secrets.compare_digest(
+        previous.contract_sha256, current.contract_sha256
+    ):
+        raise _error("plan content changed after contract registration")
+    if (
+        len(previous.todo_progress) != len(current.todo_progress)
+        or len(previous.verification_progress) != len(current.verification_progress)
+    ):
+        raise _error("plan checklist shape changed after contract registration")
+    if any(
+        old == "1" and new != "1"
+        for old, new in zip(previous.todo_progress, current.todo_progress)
+    ) or any(
+        old == "1" and new != "1"
+        for old, new in zip(
+            previous.verification_progress, current.verification_progress
+        )
+    ):
+        raise _error("plan checkboxes may only advance from unchecked to checked")
+    verification_advanced = (
+        previous.verification_progress != current.verification_progress
+    )
+    if verification_advanced and "0" in previous.todo_progress:
+        raise _error("verification cannot begin before every TODO is persisted complete")
+
+
 def write_resume_pointer(repo_root: Path, owner_token: str, plan_path: str) -> ResumePointer:
-    """Persist a hash-bound resume pointer while the matching owner holds the lock."""
+    """Activate or advance one registered immutable plan under the held lock."""
     root = _repo_root(repo_root)
     canonical = _canonical_plan_path(plan_path)
     _, owner = _matching_owner(root, owner_token)
-    if owner.plan_path != canonical:
+    if owner.plan_paths != (canonical,):
         raise _error("resume pointer must match the finalized owner plan")
     _verify_ignore(root)
-    digest = contract_sha256(root, canonical)
-    state = _state_root(root, create=False)
-    _state_entries(state)
-    pointer = ResumePointer(version=1, plan_path=canonical, contract_sha256=digest)
-    _atomic_write(state / RESUME_NAME, json.dumps(pointer.__dict__, separators=(",", ":")).encode("utf-8"))
-    return pointer
+    resume_state = _read_resume_state(root)
+    if resume_state.active_plan_path not in {None, canonical}:
+        raise _error("another registered plan is active")
+    previous = next(
+        (contract for contract in resume_state.plans if contract.plan_path == canonical),
+        None,
+    )
+    if previous is None:
+        raise _error("plan must be registered by explicit plan creation before execution")
+    current = _plan_contract(root, canonical)
+    _validate_progress_transition(previous, current)
+    updated = tuple(
+        current if contract.plan_path == canonical else contract
+        for contract in resume_state.plans
+    )
+    _write_resume_state(
+        root,
+        ResumeState(version=2, active_plan_path=canonical, plans=updated),
+    )
+    return _pointer(current)
 
 
 def read_resume_pointer(repo_root: Path, owner_token: str) -> ResumePointer:
-    """Read and validate a resume pointer and its referenced plan hash."""
+    """Read and validate the active pointer and exact registered plan progress."""
     root = _repo_root(repo_root)
-    state = _state_root(root, create=False)
-    _matching_owner(root, owner_token)
-    _state_entries(state)
-    pointer = _resume_from_bytes(_read_regular_bytes(state / RESUME_NAME, limit=MAX_POINTER_BYTES))
-    if not secrets.compare_digest(pointer.contract_sha256, contract_sha256(root, pointer.plan_path)):
-        raise _error("resume pointer does not match its plan contract")
-    return pointer
+    _, owner = _matching_owner(root, owner_token)
+    resume_state = _read_resume_state(root)
+    canonical = resume_state.active_plan_path
+    if canonical is None or owner.plan_paths not in {(), (canonical,)}:
+        raise _error("resume pointer is not active for the held owner")
+    registered = next(
+        contract for contract in resume_state.plans if contract.plan_path == canonical
+    )
+    current = _plan_contract(root, canonical)
+    if registered != current:
+        raise _error("resume pointer does not match exact plan progress")
+    return _pointer(registered)
 
 
 def clear_resume_pointer(
@@ -513,12 +915,18 @@ def clear_resume_pointer(
     current = read_resume_pointer(root, owner_token)
     canonical = _canonical_plan_path(plan_path)
     if (
-        owner.plan_path != canonical
+        owner.plan_paths != (canonical,)
         or current.plan_path != canonical
         or not secrets.compare_digest(current.contract_sha256, contract_digest)
+        or "0" in current.todo_progress
+        or "0" in current.verification_progress
     ):
         raise _error("resume pointer does not match the completion contract")
-    (root / ".start-work" / RESUME_NAME).unlink()
+    resume_state = _read_resume_state(root)
+    _write_resume_state(
+        root,
+        ResumeState(version=2, active_plan_path=None, plans=resume_state.plans),
+    )
 
 
 def recover_stale_lock(repo_root: Path, *, prior_human_confirmation: bool) -> None:
@@ -547,6 +955,7 @@ def recover_stale_lock(repo_root: Path, *, prior_human_confirmation: bool) -> No
 OPERATIONS = (
     "acquire",
     "finalize",
+    "register-plans",
     "read-pointer",
     "write-pointer",
     "clear-pointer",
@@ -575,8 +984,18 @@ def _assert_bool(value: str | None) -> bool:
     return value == "true"
 
 
-def _json_output(value: OwnerMetadata | ResumePointer) -> None:
-    print(json.dumps(value.__dict__, separators=(",", ":"), sort_keys=True))
+def _json_output(value: OwnerMetadata | ResumePointer | dict[str, object]) -> None:
+    if isinstance(value, OwnerMetadata):
+        payload: object = {
+            "version": value.version,
+            "owner_token": value.owner_token,
+            "plan_paths": list(value.plan_paths),
+        }
+    elif isinstance(value, ResumePointer):
+        payload = value.__dict__
+    else:
+        payload = value
+    print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
 
 
 def _cli_parser() -> argparse.ArgumentParser:
@@ -638,6 +1057,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif operation == "finalize":
             _only_fields(arguments, "owner_token", "plan_path")
             finalize_owner(cwd, _require_token(arguments.owner_token), _require_plan(arguments.plan_path))
+        elif operation == "register-plans":
+            _only_fields(arguments, "owner_token")
+            contracts = register_plan_contracts(
+                cwd, _require_token(arguments.owner_token)
+            )
+            _json_output({"plans": [contract.__dict__ for contract in contracts]})
         elif operation == "read-pointer":
             _only_fields(arguments, "owner_token")
             _json_output(read_resume_pointer(cwd, _require_token(arguments.owner_token)))

@@ -22,7 +22,45 @@ sys.modules[SPEC.name] = state
 SPEC.loader.exec_module(state)
 TOKEN = "a" * 64
 OTHER_TOKEN = "b" * 64
-PLAN = "docs/implementation-plans/plans/state/01-state.md"
+PLAN = ".erb/plans/state.md"
+
+
+def plan_text(
+    *,
+    todo_marks: tuple[str, ...] = (" ",),
+    verification_marks: tuple[str, ...] = (" ",),
+    title: str = "State",
+) -> str:
+    todos = "\n".join(
+        f"{number}. [{mark}] implementation step {number}"
+        for number, mark in enumerate(todo_marks, start=1)
+    )
+    verification = "\n".join(
+        f"{number}. [{mark}] verification step {number}"
+        for number, mark in enumerate(verification_marks, start=1)
+    )
+    return (
+        f"# {title}\n\n"
+        "## TL;DR\n\n"
+        "Implement the bounded state change.\n\n"
+        "## Context\n\n"
+        "**Original request:**\n\n"
+        "Exercise the state contract.\n\n"
+        "**Key repository findings:**\n\n"
+        "The helper owns trusted progress.\n\n"
+        "**Dependencies:**\n\n"
+        "None.\n\n"
+        "## Objectives\n\n"
+        "Preserve the plan contract.\n\n"
+        "## Guardrails\n\n"
+        "Do not mutate plan content.\n\n"
+        "## Deliverables\n\n"
+        "A validated state transition.\n\n"
+        "## Definition of Done\n\n"
+        "All evidence is observed.\n\n"
+        f"## TODOs\n\n{todos}\n\n"
+        f"## Verification\n\n{verification}\n"
+    )
 
 
 def _contend(root, ready, result) -> None:
@@ -44,7 +82,7 @@ class StartWorkStateTests(unittest.TestCase):
         (self.root / ".gitignore").write_text("/.start-work/resume.json\n/.start-work/lock/\n", encoding="utf-8")
         path = self.root / PLAN
         path.parent.mkdir(parents=True)
-        path.write_text("# state\n1. [ ] acquire\n", encoding="utf-8")
+        path.write_text(plan_text(), encoding="utf-8")
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
@@ -67,7 +105,7 @@ class StartWorkStateTests(unittest.TestCase):
         owner = self.acquire()
         self.assertEqual(owner.owner_token, TOKEN)
         state.release_provisional(self.root, TOKEN, known_clean=True, mutation_occurred=False, child_can_mutate=False)
-        self.assertEqual(self.acquire().plan_path, None)
+        self.assertEqual(self.acquire().plan_paths, ())
 
     def test_rejects_symlinked_and_nested_repository_roots(self) -> None:
         alias = self.root.parent / "workspace-alias"
@@ -118,7 +156,7 @@ class StartWorkStateTests(unittest.TestCase):
 
         self.assertEqual(reads, [])
         self.assertEqual(state._read_owner(state_dir / "lock"), owner)
-        self.assertEqual(owner.plan_path, None)
+        self.assertEqual(owner.plan_paths, ())
 
     def test_tapestry_source_requires_matching_owner_before_any_source_read(self) -> None:
         source = self.root / ".weave/plans/source.md"
@@ -299,13 +337,23 @@ class StartWorkStateTests(unittest.TestCase):
     def test_finalization_is_canonical_idempotent_and_conflict_safe(self) -> None:
         self.acquire()
         final = state.finalize_owner(self.root, TOKEN, PLAN)
-        self.assertEqual(final.plan_path, PLAN)
+        self.assertEqual(final.plan_paths, (PLAN,))
         self.assertEqual(state.finalize_owner(self.root, TOKEN, PLAN), final)
-        with self.assertRaises(state.StateError):
-            state.finalize_owner(self.root, TOKEN, "docs/implementation-plans/plans/state/02-other.md")
+        second = ".erb/plans/state/01-other.md"
+        second_path = self.root / second
+        second_path.parent.mkdir(parents=True)
+        second_path.write_text(plan_text(title="Other"), encoding="utf-8")
+        expanded = state.finalize_owner(self.root, TOKEN, second)
+        self.assertEqual(expanded.plan_paths, (PLAN, second))
         with self.assertRaises(state.StateError):
             state.finalize_owner(self.root, OTHER_TOKEN, PLAN)
-        for invalid in ("/tmp/x.md", "docs/implementation-plans/plans/state/../x.md", "plans/x.md"):
+        for invalid in (
+            "/tmp/x.md",
+            ".erb/plans/state/../x.md",
+            ".erb/plans/01-prefixed.md",
+            "docs/implementation-plans/plans/state/01-state.md",
+            "plans/x.md",
+        ):
             with self.assertRaises(state.StateError):
                 state.finalize_owner(self.root, TOKEN, invalid)
 
@@ -341,6 +389,23 @@ class StartWorkStateTests(unittest.TestCase):
                 outcomes_known=True,
                 child_can_mutate=False,
             )
+        state.register_plan_contracts(self.root, TOKEN)
+        pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
+        path = self.root / PLAN
+        path.write_text(plan_text(todo_marks=("x",)), encoding="utf-8")
+        pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
+        path.write_text(
+            plan_text(todo_marks=("x",), verification_marks=("x",)),
+            encoding="utf-8",
+        )
+        pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
+        state.clear_resume_pointer(
+            self.root,
+            TOKEN,
+            PLAN,
+            pointer.contract_sha256,
+            completed=True,
+        )
         state.release_final(
             self.root,
             TOKEN,
@@ -350,52 +415,284 @@ class StartWorkStateTests(unittest.TestCase):
             child_can_mutate=False,
         )
 
+    def test_multi_plan_registration_requires_one_subject_and_next_sequences(self) -> None:
+        first = ".erb/plans/platform/01-foundation.md"
+        second = ".erb/plans/platform/02-delivery.md"
+        for plan_path, title in ((first, "Foundation"), (second, "Delivery")):
+            path = self.root / plan_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(plan_text(title=title), encoding="utf-8")
+
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, first)
+        state.finalize_owner(self.root, TOKEN, second)
+        registered = state.register_plan_contracts(self.root, TOKEN)
+        self.assertEqual(
+            tuple(contract.plan_path for contract in registered),
+            (first, second),
+        )
+        state.release_final(
+            self.root,
+            TOKEN,
+            completed_execution=False,
+            completed_plan_only=True,
+            outcomes_known=True,
+            child_can_mutate=False,
+        )
+
+        third = ".erb/plans/platform/03-hardening.md"
+        (self.root / third).write_text(plan_text(title="Hardening"), encoding="utf-8")
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, third)
+        state.register_plan_contracts(self.root, TOKEN)
+        state.release_final(
+            self.root,
+            TOKEN,
+            completed_execution=False,
+            completed_plan_only=True,
+            outcomes_known=True,
+            child_can_mutate=False,
+        )
+
+        skipped = ".erb/plans/platform/05-skipped.md"
+        (self.root / skipped).write_text(plan_text(title="Skipped"), encoding="utf-8")
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, skipped)
+        with self.assertRaises(state.StateError):
+            state.register_plan_contracts(self.root, TOKEN)
+
+    def test_multi_plan_registration_rejects_missing_owned_inventory_entry(self) -> None:
+        first = ".erb/plans/platform/01-foundation.md"
+        second = ".erb/plans/platform/02-delivery.md"
+        for plan_path in (first, second):
+            path = self.root / plan_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(plan_text(), encoding="utf-8")
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, first)
+        state.finalize_owner(self.root, TOKEN, second)
+        (self.root / second).unlink()
+
+        with self.assertRaisesRegex(state.StateError, "inventory"):
+            state.register_plan_contracts(self.root, TOKEN)
+
+    def test_multi_plan_registration_reserves_deleted_registered_sequences(self) -> None:
+        first = ".erb/plans/platform/01-foundation.md"
+        second = ".erb/plans/platform/02-delivery.md"
+        for plan_path in (first, second):
+            path = self.root / plan_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(plan_text(), encoding="utf-8")
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, first)
+        state.finalize_owner(self.root, TOKEN, second)
+        state.register_plan_contracts(self.root, TOKEN)
+        state.release_final(
+            self.root,
+            TOKEN,
+            completed_execution=False,
+            completed_plan_only=True,
+            outcomes_known=True,
+            child_can_mutate=False,
+        )
+
+        (self.root / second).unlink()
+        reused = ".erb/plans/platform/02-reused.md"
+        (self.root / reused).write_text(plan_text(), encoding="utf-8")
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, reused)
+        with self.assertRaisesRegex(state.StateError, "collid"):
+            state.register_plan_contracts(self.root, TOKEN)
+
+        state.recover_stale_lock(self.root, prior_human_confirmation=True)
+        (self.root / reused).unlink()
+        third = ".erb/plans/platform/03-hardening.md"
+        (self.root / third).write_text(plan_text(), encoding="utf-8")
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, third)
+        registered = state.register_plan_contracts(self.root, TOKEN)
+        self.assertEqual(tuple(item.plan_path for item in registered), (third,))
+
     def test_resume_round_trip_clear_and_owner_requirement(self) -> None:
         self.acquire()
         state.finalize_owner(self.root, TOKEN, PLAN)
+        registered = state.register_plan_contracts(self.root, TOKEN)
+        self.assertEqual(tuple(contract.plan_path for contract in registered), (PLAN,))
         pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
         self.assertEqual(state.read_resume_pointer(self.root, TOKEN), pointer)
         with self.assertRaises(state.StateError):
             state.clear_resume_pointer(self.root, TOKEN, PLAN, pointer.contract_sha256, completed=False)
         with self.assertRaises(state.StateError):
             state.clear_resume_pointer(self.root, TOKEN, PLAN, "b" * 64, completed=True)
+        with self.assertRaises(state.StateError):
+            state.clear_resume_pointer(self.root, TOKEN, PLAN, pointer.contract_sha256, completed=True)
+
+        path = self.root / PLAN
+        path.write_text(plan_text(todo_marks=("x",)), encoding="utf-8")
+        pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
+        path.write_text(
+            plan_text(todo_marks=("x",), verification_marks=("x",)),
+            encoding="utf-8",
+        )
+        pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
         state.clear_resume_pointer(self.root, TOKEN, PLAN, pointer.contract_sha256, completed=True)
-        self.assertFalse((self.root / ".start-work/resume.json").exists())
+        persisted = json.loads((self.root / ".start-work/resume.json").read_text(encoding="utf-8"))
+        self.assertIsNone(persisted["active_plan_path"])
+        self.assertEqual(persisted["plans"][0]["plan_path"], PLAN)
 
     def test_resume_schema_hash_and_checkbox_rules(self) -> None:
         self.acquire()
         state.finalize_owner(self.root, TOKEN, PLAN)
+        state.register_plan_contracts(self.root, TOKEN)
         first = state.write_resume_pointer(self.root, TOKEN, PLAN)
         path = self.root / PLAN
-        path.write_text("# state\n1. [x] acquire\n", encoding="utf-8")
-        self.assertEqual(state.read_resume_pointer(self.root, TOKEN), first)
-        path.write_text("# changed\n1. [x] acquire\n", encoding="utf-8")
+        path.write_text(plan_text(todo_marks=("x",)), encoding="utf-8")
         with self.assertRaises(state.StateError):
             state.read_resume_pointer(self.root, TOKEN)
+        progressed = state.write_resume_pointer(self.root, TOKEN, PLAN)
+        self.assertEqual(progressed.todo_progress, "1")
+        self.assertEqual(state.read_resume_pointer(self.root, TOKEN), progressed)
+        path.write_text(plan_text(todo_marks=("x",), title="Changed"), encoding="utf-8")
+        with self.assertRaises(state.StateError):
+            state.read_resume_pointer(self.root, TOKEN)
+        with self.assertRaises(state.StateError):
+            state.write_resume_pointer(self.root, TOKEN, PLAN)
         resume = self.root / ".start-work/resume.json"
-        resume.write_text('{"version":1,"version":1}', encoding="utf-8")
+        resume.write_text('{"version":2,"version":2}', encoding="utf-8")
         with self.assertRaises(state.StateError):
             state.read_resume_pointer(self.root, TOKEN)
         resume.write_bytes(b"\xff")
         with self.assertRaises(state.StateError):
             state.read_resume_pointer(self.root, TOKEN)
-        resume.write_bytes(b"x" * (state.MAX_BYTES + 1))
+        resume.write_bytes(b"x" * (state.MAX_STATE_BYTES + 1))
         with self.assertRaises(state.StateError):
             state.read_resume_pointer(self.root, TOKEN)
-        resume.write_text(json.dumps({"version": 1, "plan_path": "/unsafe.md", "contract_sha256": "a" * 64}), encoding="utf-8")
+        resume.write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "plan_path": PLAN,
+                    "contract_sha256": first.contract_sha256,
+                }
+            ),
+            encoding="utf-8",
+        )
         with self.assertRaises(state.StateError):
             state.read_resume_pointer(self.root, TOKEN)
+
+    def test_plan_progress_is_monotonic_and_verification_follows_all_todos(self) -> None:
+        path = self.root / PLAN
+        path.write_text(
+            plan_text(todo_marks=(" ", " "), verification_marks=(" ", " ")),
+            encoding="utf-8",
+        )
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        state.register_plan_contracts(self.root, TOKEN)
+        state.write_resume_pointer(self.root, TOKEN, PLAN)
+
+        path.write_text(
+            plan_text(todo_marks=("x", " "), verification_marks=("x", " ")),
+            encoding="utf-8",
+        )
+        with self.assertRaises(state.StateError):
+            state.write_resume_pointer(self.root, TOKEN, PLAN)
+
+        path.write_text(
+            plan_text(todo_marks=("x", "x"), verification_marks=("x", " ")),
+            encoding="utf-8",
+        )
+        with self.assertRaises(state.StateError):
+            state.write_resume_pointer(self.root, TOKEN, PLAN)
+
+        path.write_text(
+            plan_text(todo_marks=("x", "x"), verification_marks=(" ", " ")),
+            encoding="utf-8",
+        )
+        state.write_resume_pointer(self.root, TOKEN, PLAN)
+        path.write_text(
+            plan_text(todo_marks=("x", "x"), verification_marks=("x", " ")),
+            encoding="utf-8",
+        )
+        state.write_resume_pointer(self.root, TOKEN, PLAN)
+
+        path.write_text(
+            plan_text(todo_marks=(" ", "x"), verification_marks=("x", " ")),
+            encoding="utf-8",
+        )
+        with self.assertRaises(state.StateError):
+            state.write_resume_pointer(self.root, TOKEN, PLAN)
+
+    def test_plan_contract_rejects_non_checkbox_mutations_after_registration(self) -> None:
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        state.register_plan_contracts(self.root, TOKEN)
+        state.write_resume_pointer(self.root, TOKEN, PLAN)
+        path = self.root / PLAN
+        mutations = (
+            plan_text(title="Rewritten"),
+            plan_text(todo_marks=(" ", " ")),
+            plan_text(verification_marks=(" ", " ")),
+            plan_text().replace("1. [ ] implementation step 1", "2. [ ] implementation step 1"),
+            plan_text().replace("## Deliverables", "## Reordered Deliverables"),
+        )
+        for content in mutations:
+            with self.subTest(content=content.splitlines()[0]):
+                path.write_text(content, encoding="utf-8")
+                with self.assertRaises(state.StateError):
+                    state.write_resume_pointer(self.root, TOKEN, PLAN)
+        path.write_text(plan_text(), encoding="utf-8")
+
+    def test_registration_requires_closed_unchecked_todo_and_verification_lists(self) -> None:
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        path = self.root / PLAN
+        invalid_plans = (
+            plan_text().replace("\n1. [ ] verification step 1\n", "\n"),
+            plan_text().replace("1. [ ] implementation step 1", "- [ ] implementation step 1"),
+            plan_text().replace("1. [ ] verification step 1", "1. [X] verification step 1"),
+            plan_text().replace(
+                "## Guardrails\n", "## Guardrails\n\n1. [ ] undeclared checklist item\n"
+            ),
+            plan_text(todo_marks=("x",)),
+            plan_text() + "\n## History\n",
+        )
+        for content in invalid_plans:
+            path.write_text(content, encoding="utf-8")
+            with self.assertRaises(state.StateError):
+                state.register_plan_contracts(self.root, TOKEN)
+        path.write_text(plan_text(), encoding="utf-8")
+        self.assertEqual(len(state.register_plan_contracts(self.root, TOKEN)), 1)
+
+    def test_resume_schema_rejects_verification_progress_before_todos(self) -> None:
+        malformed = json.dumps(
+            {
+                "version": 2,
+                "active_plan_path": None,
+                "plans": [
+                    {
+                        "plan_path": PLAN,
+                        "contract_sha256": "0" * 64,
+                        "todo_progress": "0",
+                        "verification_progress": "1",
+                    }
+                ],
+            }
+        ).encode("utf-8")
+
+        with self.assertRaisesRegex(state.StateError, "verification"):
+            state._resume_state_from_bytes(malformed)
 
     def test_resume_rejects_unsafe_ignore_and_unsupported_state(self) -> None:
         self.acquire()
         state.finalize_owner(self.root, TOKEN, PLAN)
         (self.root / ".gitignore").write_text("/.start-work/\n", encoding="utf-8")
         with self.assertRaises(state.StateError):
-            state.write_resume_pointer(self.root, TOKEN, PLAN)
+            state.register_plan_contracts(self.root, TOKEN)
         (self.root / ".gitignore").write_text("/.start-work/resume.json\n/.start-work/lock/\n", encoding="utf-8")
         (self.root / ".start-work" / "extra").write_text("x", encoding="utf-8")
         with self.assertRaises(state.StateError):
-            state.write_resume_pointer(self.root, TOKEN, PLAN)
+            state.register_plan_contracts(self.root, TOKEN)
 
     def test_plan_read_boundaries_encoding_symlink_and_replacement(self) -> None:
         path = self.root / PLAN
@@ -454,6 +751,11 @@ class StartWorkStateTests(unittest.TestCase):
         self.assertRegex(token, r"^[0-9a-f]{64}$")
         self.assertNotIn(str(self.root), output)
         self.assertEqual(self.invoke_cli("finalize", "--repo-root", ".", "--owner-token", token, "--plan-path", PLAN)[0], 0)
+        code, output, errors = self.invoke_cli(
+            "register-plans", "--repo-root", ".", "--owner-token", token
+        )
+        self.assertEqual((code, errors), (0, ""))
+        self.assertEqual(json.loads(output)["plans"][0]["plan_path"], PLAN)
         code, output, errors = self.invoke_cli("write-pointer", "--repo-root", ".", "--owner-token", token, "--plan-path", PLAN)
         self.assertEqual((code, errors), (0, ""))
         pointer = json.loads(output)
@@ -461,6 +763,22 @@ class StartWorkStateTests(unittest.TestCase):
         code, output, errors = self.invoke_cli("read-pointer", "--repo-root", ".", "--owner-token", token)
         self.assertEqual((code, errors), (0, ""))
         self.assertEqual(json.loads(output), pointer)
+        path = self.root / PLAN
+        path.write_text(plan_text(todo_marks=("x",)), encoding="utf-8")
+        code, output, errors = self.invoke_cli(
+            "write-pointer", "--repo-root", ".", "--owner-token", token, "--plan-path", PLAN
+        )
+        self.assertEqual((code, errors), (0, ""))
+        pointer = json.loads(output)
+        path.write_text(
+            plan_text(todo_marks=("x",), verification_marks=("x",)),
+            encoding="utf-8",
+        )
+        code, output, errors = self.invoke_cli(
+            "write-pointer", "--repo-root", ".", "--owner-token", token, "--plan-path", PLAN
+        )
+        self.assertEqual((code, errors), (0, ""))
+        pointer = json.loads(output)
         self.assertEqual(
             self.invoke_cli("clear-pointer", "--repo-root", ".", "--owner-token", token, "--plan-path", PLAN, "--contract-sha256", pointer["contract_sha256"], "--completed", "true")[0],
             0,
@@ -481,6 +799,12 @@ class StartWorkStateTests(unittest.TestCase):
         code, output, _ = self.invoke_cli("acquire", "--repo-root", ".")
         token = json.loads(output)["owner_token"]
         self.assertEqual(self.invoke_cli("finalize", "--repo-root", ".", "--owner-token", token, "--plan-path", PLAN)[0], 0)
+        self.assertEqual(
+            self.invoke_cli(
+                "register-plans", "--repo-root", ".", "--owner-token", token
+            )[0],
+            0,
+        )
         self.assertEqual(
             self.invoke_cli("release-final", "--repo-root", ".", "--owner-token", token, "--completed-execution", "false", "--completed-plan-only", "true", "--outcomes-known", "true", "--no-child-can-mutate", "true")[0],
             0,
@@ -519,23 +843,39 @@ class StartWorkStateTests(unittest.TestCase):
         self.acquire()
         state.finalize_owner(self.root, TOKEN, PLAN)
         resume = self.root / ".start-work/resume.json"
-        resume.write_bytes(b"x" * (state.MAX_POINTER_BYTES + 1))
+        resume.write_bytes(b"x" * (state.MAX_STATE_BYTES + 1))
         with self.assertRaises(state.StateError):
             state.read_resume_pointer(self.root, TOKEN)
-        resume.write_text(json.dumps({"version": True, "plan_path": PLAN, "contract_sha256": "a" * 64}), encoding="utf-8")
+        resume.write_text(
+            json.dumps({"version": True, "active_plan_path": PLAN, "plans": []}),
+            encoding="utf-8",
+        )
         with self.assertRaises(state.StateError):
             state.read_resume_pointer(self.root, TOKEN)
         owner = self.root / ".start-work/lock/owner.json"
-        owner.write_text(json.dumps({"version": True, "owner_token": TOKEN, "plan_path": PLAN}), encoding="utf-8")
+        owner.write_text(
+            json.dumps({"version": True, "owner_token": TOKEN, "plan_paths": [PLAN]}),
+            encoding="utf-8",
+        )
         with self.assertRaises(state.StateError):
             state.read_resume_pointer(self.root, TOKEN)
+        for valid in (
+            ".erb/plans/feature.md",
+            ".erb/plans/platform/01-feature.md",
+            ".erb/plans/platform/99-feature.md",
+        ):
+            self.assertEqual(state._canonical_plan_path(valid), valid)
         for invalid in (
-            "docs/implementation-plans/plans/A/01-slug.md",
-            "docs/implementation-plans/plans/a/00-slug.md",
-            "docs/implementation-plans/plans/a/100-slug.md",
-            "docs/implementation-plans/plans/a/01-unsafe_slug.md",
-            "docs/implementation-plans/plans/a/01--slug.md",
-            "docs/implementation-plans/plans/a/01-Slug.md",
+            "docs/implementation-plans/plans/a/01-slug.md",
+            ".erb/plans/01-prefixed.md",
+            ".erb/plans/A/01-slug.md",
+            ".erb/plans/a/slug.md",
+            ".erb/plans/a/00-slug.md",
+            ".erb/plans/a/100-slug.md",
+            ".erb/plans/a/01-unsafe_slug.md",
+            ".erb/plans/a/01--slug.md",
+            ".erb/plans/a/01-Slug.md",
+            ".erb/plans/a/../slug.md",
         ):
             with self.assertRaises(state.StateError):
                 state._canonical_plan_path(invalid)
@@ -543,10 +883,20 @@ class StartWorkStateTests(unittest.TestCase):
     def test_owner_and_resume_schemas_reject_unknown_oversized_and_invalid_utf8(self) -> None:
         self.acquire()
         owner = self.root / ".start-work/lock/owner.json"
-        owner.write_text(json.dumps({"version": 1, "owner_token": TOKEN, "plan_path": None, "extra": True}), encoding="utf-8")
+        owner.write_text(
+            json.dumps(
+                {
+                    "version": 2,
+                    "owner_token": TOKEN,
+                    "plan_paths": [],
+                    "extra": True,
+                }
+            ),
+            encoding="utf-8",
+        )
         with self.assertRaises(state.StateError):
             state.finalize_owner(self.root, TOKEN, PLAN)
-        owner.write_bytes(b"x" * 513)
+        owner.write_bytes(b"x" * (state.MAX_OWNER_BYTES + 1))
         with self.assertRaises(state.StateError):
             state.finalize_owner(self.root, TOKEN, PLAN)
         owner.write_bytes(b"\xff")

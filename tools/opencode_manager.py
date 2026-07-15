@@ -42,11 +42,14 @@ PERMISSION_ACTIONS = frozenset({"allow", "ask", "deny"})
 REASONING_EFFORTS = frozenset({"low", "medium", "high", "xhigh"})
 ROOT_ASK_AGENT_IDS = frozenset({"engineering-lead", "implementation-worker"})
 MCP_ENABLED_AGENT_IDS = frozenset({"engineering-lead", "implementation-worker"})
-PLAN_PATH_EDIT_RULE = "docs/implementation-plans/**"
-PLAN_REDIRECTION_DENY_RULE = "*docs/implementation-plans*"
+LEGACY_PLAN_PATH_EDIT_RULE = "docs/implementation-plans/plans/**"
+PLAN_PATH_EDIT_RULE = ".erb/plans/**"
+LEGACY_PLAN_REDIRECTION_DENY_RULE = "*docs/implementation-plans/plans*"
+PLAN_REDIRECTION_DENY_RULE = "*.erb/plans*"
 STATE_PATH_EDIT_RULE = ".start-work/**"
 STATE_REDIRECTION_DENY_RULE = "*.start-work*"
 RUNTIME_HELPERS = ("workflow-tools/start_work_state.py",)
+WORKFLOW_HELPER_DENY_RULE = "*start_work_state.py*"
 CANONICAL_AGENTS = (
     "accessibility-critic.md",
     "adversarial-reviewer.md",
@@ -64,7 +67,6 @@ CANONICAL_AGENTS = (
     "implementation-worker.md",
     "internationalization-localization-critic.md",
     "performance-critic.md",
-    "plan-consultant.md",
     "plan-orchestrator.md",
     "prompt-critic.md",
     "release-readiness-reviewer.md",
@@ -101,32 +103,37 @@ RETIRED_LIFECYCLE_PHRASES = (
 HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
     "AGENTS.md": (
         "explicit human `/create-plan` request may create and persist a new plan",
-        "execution-only `/start-work` accepts an existing valid canonical plan "
+        "execution-only `/start-work` accepts an existing valid registered canonical plan "
         "or validated resume pointer with explicit human confirmation",
+        "top-level `/consult-plan`",
     ),
     "README.md": (
         "Three human-controlled lifecycle paths",
-        "`/convert-tapestry-plan` remain plan-only",
+        "`/convert-tapestry-plan` remains plan-only",
+        "top-level `/consult-plan`",
     ),
     "docs/engineering-agent-governance.md": (
-        "Only the Engineering Lead and Engineering Review Board may request it.",
-        "An explicit top-level human plan-only update request",
+        "top-level `/consult-plan`",
+        "The human's decision to require, decline, or override planning advice controls the route.",
     ),
     "docs/cross-reference-map.md": (
         "## OpenCode Runtime Handoff Overlay",
-        "Only the Engineering Lead and ERB may Task `plan-consultant`",
+        "top-level `/consult-plan`",
     ),
     "docs/implementation-plans/README.md": (
         "## Human-Controlled Lifecycle",
-        "Explicit plan-only updates are",
+        ".erb/plans/<slug>.md",
+        ".erb/plans/<subject>/<NN>-<slug>.md",
     ),
     "opencode/project-template/AGENTS-plan-workflow-snippet.md": (
         "Only an explicit human `/create-plan` request creates and persists a plan",
-        "Execution-only `/start-work` accepts an existing valid canonical",
+        "Execution-only `/start-work` accepts an existing valid registered canonical",
+        "top-level `/consult-plan`",
     ),
     "opencode/project-template/docs/implementation-plans/README.md": (
         "## Human-Controlled Lifecycle",
-        "Explicit plan-only updates are",
+        ".erb/plans/<slug>.md",
+        ".erb/plans/<subject>/<NN>-<slug>.md",
     ),
 }
 HUMAN_CONTROLLED_LIFECYCLE_FORBIDDEN_TOKENS = (
@@ -137,6 +144,7 @@ HUMAN_CONTROLLED_LIFECYCLE_FORBIDDEN_TOKENS = (
 )
 CANONICAL_COMMAND_OWNERS = {
     "audit-technical-debt.md": "engineering-review-board",
+    "consult-plan.md": "plan-orchestrator",
     "convert-tapestry-plan.md": "plan-orchestrator",
     "create-plan.md": "plan-orchestrator",
     "investigate-regression.md": "engineering-review-board",
@@ -146,12 +154,23 @@ CANONICAL_COMMAND_OWNERS = {
 }
 CANONICAL_COMMANDS = tuple(sorted(CANONICAL_COMMAND_OWNERS))
 COMMAND_PROMPT_CONTRACTS = {
+    "consult-plan.md": (
+        "top-level read-only Plan Orchestrator consultation",
+        "does not acquire planned-work ownership",
+        "must not create or mutate a plan or trusted state",
+        "must not delegate implementation, implement, stage, or commit",
+        "The human controls whether to proceed directly, create a plan, or decline the recommendation.",
+    ),
     "create-plan.md": (
         "invocation is explicit human authorization",
         "creates and persists a plan only",
         "does not execute TODOs.",
         "acquire complete provisional child-lock ownership before reading the request, allocation, pointer, plan, or worktree state",
         'python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" acquire --repo-root .',
+        ".erb/plans/<slug>.md",
+        ".erb/plans/<subject>/<NN>-<slug>.md",
+        "registered history",
+        "register-plans",
         "release with a known plan-only outcome",
     ),
     "start-work.md": (
@@ -165,6 +184,7 @@ COMMAND_PROMPT_CONTRACTS = {
         "Never put human input into a helper-launch shell string",
         "Do not use concatenation, redirection, pipes, substitution, or an extra shell operation.",
         "Display the resolved canonical path and its checked and unchecked numbered TODOs",
+        "dedicated Verification checkboxes",
         "explicit human confirmation before any plan, sidebar, delegation, or implementation mutation.",
         "With an explicit path, validate the existing canonical lean plan and reconcile",
         "Direct human-authorized plan creation to `/create-plan`",
@@ -182,13 +202,16 @@ COMMAND_PROMPT_CONTRACTS = {
         "Do not use concatenation, redirection, pipes, substitution, or an extra shell operation.",
         "Preserve the source unchanged",
         "create only a metadata-free lean destination",
+        "registered history",
+        "register-plans",
         "Execution remains a separate human-chosen `/start-work <destination>` choice.",
     ),
     "review-plan.md": (
         "optional, read-only advice only",
         "no readiness, approval, sign-off, persistence, or execution gate.",
         "Advisory corrections cannot create or execute a plan.",
-        "A human may separately request an explicit plan-only update from the top-level Plan Orchestrator;",
+        "Advisory corrections cannot mutate an existing plan;",
+        "a human may separately authorize a new plan through `/create-plan`.",
         "`/start-work <path>` is only a separate human-chosen execution choice.",
     ),
     "review-implementation.md": (
@@ -255,6 +278,7 @@ _PLAN_ORCHESTRATOR_WORKFLOW_HELPER_BASH_RULES = (
     ("*", "deny"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" acquire --repo-root .', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" finalize --repo-root . --owner-token * --plan-path *', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" register-plans --repo-root . --owner-token *', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" read-pointer --repo-root . --owner-token *', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" write-pointer --repo-root . --owner-token * --plan-path *', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" clear-pointer --repo-root . --owner-token * --plan-path * --contract-sha256 * --completed true', "ask"),
@@ -267,8 +291,9 @@ PLAN_ORCHESTRATOR_WORKFLOW_HELPER_BASH_RULES = tuple(
     (rule.replace('"', r'\"'), action)
     for rule, action in _PLAN_ORCHESTRATOR_WORKFLOW_HELPER_BASH_RULES
 )
-CANONICAL_PLAN_STAGING_ASK_RULE = (
-    "git add -- docs/implementation-plans/plans/*/*.md"
+CANONICAL_PLAN_STAGING_ASK_RULES = (
+    "git add -- .erb/plans/*.md",
+    "git add -- .erb/plans/*/*.md",
 )
 PLAN_ORCHESTRATOR_GIT_BASH_RULES = (
     ("git status", "allow"),
@@ -325,9 +350,10 @@ PLAN_ORCHESTRATOR_GIT_BASH_RULES = (
     ("git commit *--pathspec-from-file*", "deny"),
     ("git commit *--pathspec-file-nul*", "deny"),
     ("git commit *--no-post-rewrite*", "deny"),
+    (LEGACY_PLAN_REDIRECTION_DENY_RULE, "deny"),
     (PLAN_REDIRECTION_DENY_RULE, "deny"),
-    (CANONICAL_PLAN_STAGING_ASK_RULE, "ask"),
-    ("git add -- docs/implementation-plans/plans/*/*/*", "deny"),
+    *((rule, "ask") for rule in CANONICAL_PLAN_STAGING_ASK_RULES),
+    ("git add -- .erb/plans/*/*/*", "deny"),
     ("git add -- *[*", "deny"),
     ("git add -- *{*", "deny"),
     (STATE_REDIRECTION_DENY_RULE, "deny"),
@@ -345,7 +371,7 @@ PLAN_ORCHESTRATOR_BASH_RULES = (
 )
 PLAN_ORCHESTRATOR_COMMIT_PROMPT_REQUIREMENTS = (
     "explicit current human request",
-    "explicit bounded plan TODO",
+    "during implementation or after implementation completes",
     "`git-commit`",
     "`security-review` and `security-review-evidence`",
     "freshly reconcile pointer,",
@@ -586,8 +612,12 @@ PLAN_TEMPLATE_TOKENS = (
     "**Key repository findings:**",
     "**Dependencies:**",
     "1. [ ] <bounded implementation step>",
+    "1. [ ] <verification step>",
 )
-PLAN_PATH_TOKEN = "docs/implementation-plans/plans/<series>/<NN>-<slug>.md"
+PLAN_PATH_TOKENS = (
+    ".erb/plans/<slug>.md",
+    ".erb/plans/<subject>/<NN>-<slug>.md",
+)
 PLAN_TEMPLATE_HEADINGS = (
     "# <Title>",
     "## TL;DR",
@@ -624,6 +654,8 @@ LEAN_PLAN_TEMPLATE = """# <Title>
 1. [ ] <bounded implementation step>
 
 ## Verification
+
+1. [ ] <verification step>
 """
 
 
@@ -1055,7 +1087,7 @@ class OpenCodeInstallService:
             "project-template/AGENTS-plan-workflow-snippet.md",
             "project-template/docs/implementation-plans/README.md",
         ):
-            if PLAN_PATH_TOKEN not in contents[path]:
+            if not all(token in contents[path] for token in PLAN_PATH_TOKENS):
                 errors.append("implementation plan support path token is missing")
         for name in ("README.md", "TEMPLATE.md"):
             root_copy = self.repo_root / "docs" / "implementation-plans" / name
@@ -1287,8 +1319,6 @@ class OpenCodeInstallService:
             return errors
         if fields["mode"] not in {"primary", "subagent"}:
             errors.append(f"agents: '{name}' has invalid mode")
-        if agent_id == "plan-consultant" and fields["mode"] != "subagent":
-            errors.append(f"agents: '{name}' must be a read-only subagent")
         if not MODEL_VALUE_RE.fullmatch(fields["model"] or ""):
             errors.append(f"agents: '{name}' has invalid model")
         if fields["reasoningEffort"] not in REASONING_EFFORTS:
@@ -1423,7 +1453,12 @@ class OpenCodeInstallService:
             if isinstance(bash, tuple) and any(
                 action in {"allow", "ask"}
                 and (pattern, action) not in ENGINEERING_LEAD_GIT_BASH_RULES
-                and pattern not in {"*", PLAN_REDIRECTION_DENY_RULE}
+                and pattern
+                not in {
+                    "*",
+                    LEGACY_PLAN_REDIRECTION_DENY_RULE,
+                    PLAN_REDIRECTION_DENY_RULE,
+                }
                 and (
                     pattern.startswith(("*", "?", "["))
                     or (
@@ -1450,6 +1485,39 @@ class OpenCodeInstallService:
         if agent_id == "plan-orchestrator":
             if permissions.get("todowrite") != "allow":
                 errors.append(f"agents: '{name}' must allow todowrite")
+            expected_navigation = (("*", "allow"), (STATE_PATH_EDIT_RULE, "deny"))
+            if any(
+                permissions.get(tool) != expected_navigation
+                for tool in ("read", "glob", "grep", "list", "lsp")
+            ):
+                errors.append(
+                    f"agents: '{name}' must use helper-only access to .start-work state"
+                )
+        elif agent_id == "implementation-worker":
+            expected_navigation = (("*", "allow"), (STATE_PATH_EDIT_RULE, "deny"))
+            if any(
+                permissions.get(tool) != expected_navigation
+                for tool in ("read", "glob", "grep", "list", "lsp")
+            ):
+                errors.append(
+                    f"agents: '{name}' must deny trusted state navigation"
+                )
+            helper_command = (
+                'python3 -I "$HOME/.config/opencode/workflow-tools/'
+                'start_work_state.py" acquire --repo-root .'
+            )
+            if (
+                not isinstance(bash, tuple)
+                or (WORKFLOW_HELPER_DENY_RULE, "deny") not in bash
+                or bash[-1] != (WORKFLOW_HELPER_DENY_RULE, "deny")
+                or resolve_opencode_permission_action(
+                    bash, helper_command, baseline="ask"
+                )
+                != "deny"
+            ):
+                errors.append(
+                    f"agents: '{name}' must deny trusted workflow helper commands"
+                )
         elif agent_id == "engineering-lead":
             if permissions.get("todowrite") != "allow":
                 errors.append(f"agents: '{name}' must allow todowrite")
@@ -1475,27 +1543,6 @@ class OpenCodeInstallService:
             errors.append(
                 f"agents: '{name}' must allow every configured MCP tool pattern"
             )
-        if agent_id == "plan-consultant":
-            required_denials = (
-                "edit",
-                "bash",
-                "task",
-                "todowrite",
-                "webfetch",
-                "websearch",
-                "question",
-            )
-            if any(permissions.get(tool) != "deny" for tool in required_denials):
-                errors.append(f"agents: '{name}' must deny mutation and delegation tools")
-            expected_navigation = (("*", "allow"), (STATE_PATH_EDIT_RULE, "deny"))
-            for tool in ("read", "glob", "grep", "list", "lsp"):
-                if permissions.get(tool) != expected_navigation:
-                    errors.append(
-                        f"agents: '{name}' must allow repository navigation and deny .start-work state"
-                    )
-                    break
-            if permissions.get("skill") != (("*", "allow"),):
-                errors.append(f"agents: '{name}' must allow skill loading only")
         return errors
 
     @staticmethod
@@ -1508,11 +1555,26 @@ class OpenCodeInstallService:
         edit = permissions.get("edit")
         expected_edit: str | tuple[tuple[str, str], ...]
         if agent_id == "engineering-lead":
-            expected_edit = (("*", "ask"), (PLAN_PATH_EDIT_RULE, "deny"), (STATE_PATH_EDIT_RULE, "deny"))
+            expected_edit = (
+                ("*", "ask"),
+                (LEGACY_PLAN_PATH_EDIT_RULE, "deny"),
+                (PLAN_PATH_EDIT_RULE, "deny"),
+                (STATE_PATH_EDIT_RULE, "deny"),
+            )
         elif agent_id == "implementation-worker":
-            expected_edit = (("*", "ask"), (PLAN_PATH_EDIT_RULE, "deny"), (STATE_PATH_EDIT_RULE, "deny"))
+            expected_edit = (
+                ("*", "ask"),
+                (LEGACY_PLAN_PATH_EDIT_RULE, "deny"),
+                (PLAN_PATH_EDIT_RULE, "deny"),
+                (STATE_PATH_EDIT_RULE, "deny"),
+            )
         elif agent_id == "plan-orchestrator":
-            expected_edit = (("*", "ask"), (PLAN_PATH_EDIT_RULE, "ask"), (STATE_PATH_EDIT_RULE, "deny"))
+            expected_edit = (
+                ("*", "ask"),
+                (LEGACY_PLAN_PATH_EDIT_RULE, "deny"),
+                (PLAN_PATH_EDIT_RULE, "ask"),
+                (STATE_PATH_EDIT_RULE, "deny"),
+            )
         else:
             expected_edit = "deny"
 
@@ -1529,9 +1591,15 @@ class OpenCodeInstallService:
 
         bash = permissions.get("bash")
         if agent_id in ROOT_ASK_AGENT_IDS:
-            required_suffix = ((PLAN_REDIRECTION_DENY_RULE, "deny"), (STATE_REDIRECTION_DENY_RULE, "deny"))
+            required_suffix = (
+                (LEGACY_PLAN_REDIRECTION_DENY_RULE, "deny"),
+                (PLAN_REDIRECTION_DENY_RULE, "deny"),
+                (STATE_REDIRECTION_DENY_RULE, "deny"),
+            )
             if agent_id == "engineering-lead":
                 required_suffix += ENGINEERING_LEAD_POST_PLAN_BASH_RULES
+            else:
+                required_suffix += ((WORKFLOW_HELPER_DENY_RULE, "deny"),)
             if (
                 not isinstance(bash, tuple)
                 or len(bash) < len(required_suffix)
@@ -1540,6 +1608,20 @@ class OpenCodeInstallService:
                 errors.append(
                     f"agents: '{name}' must preserve the plan redirection deny in its required bash suffix"
                 )
+        if agent_id == "implementation-worker" and (
+            not isinstance(bash, tuple)
+            or resolve_opencode_permission_action(
+                bash, "git add -- src/example.py", baseline="ask"
+            )
+            != "deny"
+            or resolve_opencode_permission_action(
+                bash, "git commit", baseline="ask"
+            )
+            != "deny"
+        ):
+            errors.append(
+                f"agents: '{name}' must deny staging and commit commands"
+            )
         return errors
 
     @staticmethod
@@ -1616,15 +1698,6 @@ class OpenCodeInstallService:
             actual = tuple(target for target, _ in agent_metadata[agent_id][1] if target != "*")
             if actual != expected:
                 errors.append(f"agents: '{agent_id}.md' violates the approved Task graph")
-        if "plan-consultant" in agent_metadata:
-            for agent_id in ("engineering-lead", "engineering-review-board"):
-                if agent_id not in agent_metadata:
-                    continue
-                edges = tuple(target for target, _ in agent_metadata[agent_id][1] if target != "*")
-                if "plan-consultant" not in edges:
-                    errors.append(
-                        f"agents: '{agent_id}.md' must allow the read-only plan-consultant edge"
-                    )
         if "engineering-lead" in agent_metadata:
             lead_edges = tuple(target for target, _ in agent_metadata["engineering-lead"][1] if target != "*")
             if "plan-orchestrator" in lead_edges or "planning-coordinator" in lead_edges:
@@ -1683,33 +1756,25 @@ class OpenCodeInstallService:
                 "route authorized creation to top-level `/create-plan`.",
                 "Use `/start-work <existing-plan-path>` only for human-chosen execution of an existing plan.",
                 "unplanned-session TODOs",
-                "read-only `plan-consultant` advice",
+                "recommend top-level `/consult-plan`",
+                "reason, trade-off, and proposed scope",
                 "mutation-capable Plan Orchestrator",
             ),
             "engineering-review-board.md": (
                 "top-level, read-only review orchestrator",
                 "advisory evidence only",
-                "read-only `plan-consultant` advice",
+                "recommend top-level `/consult-plan`",
                 "mutation-capable Plan Orchestrator",
                 "may provide or obtain read-only planning advice and recommend planning",
                 "cannot create, authorize, or automatically initiate a plan or `/start-work`.",
-            ),
-            "plan-consultant.md": (
-                "bounded implementation decomposition",
-                "dependencies",
-                "risks",
-                "acceptance criteria",
-                "validation advice",
-                "must not create a plan",
-                "invoke `/start-work`",
-                "authorize or begin implementation",
-                "mutate a durable artifact",
-                "delegate",
+                "The human's decision to require, decline, or override planning advice controls the route.",
             ),
             "implementation-worker.md": (
                 "Engineering Lead or Plan Orchestrator",
                 "`.start-work/**`",
                 "edit durable plan paths",
+                "read or edit `.start-work/**`",
+                "trusted planned-work state helper",
             ),
         }
         errors: list[str] = []
@@ -1790,30 +1855,41 @@ class OpenCodeInstallService:
             "For no-path work, display the resolved path and checkbox state, then obtain explicit human confirmation before mutation.",
             "The lifecycle distinguishes read-only consultation, explicit plan-only creation, and execution.",
             "It must not execute newly created plans automatically.",
-            "Read-only consultation performs no acquisition, mutation, delegation, implementation, or commit.",
+            "Top-level `/consult-plan` is read-only Plan Orchestrator consultation.",
+            "It performs no acquisition, trusted-state read, mutation, delegation, implementation, staging, or commit and cannot authorize later work.",
             "`/create-plan` or an equally explicit current top-level human creation request may create a plan only after trusted acquisition.",
-            "Conversational plan creation or update requires equally explicit current human authorization, remains plan-only, and never triggers automatic execution.",
+            "Conversational plan creation requires equally explicit current human authorization, remains plan-only, and never triggers automatic execution.",
             "`/start-work` accepts only an explicit existing valid canonical lean plan path or a validated no-argument resume pointer.",
             "`/start-work` rejects free-form requests and immutable legacy inputs rather than creating a plan or successor.",
             "Legacy conversion remains at `/convert-tapestry-plan`.",
             "`/convert-tapestry-plan` remains explicit and plan-only by default; execute only when the human separately chooses `/start-work <destination>`.",
             "Replace the whole native TODO list on every update. Keep at most five entries and zero or one `in_progress` entry.",
-            "Start in original plan-step order, retain original step numbers, and use summaries of at most 30 characters excluding the step-number prefix.",
+            "Keep the window on plan TODOs, in their original order and with their original numbers, until every TODO is checked.",
+            "Only then replace it with the dedicated Verification steps in their original order.",
             "On a transition, order entries as most-recent completed, then current, then pending.",
             "A blocked or failed step stays visible with its evidence and never advances a checkbox or window speculatively.",
-            "Check a plan step only after observed implementation/validation evidence authorizes it.",
-            "After all plan steps are evidenced complete, write the completed-only list once, then replace it with `todos: []`.",
+            "Check a TODO only after observed implementation or individual-validation evidence authorizes it.",
+            "you must complete every planned TODO before beginning any dedicated Verification step.",
+            "Check a Verification step only after its own observed evidence.",
+            "After every TODO and Verification step is evidenced complete, write the completed-only list once, then replace it with `todos: []`.",
             "Do not clear TODOs on failure, uncertainty, or partial reconciliation.",
             "Your self-check is not independent review, ERB evidence, approval, readiness, or sign-off.",
             "ERB output is optional independent advisory evidence, not a prerequisite or lifecycle authority.",
-            "or equally explicit current top-level human plan-creation or update request",
+            "or equally explicit current top-level human plan-creation request",
             "Only a read-only explanation with no mutation is exempt from acquisition.",
             "Parse locators and read pointer, source, allocation, plan, worktree, and execution evidence only after complete provisional child-lock ownership.",
             "On uncertain outcomes or any mutation retain the lock;",
-            "Before pointer persistence, require the repository-owned helper to verify a regular non-symlinked `.gitignore`",
-            "For plan-only work, persist a pointer when needed, then release only after all mutation outcomes are known and no child can mutate;",
+            "Before trusted-state persistence, require the repository-owned helper to verify a regular non-symlinked `.gitignore`",
+            "register every newly created plan contract before releasing plan-only ownership",
             "Execution reconciles the pointer, worktree, plan checkboxes, and TODO state before each at-least-once step.",
             "Before every mutable phase, freshly reload the pointer, plan, and worktree evidence while holding the lock; never rely on stale evidence.",
+            "One plan is exactly `.erb/plans/<slug>.md`: create no subject directory and use no numeric prefix.",
+            "multiple separately managed plans may use `.erb/plans/<subject>/<NN>-<slug>.md`",
+            "multiple TODOs in one bounded plan are not sufficient.",
+            "registered history",
+            "After creation and `register-plans`, the plan body is immutable.",
+            "must not add, remove, rewrite, reorder, or renumber plan content",
+            "must never stage or commit and must never be instructed or delegated to create a commit.",
             *PLAN_ORCHESTRATOR_COMMIT_PROMPT_REQUIREMENTS,
         )
         normalized = " ".join(prompt.split())
