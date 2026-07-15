@@ -3,7 +3,6 @@ description: "Primary owner of safe lean-plan creation, execution, integration, 
 mode: primary
 model: openai/gpt-5.6-sol
 reasoningEffort: xhigh
-steps: 60
 color: primary
 permission:
   "*": deny

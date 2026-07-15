@@ -3,7 +3,6 @@ description: "Default delivery orchestrator for bounded implementation, durable-
 mode: primary
 model: openai/gpt-5.6-sol
 reasoningEffort: high
-steps: 60
 color: primary
 permission:
   "*": ask

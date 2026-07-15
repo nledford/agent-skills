@@ -3,7 +3,6 @@ description: "Reviews and improves prompts for Codex, OpenCode, Weave, Claude, a
 mode: subagent
 model: openai/gpt-5.6-terra
 reasoningEffort: high
-steps: 30
 permission:
   "*": deny
   read: allow

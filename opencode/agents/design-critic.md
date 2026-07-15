@@ -3,7 +3,6 @@ description: "Senior UI/UX reviewer for visual design, usability, interaction de
 mode: subagent
 model: openai/gpt-5.6-sol
 reasoningEffort: high
-steps: 30
 permission:
   "*": deny
   read: allow

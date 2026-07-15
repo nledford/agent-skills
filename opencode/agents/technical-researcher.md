@@ -3,7 +3,6 @@ description: "Collects and synthesizes authoritative technical evidence from rep
 mode: subagent
 model: openai/gpt-5.6-terra
 reasoningEffort: high
-steps: 30
 permission:
   "*": deny
   read: allow

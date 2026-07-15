@@ -3,7 +3,6 @@ description: "Performs final ship/no-ship review for tests, docs, migrations, ro
 mode: subagent
 model: openai/gpt-5.6-sol
 reasoningEffort: xhigh
-steps: 30
 permission:
   "*": deny
   read: allow

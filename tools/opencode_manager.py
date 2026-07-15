@@ -33,10 +33,10 @@ AGENT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 COMMAND_FIELDS = frozenset({"description", "agent", "model", "variant", "subtask"})
 AGENT_FIELDS = frozenset(
-    {"description", "mode", "model", "reasoningEffort", "steps", "color", "permission"}
+    {"description", "mode", "model", "reasoningEffort", "color", "permission"}
 )
 REQUIRED_AGENT_FIELDS = frozenset(
-    {"description", "mode", "model", "reasoningEffort", "steps", "permission"}
+    {"description", "mode", "model", "reasoningEffort", "permission"}
 )
 PERMISSION_ACTIONS = frozenset({"allow", "ask", "deny"})
 REASONING_EFFORTS = frozenset({"low", "medium", "high", "xhigh"})
@@ -1323,9 +1323,6 @@ class OpenCodeInstallService:
             errors.append(f"agents: '{name}' has invalid model")
         if fields["reasoningEffort"] not in REASONING_EFFORTS:
             errors.append(f"agents: '{name}' has invalid reasoningEffort")
-        steps = fields["steps"] or ""
-        if not steps.isdecimal() or int(steps) < 1:
-            errors.append(f"agents: '{name}' must use positive integer steps")
         if not parsed.permissions:
             errors.append(f"agents: '{name}' must define a permission block")
             return errors

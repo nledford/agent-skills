@@ -3,7 +3,6 @@ description: "Reviews trust boundaries, authentication, authorization, data hand
 mode: subagent
 model: openai/gpt-5.6-sol
 reasoningEffort: xhigh
-steps: 30
 permission:
   "*": deny
   read: allow

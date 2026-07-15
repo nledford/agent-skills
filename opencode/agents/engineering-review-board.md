@@ -3,7 +3,6 @@ description: "Independent read-only primary review board that coordinates exact 
 mode: primary
 model: openai/gpt-5.6-sol
 reasoningEffort: xhigh
-steps: 45
 color: warning
 permission:
   "*": deny

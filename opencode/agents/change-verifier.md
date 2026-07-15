@@ -3,7 +3,6 @@ description: "Verifies that requested changes were actually implemented complete
 mode: subagent
 model: openai/gpt-5.6-terra
 reasoningEffort: high
-steps: 30
 permission:
   "*": deny
   read: allow

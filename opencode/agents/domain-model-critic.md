@@ -3,7 +3,6 @@ description: "Reviews aggregates, entities, value objects, invariants, ubiquitou
 mode: subagent
 model: openai/gpt-5.6-sol
 reasoningEffort: xhigh
-steps: 30
 permission:
   "*": deny
   read: allow

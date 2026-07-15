@@ -3,7 +3,6 @@ description: "Executes one bounded implementation work unit, validates it, and r
 mode: subagent
 model: openai/gpt-5.6-terra
 reasoningEffort: high
-steps: 50
 color: success
 permission:
   "*": ask

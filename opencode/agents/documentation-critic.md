@@ -3,7 +3,6 @@ description: "Reviews README, docs, AGENTS.md, onboarding, examples, information
 mode: subagent
 model: openai/gpt-5.6-terra
 reasoningEffort: medium
-steps: 30
 permission:
   "*": deny
   read: allow

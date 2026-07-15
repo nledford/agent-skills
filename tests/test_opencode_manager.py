@@ -296,7 +296,6 @@ def write_agent_definition(path: Path, *, mode: str, permissions: str) -> None:
         f"mode: {mode}\n"
         "model: openai/test-model\n"
         "reasoningEffort: high\n"
-        "steps: 10\n"
         "permission:\n"
         f"{permissions}"
         "---\n\n"
@@ -325,7 +324,6 @@ def create_opencode_repo(
             "mode: primary\n"
             "model: openai/test-model\n"
             "reasoningEffort: high\n"
-            "steps: 10\n"
             "permission:\n"
             "  \"*\": deny\n"
             "  edit: deny\n"
@@ -592,6 +590,30 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("duplicate 'mode' field", result.errors[0])
+
+    def test_validate_accepts_agents_without_steps_and_rejects_steps_field(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_opencode_repo(root)
+            agent = repo / "opencode" / "agents" / "reviewer.md"
+            without_steps = agent.read_text(encoding="utf-8")
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertTrue(result.ok, result.errors)
+
+            agent.write_text(
+                without_steps.replace(
+                    "reasoningEffort: high\n",
+                    "reasoningEffort: high\nsteps: 10\n",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertFalse(result.ok)
+            self.assertIn("unsupported 'steps' field", result.errors[0])
 
     def test_validate_rejects_task_allow_before_deny_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

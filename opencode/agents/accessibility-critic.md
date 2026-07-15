@@ -3,7 +3,6 @@ description: "Reviews WCAG 2.2 AA, keyboard navigation, focus states, semantic s
 mode: subagent
 model: openai/gpt-5.6-terra
 reasoningEffort: high
-steps: 30
 permission:
   "*": deny
   read: allow

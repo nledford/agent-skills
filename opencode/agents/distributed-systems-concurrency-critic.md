@@ -3,7 +3,6 @@ description: "Reviews asynchronous workflows, queues, retries, idempotency, race
 mode: subagent
 model: openai/gpt-5.6-sol
 reasoningEffort: xhigh
-steps: 30
 permission:
   "*": deny
   read: allow
