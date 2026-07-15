@@ -2619,4 +2619,38 @@ scope_reconciliation: The prerequisite commit changes exactly the four files
   listed above. Current source and all approved target surfaces were reconciled
   against revision 6 with no overlap, destructive work, scope expansion,
   material baseline drift, dependency blocker, or unresolved decision.
-next_slice: 1
+next_slice: 2
+
+### Slice 1 Accepted and Completed — 2026-07-15T05:30:00-04:00
+
+plan_path: docs/implementation-plans/plans/opencode/02-simplify-plan-workflow.md
+plan_id: opencode-02
+revision: 6
+approved_revision: 6
+baseline_commit: 9bd28e3a15c237e1fb4cf6e1996da36b687db5e8
+slice: 1
+completed_at: 2026-07-15T05:30:00-04:00
+implementation_commit: f51963be947383ff6137037f36a3e717567ff9a6
+implementation_subject: feat(opencode): adopt lean plan contract
+owned_files:
+- docs/implementation-plans/README.md
+- docs/implementation-plans/TEMPLATE.md
+- opencode/project-template/docs/implementation-plans/README.md
+- opencode/project-template/docs/implementation-plans/TEMPLATE.md
+- tools/opencode_manager.py
+- tests/test_opencode_manager.py
+acceptance: The metadata-free template, strict template and synchronization
+  validation, synchronized root/project-template pairs, and preserved allocation,
+  immutable-legacy-succession, and Tapestry-destination rules were accepted.
+validation:
+- Focused lean-template and synchronization tests — worker reported 8 passed.
+- `python3 -m unittest discover -s tests -p 'test_opencode_manager.py' -v` — Lead
+  rerun passed, 67 tests in 0.668s.
+- `just validate-opencode` — Lead rerun passed, `agents=23 commands=11`.
+- `just validate` — Lead rerun passed.
+- `git diff --check` and the staged diff check — passed.
+- Serena diagnostics for both changed Python files — no errors or warnings.
+- `just check` — worker reported passed with 95 tests and global-install
+  verification.
+scope_reconciliation: Commit `f51963b` changed exactly the six owned files listed
+  above; no unowned source file changed.
