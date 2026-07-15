@@ -4,7 +4,7 @@ series: opencode
 sequence: 2
 title: Simplify the OpenCode Plan Workflow
 status: draft
-revision: 3
+revision: 4
 review_decision: pending
 reviewed_at:
 approved_at:
@@ -53,11 +53,25 @@ instructions require ordering, status, content-length, resume, failure, and fina
 clearing behavior; they do not prove runtime agent or native UI compliance.
 
 No-path resume uses a disposable, ignored `/.start-work/resume.json` pointer to a
-fully self-checked lean plan, never a progress record. A checked-in
-standard-library helper owns that pointer and a fail-closed, repository-wide
-atomic lock held through planned execution. The plan and current repository
-evidence remain authoritative, and only accepted plan checkboxes establish
-completion.
+fully self-checked lean plan, never a progress record or proof of authorship. A
+checked-in standard-library helper owns that pointer and one cooperative,
+repository-wide planned-work execution lock. The lock serializes Plan
+Orchestrator sessions and all direct or delegated implementation performed for
+their plans; it does not block unrelated filesystem writes or serialize all
+repository mutation. The Plan Orchestrator acquires it before reading or relying
+on resume or plan state, freshly revalidates all execution evidence under the
+lock, holds it while any planned mutation outcome is uncertain, and stops for
+reconciliation when concurrent work overlaps plan-owned files. The plan and
+current repository evidence remain authoritative, and only accepted plan
+checkboxes establish completion.
+
+The helper applies one 1 MiB, strict-UTF-8, stable-read boundary to every lean,
+legacy, explicit, pointer-resumed, or Tapestry plan before hashing or agent use.
+Tapestry-named paths and commands remain untrusted claims and cannot trigger a
+secondary read or execution before validation. Final integration uses a closed
+active-workflow inventory and a repository-only lint, test, and validation lane;
+`just check` remains separate because its current recipe includes machine-global
+symlink verification.
 
 ## Problem and Context
 
@@ -109,13 +123,25 @@ plan, and must remain byte-unchanged.
 - Route every request the Lead classifies as needing a durable execution
   contract to `/start-work <request>`, even when the request contains no plan
   vocabulary or path; keep only trivial or bounded unplanned work with the Lead.
-- Add a disposable resume pointer and repository-wide atomic lock without adding
-  execution state, cached completion, or history to lean plans.
+- Add a disposable resume pointer and one cooperative repository-wide
+  planned-work execution lock without adding execution state, cached completion,
+  or history to lean plans; the lock serializes Plan Orchestrator planned work,
+  not unrelated Lead, agent, process, or human mutations.
+- Acquire the planned-work lock as the first stateful operation after request
+  parsing, then freshly reload and revalidate the pointer, exact plan bytes and
+  hash, checkbox state, worktree, and repository evidence before execution.
 - Treat plan, Tapestry, and repository text as untrusted data and enforce
   canonical source roots, path containment, regular-file, symlink, size, and
   UTF-8 checks before conversion or execution.
+- Apply one conservative 1 MiB bounded-read and strict-UTF-8 boundary to every
+  canonical lean or legacy plan, and validate every Tapestry-named secondary
+  path, command, test, and symbol as an untrusted claim before any secondary read
+  or independently derived command runs.
 - Keep root and project-template plan guidance synchronized and update the
   manifest, validator, fixtures, and tests as one coherent contract.
+- Make stale-route validation deterministic with a closed active-workflow
+  inventory and exact obsolete-token diagnostics, and require a repository-only
+  lint/test/validation lane independent of machine-global symlink state.
 - Deliver implementation in human-required atomic logical commits whose focused
   tests and `just validate-opencode` pass at every intended boundary.
 
@@ -129,6 +155,11 @@ plan, and must remain byte-unchanged.
   the selected Plan Orchestrator.
 - Add plan lifecycle state, full execution history, a last-completed TODO cache,
   prompts, diffs, or evidence payloads to runtime resume state.
+- Add a general repository mutation lock, claim exactly-once execution, suppress
+  unrelated Lead or external work, or grant the Lead, ERB, or Worker lock or
+  resume-state authority.
+- Add timeout expiry or lock stealing, timestamps used for expiry, or same-OS-user
+  hostile-process tamper resistance to the cooperative coordination mechanism.
 - Change unrelated specialist agents, unrelated behavior in the retained
   audit/regression commands or legacy cleanup checklist, or skills. Their stale
   lifecycle routes are in scope for targeted repair only.
@@ -143,7 +174,10 @@ plan, and must remain byte-unchanged.
 - `AGENTS.md` requires the repository README, skill taxonomy, cross-reference
   map, and engineering governance guide to be read before repository-doc changes.
   It requires `just validate` for routing or link changes and `just check` for
-  tooling, tests, scripts, or validator changes.
+  tooling, tests, scripts, or validator changes. The current `Justfile` makes
+  `just check` include machine-global `verify`; this plan therefore keeps it as a
+  configured-maintainer-workstation check and defines an equivalent mandatory
+  repository-only lint/test/validation lane for every implementation environment.
 - `README.md` makes `opencode/manifest.json` the reviewed inventory, treats the
   linked checkout as live after OpenCode restart, and keeps credentials and live
   configuration outside the repository.
@@ -158,12 +192,17 @@ plan, and must remain byte-unchanged.
 ## Current-State Evidence
 
 - The implementation baseline remains
-  `9bd28e3a15c237e1fb4cf6e1996da36b687db5e8`. Revision-3 planning began at the
-  supplied `HEAD`, `4ed8bb61703e04cca0e9650292587d76ff4bef4a`. During this
-  revision, the separately owned concurrent unit advanced `HEAD` to
-  `d6e56e67009ca5a4ddda4edc6dc189ea3b3412e8`. Review and execution must account
-  for that source drift rather than treating the metadata baseline or assignment
-  start as the current checkout.
+  `9bd28e3a15c237e1fb4cf6e1996da36b687db5e8`. Revision-3 planning began at
+  `4ed8bb61703e04cca0e9650292587d76ff4bef4a`, the separately owned source unit
+  advanced `HEAD` to `d6e56e67009ca5a4ddda4edc6dc189ea3b3412e8`, and the
+  revision-3 plan commit advanced it to
+  `f8fa6b0c6608b81b987db9aad01c4b50c28cf4cf`. The revision-3 ERB review and this
+  revision-4 assignment both identify `f8fa6b0` as current `HEAD`. Supplied range
+  evidence covers the full baseline-to-HEAD interval: the intervening planning
+  commits changed only the two durable plan files, `d6e56e6` changed exactly the
+  four source files named below, and `f8fa6b0` changed only this plan. Review and
+  execution must continue to account for that source drift rather than treating
+  the metadata baseline or an earlier assignment start as the current checkout.
 - The `opencode` series contained only
   `01-agent-definitions-improvement-program.md` when sequence `02` was allocated.
   Both `opencode-01` and `opencode-02` are tracked at current `HEAD`.
@@ -182,11 +221,12 @@ plan, and must remain byte-unchanged.
   human-authorized Lead `pbcopy` and configured MCP access. This Coordinator made
   no write to those four files. During the revision they were externally
   committed as `d6e56e6` (`feat(opencode): authorize lead git and todo tools`),
-  after which `git status --short` reported only this target plan. Before
-  implementation, verify the concurrent commit's intended four-file scope and
-  validation evidence, require a clean worktree after this plan's lifecycle work,
-  reread the then-current `HEAD`, reconcile this plan against that source, and
-  supply fresh baseline-to-current evidence for review.
+  after which `git status --short` reported only this target plan. The supplied
+  revision-3 review evidence subsequently verified that commit's exact four-file
+  scope but found no preserved historical test output. Before implementation,
+  require a clean worktree after this plan's lifecycle work, reread the
+  then-current `HEAD`, reconcile this plan against that source, and run the two
+  observed current-source prerequisite checks specified in slice 0.
 - `opencode/manifest.json` currently inventories 23 agents and 11 commands. The
   plan-lifecycle commands are `prepare-work`, `review-plan`,
   `record-plan-review`, `revise-plan`, `approve-plan`, `execute-plan`,
@@ -205,13 +245,14 @@ plan, and must remain byte-unchanged.
   `tools/opencode_manager.py` require the lifecycle metadata and history sections
   in the synchronized template. `tests/test_opencode_manager.py` builds the same
   verbose fixture and has mutation coverage for those requirements.
-- The manager's known permission tools do not include `todowrite`, and no current
-  committed repository definition contains that permission at the implementation
-  baseline. The supplied OpenCode evidence establishes that `todowrite` is flat,
-  each call replaces the whole session list, input order is display order, and
-  `todos: []` clears it. Native OpenCode does not enforce this plan's five-item,
-  one-active-item, or 30-character rules. The separate concurrent commit now
-  supplies generic Lead permission for this plan to preserve.
+- At the preserved implementation baseline, the manager's known permission tools
+  did not include `todowrite`, and no committed repository definition contained
+  that permission. The supplied OpenCode evidence establishes that
+  `todowrite` is flat, each call replaces the whole session list, input order is
+  display order, and `todos: []` clears it. Native OpenCode does not enforce this
+  plan's five-item, one-active-item, or 30-character rules. The `d6e56e6` source
+  commit adds manager recognition and generic Lead permission at current `HEAD`;
+  this plan must preserve both.
 - `audit-technical-debt.md` still routes remediation to `/prepare-work`;
   `investigate-regression.md` still routes material plan changes through
   `/revise-plan`, the Lead, and the Coordinator; and
@@ -225,10 +266,17 @@ plan, and must remain byte-unchanged.
 - The specialist inspection supplied by the human reports that
   `just validate-opencode` and all 58 focused OpenCode manager tests passed before
   initial planning. That is historical prompt-contract evidence, not current
-  runtime proof; this Coordinator did not rerun implementation checks.
+  runtime proof or preserved evidence for `d6e56e6`; this Coordinator did not
+  rerun implementation checks. Because all later commits through `f8fa6b0` affect
+  only durable plans, rerunning the focused manager suite and
+  `just validate-opencode` at then-current `HEAD` before slice 1 validates the
+  same source behavior.
 - The latest persisted ERB record exactly matches this path, `opencode-02`,
-  revision 2, and baseline, and records `ready-with-revisions` at
-  `2026-07-14T19:20:00-04:00`. No approval exists.
+  revision 3, and baseline, and records `ready-with-revisions` at
+  `2026-07-14T19:45:00-04:00`. It follows the preserved revision-2 record. No
+  approval exists. The worktree was clean at that review; after its record was
+  persisted, the Coordinator's revision-4 pre-edit check reported only this target
+  plan modified, with `HEAD` still at `f8fa6b0`.
 
 ## Revision 3 Finding Dispositions
 
@@ -236,9 +284,10 @@ plan, and must remain byte-unchanged.
    and authority lines in `audit-technical-debt.md`,
    `investigate-regression.md`, and the Weave cleanup checklist; preserve their
    unrelated behavior rather than requiring byte equality.
-2. **Accepted — resume pointer plus atomic lock.** Use the selected disposable
-   pointer and repository-wide fail-closed lock described below; do not add
-   execution state to plans.
+2. **Accepted — resume pointer plus atomic planned-work lock.** Use the selected
+   disposable pointer and fail-closed planned-work exclusion described below; do
+   not add execution state to plans. Revision 4 records the human's narrower
+   cooperative execution scope and supersedes any all-mutation interpretation.
 3. **Accepted — legacy/Tapestry source trust boundary.** Enforce canonical roots,
    path/type/size/encoding checks, untrusted-data handling, and synthetic negative
    tests.
@@ -258,6 +307,38 @@ plan, and must remain byte-unchanged.
 8. **Accepted — stale current-state evidence.** Record both plans as tracked at
    current `HEAD` and preserve the separate concurrent four-file work unit as a
    pre-execution prerequisite.
+
+## Revision 4 Finding Dispositions
+
+1. **R3-1 accepted with explicit human modification — planned-work-only
+   execution lock and recovery.** Replace every general or unqualified global
+   lock claim with one cooperative repository-wide planned-work execution lock.
+   It serializes Plan Orchestrator sessions and their direct or delegated planned
+   implementation, while unrelated Lead and external work may continue. Acquire
+   before reading resume or plan state, reload all evidence under the lock, hold
+   through every planned mutator and uncertain outcome, reconcile acceptance
+   evidence before each resume, and document at-least-once risk rather than
+   exactly-once behavior.
+2. **R3-2 accepted — narrow ignored state and untrusted pointer.** Ignore only
+   `/.start-work/resume.json` and `/.start-work/lock/`; reject unsupported state
+   entries; treat the pointer as an untrusted locator and contract identifier;
+   require no-path confirmation; close and bound lock metadata; use
+   repository-relative `.start-work/**` permission patterns; and prove effective
+   state actions for every role.
+3. **R3-3 accepted — complete primary and secondary input boundaries.** Bound
+   every canonical lean or legacy plan at 1 MiB before hashing, decoding, parsing,
+   or agent use, with strict UTF-8 and file-change detection. Treat every
+   Tapestry-named path, command, test, and symbol as an untrusted claim; validate
+   secondary paths before reads and derive commands independently from trusted
+   repository evidence.
+4. **R3-4 accepted — available and deterministic validation.** Replace missing
+   historical-output and isolated-worktree assumptions with two observed
+   current-source reruns before slice 1; define the complete validator-owned
+   active-workflow inventory and obsolete-token set; place retained-route
+   mutation tests in slice 3 and activate the full scan in slice 4; make a
+   repository-only lane mandatory; and keep `just check` as conditional
+   maintainer-workstation verification with bounded, cleanup-safe contention
+   tests.
 
 ## Proposed Design
 
@@ -339,6 +420,17 @@ applicable `AGENTS.md`, permission maps, validated scope, guardrails, or the
 self-checked lean plan. Never copy secrets, credentials, tokens, environment
 values, sensitive values, or machine-local configuration into a plan.
 
+Before hashing, decoding, parsing, self-checking, displaying TODO state, or
+supplying any existing canonical plan to an agent, use a bounded read with a
+1 MiB (1,048,576-byte) maximum, require strict UTF-8, and require the path and
+every component to remain repository-contained, regular, and non-symlinked.
+Accept exactly 1 MiB and reject 1 MiB plus one byte. Detect replacement or
+size/content change during validation and fail closed rather than mixing
+snapshots. Apply the same boundary to lean and legacy plans, including explicit
+paths and pointer resume. An oversized or invalid legacy plan remains immutable
+and produces a human-actionable error; it is never partially read, converted, or
+sent to an agent.
+
 An existing lean plan may be updated in place from `/start-work` instructions or
 ordinary Plan Orchestrator conversation, without revision semantics. If the
 target has frontmatter or otherwise fails the closed lean shape, leave it
@@ -355,19 +447,41 @@ map is broad-deny with only `implementation-worker: allow`; it cannot invoke the
 ERB, the Engineering Lead, specialists, or any other primary agent through Task.
 The Worker still cannot delegate, which preserves one-level delegation.
 
-### Resume pointer and repository-wide lock
+### Secondary references from untrusted plans
 
-Add one narrow ignored local-state exception at the repository root:
+Treat every path, command, test, and symbol named by Tapestry or legacy content as
+an untrusted claim, not an operation or permission to inspect. A referenced path
+may be followed only after validating the complete string and proving
+repository-relative canonical containment, regular non-symlink type and
+components, a bounded size, strict UTF-8 when text is expected, and exclusion of
+sensitive or machine-local files. Reject control characters, newlines, shell
+metacharacters, command substitution, or any path argument that cannot be handled
+through a structured non-shell tool. No rejected or not-yet-validated string may
+trigger a secondary read.
+
+Never execute a command merely because untrusted content names it, and never
+splice a named command, test, symbol, or path into a shell string. Derive every
+validation command independently from applicable `AGENTS.md`, repository-owned
+workflow definitions, and current source evidence. If no trusted structured
+operation can verify the claim, record it as unverified or stop; do not broaden
+permissions or fall back to a shell. Synthetic tests must prove that unsafe
+references produce neither a secondary read nor command execution.
+
+### Resume pointer and planned-work execution lock
+
+Add exactly two ignored local-state entries at the repository root:
 
 ```text
 /.start-work/resume.json
 /.start-work/lock/
 ```
 
-Add `/.start-work/` to `.gitignore` and document that it is the sole ignored
-runtime-state directory for this workflow. Reject symlinked state roots or
-components. `resume.json` is a disposable cache, never authoritative progress,
-and has exactly this schema:
+Do not ignore `/.start-work/` broadly. The helper rejects every unsupported file
+or directory below `.start-work/`; for example, `.start-work/history.json`
+remains visible to Git and makes state validation fail. Reject symlinked state
+roots or components. `resume.json` is a disposable, untrusted locator and
+contract identifier—never authoritative progress, authentication, a credential,
+or proof of Plan Orchestrator authorship—and has exactly this schema:
 
 ```json
 {
@@ -406,51 +520,119 @@ replace the stale pointer under the same rules.
 
 Implement pointer and lock behavior in a checked-in standard-library helper,
 `tools/start_work_state.py`, with focused executable tests in
-`tests/test_start_work_state.py`. The helper atomically acquires
-`/.start-work/lock/` as one repository-wide lock before any pointer, plan,
-checkbox, delegation, conversion write, or implementation mutation. A global
-lock is required because distinct plans may overlap files. Acquisition fails
-immediately when held; it never waits, retries, expires, or steals by timeout.
+`tests/test_start_work_state.py`. The helper atomically creates
+`/.start-work/lock/` as the exclusion point for one cooperative,
+repository-wide planned-work execution lock. It serializes all Plan Orchestrator
+sessions and their direct or delegated plan implementation because distinct
+plans may overlap files. It does not serialize ordinary repository work, prevent
+filesystem writes, or grant authority over unrelated Lead, ERB, human, agent, or
+process activity.
 
-Generate a collision-resistant owner token for each acquisition without treating
-it as a credential. Only the matching owner token may release the lock. Hold it
-through Worker completion. Release after normal completion, explicit pause,
-blocker, failure, or a plan-only return only when no Worker status is uncertain.
-If cancellation or process loss leaves Worker completion uncertain, retain the
-lock. Abrupt process termination must not auto-release it. A stale lock may be
-cleared only after explicit human confirmation that no Plan Orchestrator or
-Worker remains active; corrupt or uncertain lock state fails closed.
+After parsing the human request without reading repository state, lock-directory
+creation is the first stateful operation. It occurs before reading or relying on
+the pointer, plan bytes, plan hash, checkbox state, worktree, execution evidence,
+or any pre-lock repository snapshot. Under the newly established exclusion, the
+helper freshly resolves no-path state, validates a parsed explicit locator, or
+allocates a new canonical path and then freshly reloads and revalidates the
+applicable pointer, canonical plan path, exact bounded plan bytes and hash,
+checkbox state, worktree, and repository evidence. Never execute from a pre-lock
+snapshot. For no-path resume or new-plan creation, the lock directory is created
+before the pointer is read or repository allocation evidence is inspected; lock
+metadata is finalized under that exclusion after the canonical plan path is
+resolved. Any contender treats an existing lock directory, including an
+interrupted incomplete acquisition, as held and fails closed.
+
+Lock metadata is one bounded, strict-UTF-8, duplicate-rejecting JSON object with
+exactly this schema:
+
+```json
+{
+  "version": 1,
+  "owner_token": "<64 lowercase hex>",
+  "plan_path": "docs/implementation-plans/plans/<series>/<NN>-<slug>.md"
+}
+```
+
+Reject malformed, oversized, duplicate- or unknown-field, unsupported-version,
+invalid-token, unsafe-path, symlinked, or non-regular metadata. Write no timestamp
+used for expiry. Generate a collision-resistant owner token for cooperative
+coordination, not as a credential; only its matching owner may release the lock.
+Same-OS-user hostile-process tamper resistance is out of scope. Acquisition fails
+immediately when held and never waits, retries, expires, or steals by timeout.
+
+The Plan Orchestrator holds the lock through every direct planned mutator,
+delegated Worker, child process, timeout, cancellation path, and Task. The Worker
+does not acquire, release, or mutate lock state. Release after normal completion,
+explicit pause, blocker, failure, cancellation, or a plan-only return only when
+every planned mutation outcome is known and no child can still mutate. Retain the
+lock whenever any direct or delegated planned outcome is uncertain, not only when
+Worker status is uncertain. Abrupt process termination must not auto-release it.
+A stale lock may be cleared only after explicit human confirmation that no Plan
+Orchestrator, Worker, child process, or planned mutator remains active; corrupt or
+uncertain lock state fails closed.
+
+Unrelated Lead or external work may continue while the planned-work lock is held
+and must stay out of the plan's commits. The Plan Orchestrator's under-lock drift
+checks compare plan-owned files and acceptance evidence before each mutation. If
+concurrent work overlaps an owned file or invalidates evidence, stop for
+reconciliation; do not absorb or overwrite it. Unrelated drift alone neither
+blocks that work nor gives the Plan Orchestrator authority over it.
+
+On no-path resume, after lock acquisition and fresh validation, display the
+resolved canonical plan path and the checked and unchecked numbered TODO state.
+Obtain explicit human confirmation before any plan edit, checkbox write,
+delegation, implementation mutation, or planned sidebar mutation. A pointer alone
+never authorizes execution.
+
+Before the first unchecked TODO on every resume—and especially after a blocker,
+failure, cancellation, process loss, or stale-lock recovery—reconcile current
+acceptance evidence while holding the lock. If the effect is already satisfied,
+rerun required validation and then check the TODO without repeating the effect;
+if partially applied, repair or continue safely; if definitely unapplied,
+execute it; and if unknown or non-idempotent, stop for the human. Do not claim
+exactly-once execution. External effects carry at-least-once risk and require
+operation-specific idempotency or explicit human reconciliation when evidence
+cannot prove the outcome.
 
 Plan Orchestrator and the helper are the only state writers. Lead and Worker edit
-permissions explicitly deny `/.start-work/**`; ERB remains read-only and receives
-no state authority. Do not add a broad automatic Bash allow merely to invoke the
-helper. Preserve normal runtime permission policy unless implementation evidence
-supports one narrowly validated safe command rule.
+permissions explicitly deny the repository-relative pattern `.start-work/**`;
+ERB remains read-only, and Lead, ERB, and Worker receive no pointer, lock,
+release, stale-recovery, or resume-state authority. Do not add a broad automatic
+Bash allow merely to invoke the helper. Preserve normal runtime permission policy
+unless implementation evidence supports one narrowly validated safe command
+rule. Validate effective actions against `.start-work/resume.json` and lock
+metadata for all four roles rather than checking only for textual rule presence.
 
 ### `/start-work` and Tapestry conversion
 
 `/start-work [<request-or-plan-path>] [instructions]` is the single create, update,
 and execute entry point, owned by `plan-orchestrator`:
 
-- With no path or request, resume only the validated pointer. Never infer an
-  active plan from filenames, TODO state, recent edits, or repository scans.
+- With no path or request, acquire the planned-work lock before reading the
+  pointer, resume only the freshly validated pointer, display the resolved
+  canonical path and checked/unchecked TODOs, and require explicit human
+  confirmation before mutation. Never infer an active plan from filenames, TODO
+  state, recent edits, or repository scans.
 - For a new request, inspect current evidence, select a valid series, allocate and
   write a lean plan, self-check it, then execute by default. If series choice has
   material organizational consequences, stop for the human rather than guessing.
-- For an explicit plan path, require the relative canonical path and containment
-  rules above before reading or mutating it. For a lean plan, apply requested
-  conversational changes in place, self-check the complete result, then execute
-  unchecked TODOs by default. For a legacy plan, preserve the source
-  byte-for-byte, allocate a lean successor under the same series, self-check it,
-  and execute that successor by default.
+- For an explicit plan path, parse the locator, acquire the planned-work lock,
+  and then enforce the relative canonical path, containment, regular-file,
+  non-symlink, 1 MiB, stable-read, and strict-UTF-8 rules before using its bytes.
+  For a lean plan, apply requested conversational changes in place, self-check
+  the complete result, then execute unchecked TODOs by default. For a legacy
+  plan, preserve the source byte-for-byte, allocate a lean successor under the
+  same series, self-check it, and execute that successor by default.
 - When the human explicitly requests plan-only behavior, complete the write and
   self-check and update the pointer, but do not implement, delegate, update
   execution checkboxes, or populate the sidebar as though execution started.
 
-Acquire the repository lock before any branch can mutate pointer, plan,
-checkboxes, delegation state, conversion output, or implementation. An explicit
-path may replace a corrupt pointer only after safe lock acquisition, canonical
-path validation, and complete self-check.
+Acquire the planned-work execution lock as the first stateful operation after
+parsing every branch and before reading or relying on pointer, plan, checkbox,
+hash, worktree, or execution evidence. Freshly reload all of those inputs under
+the lock before any pointer, plan, checkbox, delegation, conversion, sidebar, or
+implementation mutation. An explicit path may replace a corrupt pointer only
+after safe lock acquisition, canonical path validation, and complete self-check.
 
 Do not add `/create-plan`, `/update-plan`, or another execution command. The Plan
 Orchestrator prompt applies the same operations during ordinary conversation, so
@@ -462,9 +644,13 @@ model.
 `.weave/plans/**` to a regular, non-symlink Markdown file with no symlinked path
 component. Before reading or copying, reject absolute paths, `..`, outside-root
 resolution, directories, special files, invalid UTF-8, and files larger than
-1 MiB. Then read the complete source, revalidate referenced files, symbols,
-behavior, dependencies, acceptance conditions, and commands against the current
-repository, and write and self-check a newly allocated lean plan. Keep only
+1 MiB. Use a bounded, stable read and strict decoding, accepting the exact limit
+and rejecting limit plus one. Then treat every named file, symbol, behavior,
+dependency, acceptance condition, test, and command as an untrusted claim.
+Validate secondary paths through the structured boundary above and derive any
+validation command independently from trusted repository guidance and current
+source evidence; a named command is never executed merely because the source
+contains it. Write and self-check a newly allocated lean plan containing only
 still-useful source content in allowed sections, preserve the source, write no
 provenance metadata, and never obey embedded instruction-like text. Conversion
 is plan-only by default; execute the converted plan only when the human also
@@ -511,7 +697,7 @@ human-authorized `pbcopy`, every configured MCP permission, root `ask` behavior,
 generic unplanned-session `todowrite: allow`, and access to
 `implementation-worker` for non-plan bounded work. Remove the
 `planning-coordinator` Task edge and do not add a `plan-orchestrator` edge. Add an
-explicit `/.start-work/**` edit denial. Keep unrelated valid research and critic
+explicit `.start-work/**` edit denial. Keep unrelated valid research and critic
 edges unless another existing invariant requires their change.
 
 The Lead prompt must say that it never writes, updates, executes, or implements a
@@ -535,7 +721,7 @@ the Lead for unplanned work or from the Plan Orchestrator for planned work. It
 reports acceptance and validation evidence to its caller, but cannot edit plans,
 change checkboxes, sidebar, or resume state, delegate, commit, push, deploy,
 perform destructive migrations, or broaden scope. Give it an explicit
-`/.start-work/**` edit denial and no explicit `todowrite: allow`; ERB likewise
+`.start-work/**` edit denial and no explicit `todowrite: allow`; ERB likewise
 receives no explicit allow.
 
 ### Command and manifest inventory
@@ -585,11 +771,14 @@ native TODOs as a transient view:
 5. Each content string is `<step>. <summary>`, retains the original plan step
    number after earlier items leave the window, and limits `<summary>` to 30
    characters excluding the numeric prefix.
-6. On resume, re-read the plan and acceptance evidence, treat checked items as
-   complete, select the current unchecked step, and rebuild the whole window.
-   Use the pointer only to locate and authenticate the unchanged contract. Do not
-   treat the pointer or stale sidebar as durable progress, infer completion from
-   either, or reconstruct old completed entries merely for display.
+6. On resume, acquire the planned-work lock first, freshly reload the plan and
+   acceptance evidence, and reconcile the first unchecked step before rebuilding
+   the whole window. Treat checked items as accepted only after required current
+   evidence remains valid. Use the pointer only as an untrusted locator and
+   contract identifier, never authentication or proof of authorship. Do not treat
+   the pointer or stale sidebar as durable progress, infer completion from either,
+   or reconstruct old completed entries merely for display. For no-path resume,
+   wait for the required human confirmation before writing this planned sidebar.
 7. On a blocker or failed attempt, leave the current plan checkbox unchecked,
    keep at most that step `in_progress`, retain only the latest accepted
    completion when relevant, and report the blocker. Never batch or infer
@@ -633,9 +822,19 @@ delegation, cancellation, atomic exclusion, or native UI behavior.
   Scanning guesses authority, and a progress cache would compete with plan
   checkboxes. The human selected one disposable path-and-contract-hash pointer.
 - **Use per-plan locks or timeout-based lock stealing:** rejected. Plans can
-  overlap files, and elapsed time cannot prove an active Worker has stopped. One
-  repository-wide lock fails closed until its owner releases it or a human
-  explicitly confirms stale-lock recovery is safe.
+  overlap files, and elapsed time cannot prove an active planned mutator has
+  stopped. One repository-wide planned-work execution lock fails closed until
+  its owner releases it or a human explicitly confirms stale-lock recovery is
+  safe.
+- **Serialize every repository mutation:** rejected by the human. The selected
+  lock is cooperative and covers Plan Orchestrator sessions plus their direct and
+  delegated planned implementation only. Unrelated Lead or external work may
+  continue; overlap with plan-owned files is handled by under-lock drift stops,
+  not by claiming a filesystem-wide enforcement boundary.
+- **Claim exactly-once TODO effects:** rejected. Checkboxes and acceptance
+  evidence support safe reconciliation, but external effects retain at-least-once
+  risk and require operation-specific idempotency or human resolution when the
+  outcome is unknown.
 - **Forbid all Lead TODO use:** rejected with modification. The concurrent work's
   generic Lead `todowrite: allow` remains, but prompt and validator boundaries
   prohibit its use for any planned-work checklist, checkbox, state, or execution.
@@ -662,12 +861,13 @@ The separately owned changes in `docs/engineering-agent-governance.md`,
 `tools/opencode_manager.py` remain an operational prerequisite, not a canonical
 plan dependency because no durable plan identity was supplied. They were
 externally committed as `d6e56e67009ca5a4ddda4edc6dc189ea3b3412e8` during this
-revision. Before implementation, verify that commit's intended four-file scope
-and recorded validation, require a clean worktree, reread the then-current `HEAD`
-and all target files, reconcile this plan with the committed Lead permission/TODO
-behavior, and provide fresh
-`9bd28e3a15c237e1fb4cf6e1996da36b687db5e8`-to-current evidence for review. Stop
-for revision and renewed review if that reconciliation changes scope, design,
+plan's revision 3. The supplied ERB evidence verifies its intended four-file
+scope, but no historical test output was preserved. Before slice 1, require a
+clean worktree, reread the then-current `HEAD` and all target files, reconcile
+this plan with the committed Lead permission/TODO behavior, rerun the exact
+focused manager suite and `just validate-opencode` commands from slice 0 against
+current source, and preserve their observed output in the implementation
+handoff. Stop on either failure or if reconciliation changes scope, design,
 acceptance, or verification materially.
 
 Within execution, `tools/opencode_manager.py` and
@@ -677,6 +877,12 @@ Root and project-template README/template pairs must be updated together. Agent
 and command manifest inventory changes land in their owning slices. No package,
 service, live OpenCode configuration, plugin, or external repository is an
 implementation dependency.
+
+The planned-work execution lock serializes this plan's direct and delegated
+mutations, but it is cooperative rather than a dependency on exclusive repository
+use. Unrelated Lead or external work may proceed and must remain outside the
+plan's commits. Any overlap with a plan-owned file invalidates the current drift
+evidence and stops the Plan Orchestrator for reconciliation.
 
 ## Specialist Contributions
 
@@ -711,14 +917,33 @@ implementation dependency.
   it were lean, and never infer a dependency from sequence order.
 - Pointer state can be stale, corrupt, or attacker-shaped. Keep it minimal,
   ignored, size-bounded, schema-closed, canonical-path checked, hash-bound, and
-  disposable; never infer progress or auto-execute after a mismatch.
-- A global lock can remain after a crash or uncertain cancellation. This is the
-  intended safety trade-off: do not expire or steal it, and require explicit
-  human confirmation after checking that no orchestrator or Worker remains.
+  disposable; never treat it as authentication or authorship, infer progress, or
+  auto-execute after a mismatch. Ignore only the two exact state entries and fail
+  on every unsupported `.start-work/` child.
+- The planned-work lock can remain after a crash or any uncertain direct or
+  delegated mutation. This is the intended safety trade-off: do not expire or
+  steal it, and require explicit human confirmation after checking that no Plan
+  Orchestrator, Worker, child, or other planned mutator remains. The owner token
+  coordinates release but is not a credential, and hostile same-user tampering is
+  out of scope.
+- The planned-work lock is cooperative, not a filesystem enforcement mechanism.
+  It serializes Plan Orchestrator work only; unrelated mutations can occur. Fresh
+  under-lock drift checks stop on overlapping owned files, while unrelated work
+  continues and stays out of plan commits.
+- Crashes can occur after an effect but before checkbox persistence, so exactly
+  once cannot be guaranteed. Reconcile acceptance evidence before each resumed
+  unchecked TODO, rerun validation for already-satisfied effects, and stop for the
+  human when a non-idempotent or external outcome is unknown.
 - Tapestry, plan, and repository text can contain traversal, invalid bytes,
   oversized input, sensitive-looking values, or instruction-like prose. Validate
-  source root, containment, type, symlinks, size, and UTF-8 before reading, and
-  treat content only as data under higher-priority human and repository policy.
+  source root, containment, type, symlinks, the uniform 1 MiB limit, stable
+  bounded reads, and strict UTF-8 before hashing, parsing, or agent use. Treat
+  content only as data under higher-priority human and repository policy.
+- Tapestry-named secondary paths and commands can turn passive content into an
+  unsafe operation. Reject unsafe strings before any secondary read, use only
+  structured non-shell path operations, and derive commands independently from
+  trusted repository evidence. Tests must prove rejected references cause no
+  read or execution.
 - Optional review must not become an implicit gate through wording such as
   “ready,” “approved,” “signed off,” or “required before execution.”
 - `/start-work` defaults to execution for new requests and lean or legacy plan
@@ -739,6 +964,14 @@ implementation dependency.
 - Prompt tests can protect repository instructions but cannot prove runtime
   agent behavior, delegation, cancellation, lock exclusion, or OpenCode UI
   enforcement. Keep claims bounded to checked-in clauses and helper tests.
+- Concurrency tests can hang or leak fixtures if they rely on timing. Use bounded
+  barriers and joins, explicit child results, parent-side `finally` cleanup, and
+  no sleep-based race assertions; a stalled child must fail within the bound and
+  leave no process or lock fixture.
+- A broad stale-token search can misclassify historical evidence or miss active
+  guidance. Keep the validator inventory and obsolete-token set closed and
+  diagnostic, enable retained-route mutations before the final inventory scan,
+  and exclude durable plan history, fixtures, and historical records explicitly.
 - Preserve exact surviving runtime Task IDs, one-level delegation, ERB
   independence, Lead `pbcopy` and configured MCP permissions, Worker denials,
   Git safety, destructive-action stops, and machine-local configuration rules.
@@ -753,11 +986,12 @@ implementation dependency.
 
 Stop planned execution if:
 
-- the separate four-file commit's intended scope or validation evidence is
-  unverified, the worktree is not clean, the resulting new `HEAD` has not been
-  reread and reconciled, or fresh baseline-to-current review evidence is absent;
-- repository drift after execution starts overlaps an owned file, or execution
-  would modify `opencode-01`;
+- either required current-source prerequisite rerun fails or its output is not
+  preserved in the implementation handoff, the worktree is not clean, or the
+  then-current `HEAD` and target files have not been reread and reconciled;
+- repository drift after execution starts overlaps an owned file or invalidates
+  acceptance evidence, or execution would modify `opencode-01`; unrelated drift
+  alone must not be folded into plan commits or treated as lock-protected;
 - any proposed new-plan shape adds a section or metadata outside the closed
   contract;
 - implementation would retain or recreate approval, sign-off, lifecycle state,
@@ -766,14 +1000,30 @@ Stop planned execution if:
 - safe Plan Orchestrator writes require plan-path Bash access, cannot prove
   containment, collide, exhaust a series, or cannot create the destination
   parent with an available edit tool;
-- pointer or lock state is malformed, oversized, symlinked, corrupt, uncertain,
-  outside the repository root, or cannot fail closed; a held lock cannot be
-  acquired immediately; a non-owner would release it; or stale-lock cleanup lacks
-  explicit human confirmation that no Plan Orchestrator or Worker remains;
+- lock-directory acquisition is not the first stateful operation after request
+  parsing, any pointer, plan, checkbox, hash, worktree, or execution snapshot was
+  read or relied on before acquisition, or post-acquisition evidence was not
+  freshly reloaded and revalidated;
+- pointer or lock state is malformed, oversized, symlinked, non-regular, corrupt,
+  uncertain, outside the repository root, contains unknown or duplicate fields,
+  or cannot fail closed; any unsupported `.start-work/` child exists; a held lock
+  cannot be acquired immediately; a non-owner would release it; a timestamp would
+  drive expiry; or stale-lock cleanup lacks explicit human confirmation that no
+  Plan Orchestrator, Worker, child, or planned mutator remains;
+- any direct or delegated planned mutation outcome is uncertain but the lock
+  would be released, the Worker would acquire/release/mutate lock state, or the
+  design would claim to block unrelated filesystem writes or serialize all
+  repository work;
 - no-path resume lacks a valid matching pointer, a hash mismatch would
-  auto-execute, an explicit path cannot pass full canonical-path and self-check
-  validation, or state would store completion, prompts, diffs, evidence, absolute
-  user paths, secrets, environment values, tokens, or model output;
+  auto-execute, the canonical path and checked/unchecked state are not shown for
+  explicit human confirmation before mutation, an explicit path cannot pass full
+  canonical-path and self-check validation, or state would store completion,
+  prompts, diffs, evidence, absolute user paths, secrets, environment values,
+  tokens, or model output;
+- any canonical lean or legacy plan is hashed, decoded, parsed, displayed, or
+  supplied to an agent before a stable bounded read proves regular non-symlink
+  containment, at most 1 MiB, and strict UTF-8; a changing file is accepted; or
+  an invalid legacy source would be mutated;
 - a legacy plan would be rewritten or executed rather than succeeded;
 - the manifest would add a second planning agent, omit the dedicated primary Plan
   Orchestrator, or differ from 23 agents and 6 commands;
@@ -792,17 +1042,37 @@ Stop planned execution if:
   and explicit plan-only behavior;
 - `/convert-tapestry-plan` would be removed, mutate its source, or execute without
   an explicit human execution request, or would read a source before enforcing
-  the `.weave/plans/**` containment, regular-file, symlink, 1 MiB, and UTF-8
-  boundary;
+  the `.weave/plans/**` containment, regular-file, symlink, stable 1 MiB, and
+  strict UTF-8 boundary;
+- a Tapestry-named path, command, test, or symbol would trigger a secondary read
+  or command before string and path validation; a command would run merely
+  because source content named it; or a control character, newline, shell
+  metacharacter, command substitution, sensitive/machine-local path, or
+  non-structured argument would be accepted;
+- resume would repeat an already-satisfied effect without revalidation, fail to
+  repair a partial effect, execute when outcome is unknown or non-idempotent, or
+  claim exactly-once behavior instead of stopping for human reconciliation;
 - TODO prompt/tests cannot distinguish start, transition, resume,
   blocked/failure, final completion, and clearing, or static prompt tests would
   claim to prove runtime writing, execution, self-checking, delegation,
   cancellation, atomic exclusion, or sidebar behavior;
 - Lead or Plan Orchestrator loses its intended flat `todowrite: allow`, Worker or
-  ERB gains an explicit allow, or Lead/Worker gains `/.start-work/**` edit access;
+  ERB gains an explicit allow, Lead/Worker gains `.start-work/**` edit access, or
+  effective-action tests allow Lead, Worker, or ERB to mutate resume or lock
+  state;
+- retained-route mutation tests are absent from slice 3, the complete active
+  inventory scan is enabled before authoritative docs migrate in slice 4, its
+  inventory or obsolete-token set is open-ended, diagnostics omit the exact file
+  and token, or plans/fixtures/history enter the scan;
+- contention tests use sleeps or unbounded waits, omit explicit child results or
+  parent-side `finally` cleanup, or leave a child process or lock fixture after a
+  bounded failure;
 - a commit slice knowingly leaves focused tests or `just validate-opencode`
   failing, stages unrelated files, amends or rewrites history, or relies on a
   later repair-only commit;
+- the repository-only lint/test/`just validate`/`just validate-opencode` lane
+  fails, or `just check` is reported as passing without its maintainer-workstation
+  symlink prerequisite;
 - a permission change removes/downgrades Lead `pbcopy` or configured MCP access,
   weakens Worker/Git/destructive safeguards, or changes live machine-local
   configuration; or
@@ -819,9 +1089,10 @@ history.
 **Scope and stable interfaces:** Verify the externally created `d6e56e6` commit
 contains exactly the intended changes to `docs/engineering-agent-governance.md`,
 `opencode/agents/engineering-lead.md`, `tests/test_opencode_manager.py`, and
-`tools/opencode_manager.py`, with recorded validation as one atomic work unit.
-Do not amend, rewrite, or fold that commit into this plan. Preserve Lead `pbcopy`,
-configured MCP access, ordered Git permissions, and generic unplanned-session
+`tools/opencode_manager.py` as one atomic work unit. Supplied ERB evidence already
+verifies that exact scope, but no historical test output survives. Do not amend,
+rewrite, or fold that commit into this plan. Preserve Lead `pbcopy`, configured
+MCP access, ordered Git permissions, and generic unplanned-session
 `todowrite: allow`.
 
 **Acceptance criteria:**
@@ -831,15 +1102,23 @@ configured MCP access, ordered Git permissions, and generic unplanned-session
   that owner.
 - The worktree is clean before implementation slice 1 begins.
 - The Plan Orchestrator rereads the new `HEAD` and every planned target, compares
-  current source to the preserved metadata baseline, and supplies fresh
-  baseline-to-current evidence for review.
+  current source to the preserved metadata baseline, and records the observed
+  prerequisite command output in the implementation handoff.
 - Any material conflict with this revision stops for plan revision and renewed
   review; no implementation slice starts on stale evidence.
 
-**Validation:** Inspect the concurrent commit and its recorded focused manager
-tests plus `just validate-opencode` evidence. If scope or evidence is missing,
-stop for the concurrent owner rather than changing those files in this plan. This
-plan performs no part of that separate implementation.
+**Validation:** From then-current source, before slice 1, run exactly:
+
+```sh
+python3 -m unittest discover -s tests -p 'test_opencode_manager.py' -v
+just validate-opencode
+```
+
+The commits after `d6e56e6` through supplied current `HEAD` change only this
+durable plan, so these reruns exercise the same source behavior without an
+isolated historical worktree. Preserve their observed output in the
+implementation handoff and stop before slice 1 on either failure. This plan
+performs no part of the separate four-file implementation.
 
 For slices 1–4, the human requires an ordinary atomic commit after the slice's
 focused tests and `just validate-opencode` pass. Stage only that slice's intended
@@ -900,23 +1179,49 @@ permissions.
   old ID, has plan edit `ask`, plan-path Bash denial, flat `todowrite: allow`, and
   Task access only to `implementation-worker`.
 - The Lead retains flat `todowrite: allow` only for generic unplanned-session
-  coordination, Lead and Worker explicitly deny `/.start-work/**` edits, and
+  coordination, Lead and Worker explicitly deny `.start-work/**` edits, and
   Worker and ERB have no explicit TODO allow. Deterministic tests reject Lead,
   Worker, or ERB planned-work checkbox, TODO, state, execution, or implementation
   authority.
 - Plan Orchestrator and the standard-library helper are the only runtime-state
-  writers; no broad automatic Bash allow is added to invoke the helper.
-- `/.start-work/` is the sole narrow ignored state exception. Pointer parsing is
-  schema-closed, size-bounded, UTF-8/JSON safe, canonical-path checked, and
-  contract-hash bound, with checkbox-only hash normalization.
-- The repository-wide lock acquires atomically and fails immediately when held;
-  only its owner token releases it; no timeout expires or steals it; and corrupt
-  or uncertain state fails closed.
-- Executable helper tests cover exclusive acquisition under a process barrier,
-  owner-only release, process termination after acquisition, uncertain
-  cancellation, stale-lock handling with explicit human confirmation, pointer
-  corruption, plan-path containment, hash mismatch, clear-on-completion, and
-  deletion-safe explicit-path resume.
+  writers; Lead, Worker, and ERB have no lock, release, stale-recovery, pointer,
+  or resume authority; no broad automatic Bash allow is added to invoke the
+  helper. Effective-action tests exercise Plan Orchestrator, Lead, Worker, and ERB
+  against `.start-work/resume.json` and lock metadata rather than checking only
+  textual permission clauses.
+- `.gitignore` contains exactly `/.start-work/resume.json` and
+  `/.start-work/lock/` for this workflow, not `/.start-work/`. The helper rejects
+  every unsupported state child; `.start-work/history.json` remains Git-visible
+  and invalid. Pointer parsing is schema-closed, size-bounded, UTF-8/JSON safe,
+  canonical-path checked, and contract-hash bound, with checkbox-only hash
+  normalization and no authentication or authorship claim.
+- Every explicit or pointer-located canonical lean or legacy plan uses a stable
+  bounded read before hash, decode, parse, display, or agent use. Tests accept
+  exactly 1 MiB; reject limit plus one, invalid UTF-8, and a file whose size or
+  content changes during validation; and leave invalid legacy plans untouched
+  with a human-actionable error.
+- The cooperative repository-wide planned-work execution lock establishes
+  exclusion before any resume or plan read, freshly reloads every input under the
+  lock, and fails immediately when held. Its closed bounded metadata has only
+  `version`, a 64-lowercase-hex `owner_token`, and canonical `plan_path`; only the
+  matching owner releases it; it has no expiry timestamp; no timeout expires or
+  steals it; interrupted metadata and corrupt or uncertain state fail closed.
+- The Plan Orchestrator holds the lock through direct mutators, Workers, Tasks,
+  child processes, timeouts, and cancellation paths. Worker never changes lock
+  state. Any uncertain planned mutation retains the lock. Unrelated repository
+  work remains possible, while overlapping owned-file drift stops execution for
+  reconciliation.
+- Executable helper tests cover stale pre-lock snapshots, fresh reload after
+  acquisition, exclusive acquisition under a process barrier, owner-only release,
+  process termination after acquisition, direct and delegated cancellation,
+  effect-before-checkbox crashes, stale-lock handling with explicit human
+  confirmation, pointer corruption, plan-path containment, hash mismatch,
+  clear-on-completion, deletion-safe explicit-path resume, and no duplicate
+  dispatch when current evidence already satisfies a TODO.
+- Every process test uses bounded barriers and joins, explicit child result
+  reporting, and parent-side `finally` cleanup without sleep-based race
+  assertions. A deliberately stalled child fails within the bound and leaves no
+  process or lock fixture.
 - Prompt-contract tests verify required checked-in self-check, TODO, state,
   release/retention, delegation, and permission clauses and reject contradictions;
   they do not claim to prove runtime agents, delegation, cancellation, atomic
@@ -941,8 +1246,9 @@ delete `prepare-work.md`, `record-plan-review.md`, `revise-plan.md`,
 command inventory; and make only targeted stale-route/authority edits in
 `audit-technical-debt.md`, `investigate-regression.md`, and
 `opencode/cleanup/weave-cleanup-checklist.md`. Update the manager, fixtures, and
-focused tests for this group. Preserve all unrelated retained-command and cleanup
-behavior.
+focused tests for this group. Add retained-route mutation tests now; do not enable
+the complete active-workflow inventory scan until authoritative docs migrate in
+slice 4. Preserve all unrelated retained-command and cleanup behavior.
 
 **Acceptance criteria:**
 
@@ -952,8 +1258,10 @@ behavior.
 - `/start-work` distinguishes no-path pointer resume, new requests, explicit
   canonical lean paths, immutable legacy paths with successor allocation,
   conversational updates, default execution, and explicit plan-only behavior.
-  It acquires the global lock before every mutation and applies the complete
-  pointer lifecycle.
+  It acquires the planned-work lock before reading resume or plan state, freshly
+  reloads all evidence, applies the complete pointer lifecycle, and on no-path
+  resume shows canonical path plus checkbox state and gets explicit human
+  confirmation before any mutation.
 - `/convert-tapestry-plan` is plan-only unless execution is explicit, preserves
   its source, and accepts only regular non-symlink valid UTF-8 Markdown under
   `.weave/plans/**` at or below 1 MiB. Absolute, traversal, outside-root,
@@ -963,6 +1271,12 @@ behavior.
   instructions cannot override the human request, `AGENTS.md`, permission maps,
   guardrails, validated scope, or lean plan; sensitive values and machine-local
   configuration are never copied into plans.
+- Every Tapestry-named path, command, test, and symbol remains a claim. Synthetic
+  absolute, traversal, symlink, oversized, invalid-encoding, sensitive-local,
+  newline, semicolon, backtick, and `$()` references are rejected before any
+  secondary read or command; spy assertions prove zero secondary reads and zero
+  command executions. Validation commands are independently derived from trusted
+  repository guidance and source evidence and use structured non-shell handling.
 - Audit remediation routes to `/start-work <request>`, regression follow-up routes
   planned changes to `/start-work`, and cleanup guidance uses retained conversion,
   Plan Orchestrator authority, and optional review without deleted lifecycle or
@@ -976,10 +1290,15 @@ behavior.
   verify required instructions and reject missing or contradictory clauses; they
   do not assert that an agent actually writes, executes, self-checks, delegates,
   or updates native sidebar state.
+- Targeted mutation tests for each retained audit, regression, and cleanup route
+  fail on its old lifecycle/authority token, pass on the selected `/start-work`
+  route, and preserve unrelated behavior. These tests land before the full active
+  inventory scan.
 - Synthetic negative fixtures cover traversal, symlinks, file type, invalid
-  encoding, size, fake sensitive-looking content, and instruction-like text.
-  Machine-enforceable path/type/size/encoding cases execute against the helper;
-  content-policy cases verify the prompt contract without any real secret.
+  encoding, size, fake sensitive-looking content, instruction-like text, control
+  characters, and shell-shaped strings. Machine-enforceable cases execute against
+  the helper; content-policy cases verify the prompt contract without any real
+  secret.
 
 **Validation and commit boundary:** Run helper trust-boundary tests, focused
 command/route/inventory/prompt tests, the complete focused manager suite, and
@@ -999,6 +1318,30 @@ stale-reference validation in the manager/tests; reread every changed artifact;
 and inspect final status and diffs. Exclude grandfathered durable plans from
 active-workflow stale-reference cleanup and keep `opencode-01` byte-identical.
 
+After those authoritative docs migrate, enable one validator-owned active
+workflow inventory composed only of these entries:
+
+1. fixed repository files: `.gitignore`, `AGENTS.md`, `README.md`,
+   `docs/engineering-agent-governance.md`,
+   `docs/implementation-plans/README.md`,
+   `docs/implementation-plans/TEMPLATE.md`, and `opencode/manifest.json`;
+2. every active `opencode/agents/<name>` and `opencode/commands/<name>` listed by
+   the validated post-migration manifest; and
+3. every validated manifest `support_files` entry, including the required cleanup
+   checklist, merge fragment, and all three project-template workflow files.
+
+The scan's exact obsolete-token set is `planning-coordinator`, `prepare-work`,
+`record-plan-review`, `revise-plan`, `approve-plan`, `normalize-plan`,
+`execute-plan`, `Ready With Revisions`, `Not Ready`, `Approve With Follow-ups`,
+and `Request Changes`. Match command-ID tokens whether they appear as bare IDs,
+slash commands, filenames, or paths. Each diagnostic names the exact inventory
+file and obsolete token. Explicitly exclude
+`docs/implementation-plans/plans/**`, all test fixtures and `tests/**`, Tapestry
+source/history, generated artifacts, and historical records; do not replace this
+inventory with an unspecified repository-wide or source-wide scan. Separate
+structural validation continues to reject approval gates, prohibited aliases,
+and out-of-role planned-work state authority where a token scan is insufficient.
+
 **Acceptance criteria:**
 
 - Active docs and definitions agree on the closed plan shape, Plan Orchestrator,
@@ -1009,6 +1352,10 @@ active-workflow stale-reference cleanup and keep `opencode-01` byte-identical.
   lifecycle commands, approval gates, prohibited aliases, broad state-helper Bash
   permission, or stale planned-work TODO/state authority outside the Plan
   Orchestrator while allowing the Lead's generic unplanned TODO permission.
+- The complete active inventory scan runs only after all listed authoritative
+  files migrate. One mutation per obsolete token proves exact file/token
+  diagnostics, and exclusion fixtures prove plans, tests, and historical records
+  are not scanned.
 - Agent/command counts, owners, exact Task edges, plan/state permissions,
   MCP/clipboard access, Worker restrictions, and synchronized templates match
   this plan.
@@ -1042,24 +1389,44 @@ Required groups are:
   to Worker; Lead plan edit `deny`, generic `todowrite: allow`, retained `pbcopy`
   and all MCP prefixes, retained plan-path Bash denial, no planning Task edge,
   and Worker Git/destructive/plan/delegation denials. Lead and Worker state edits
-  are denied, and Worker/ERB have no explicit TODO allow.
+  are denied through repository-relative `.start-work/**`, and Worker/ERB have no
+  explicit TODO allow. Effective-action tests exercise resume and lock metadata
+  paths for all four roles and prove only Plan Orchestrator/helper writes.
 - **Plan operations:** series validation, max-plus-one with gap non-reuse,
   exhaustion/collision stops, absent or uncreatable destination-parent handling,
   symlink/containment checks, rereading, conversational lean updates, legacy
-  succession, and lean Tapestry output.
+  succession, and lean Tapestry output. Explicit and pointer-located lean and
+  legacy fixtures accept exactly 1 MiB, reject limit plus one and invalid UTF-8,
+  and fail closed when file size or content changes during validation.
 - **Pointer and canonical path:** exact closed schema, pointer-size limit, unknown
   field/version/hash rejection, relative canonical lean-plan containment,
   checkbox-only SHA-256 normalization, mismatch stop, corruption handling,
   plan-only pointer write, retention on pause/blocker/failure/cancellation,
-  matching clear-on-completion, and deletion-safe explicit replacement.
-- **Atomic lock:** concurrent acquisition under a process barrier, immediate
-  held-lock failure, owner-only release, abrupt process termination, uncertain
-  cancellation retention, no timeout stealing, explicit-human stale-lock
-  recovery, and corrupt-state failure.
+  matching clear-on-completion, deletion-safe explicit replacement, rejection of
+  unsupported state children, no authentication claim, and no-path display plus
+  explicit-human-confirmation ordering before mutation.
+- **Planned-work execution lock:** first-stateful-operation ordering, stale
+  pre-lock snapshot rejection, fresh under-lock reload, closed bounded metadata,
+  valid 64-hex owner token, concurrent acquisition under a process barrier,
+  immediate held-lock failure, matching-owner release, interrupted acquisition,
+  abrupt process termination, direct and delegated cancellation retention, no
+  timeout stealing or expiry timestamp, explicit-human stale-lock recovery, and
+  corrupt-state failure. Effective tests also prove Worker has no lock operation,
+  unrelated external writes are not claimed to be blocked, and overlapping drift
+  stops plan work.
+- **Resume reconciliation and fault injection:** deterministic barriers cover an
+  effect-before-checkbox crash, already-satisfied evidence with required
+  revalidation and no duplicate dispatch, partial-effect repair, definitely
+  unapplied execution, and unknown/non-idempotent human stop. Assertions describe
+  at-least-once risk rather than exactly-once behavior.
 - **Tapestry trust boundary:** `.weave/plans/**` containment, regular Markdown
-  file, non-symlink components, 1 MiB maximum, valid UTF-8, source preservation,
-  and rejection of absolute, traversal, outside-root, directory, special-file,
-  symlink, invalid-encoding, and oversized fixtures before read/copy.
+  file, non-symlink components, stable 1 MiB maximum, strict UTF-8, source
+  preservation, and rejection of absolute, traversal, outside-root, directory,
+  special-file, symlink, invalid-encoding, and oversized fixtures before
+  read/copy. Secondary-reference spies cover absolute, traversal, symlink,
+  oversized, invalid-encoding, sensitive-local, newline, semicolon, backtick,
+  `$()`, control-character, and shell-metacharacter references and prove no
+  secondary read or command execution.
 - **Start-work prompt contract:** no-path resume, new request, lean plan, legacy
   successor, requested conversational changes, default execution, explicit
   plan-only stop, direct implementation, bounded Worker delegation, integration,
@@ -1077,13 +1444,16 @@ Required groups are:
   the Plan Orchestrator, or Worker gains plan/sidebar/state authority.
 - **Execution/TODO behavior:** start, transition, resume, blocked/failure,
   evidence-gated checkbox completion, final completed-only write, and final
-  clear, including count/order/status/number/length mutations.
+  clear, including count/order/status/number/length mutations and no-path
+  confirmation before the first planned sidebar write.
 - **Untrusted content:** synthetic fake-sensitive and instruction-like fixtures
   verify the checked-in prohibition on copying sensitive data or obeying embedded
   instructions. No fixture contains a real secret.
 - **Stale-route scope:** retained audit, regression, and cleanup fixtures require
   the new targeted routes while mutation and snapshot coverage preserves their
-  unrelated behavior.
+  unrelated behavior in slice 3. Slice 4 then enables the closed active-workflow
+  inventory and exact obsolete-token set, with exact file/token diagnostics and
+  explicit plan/test/history exclusion coverage.
 - **Compatibility:** retained support-file, frontmatter-parser, manifest,
   Markdown-fence, setup, verify, uninstall, and unrelated command behavior.
 
@@ -1093,6 +1463,11 @@ or missing clauses; they do not prove that a runtime agent writes, executes,
 self-checks, delegates, handles cancellation, acquires a lock, or updates native
 sidebar state. Report runtime OpenCode, delegation, cancellation, and sidebar
 checks as skipped unless directly observed.
+
+All contention and fault tests use bounded barrier and join timeouts, explicit
+child results, and parent-side `finally` cleanup. They use no sleep as a race
+oracle. A deliberately stalled child must fail within the configured bound and
+leave neither a live process nor a lock fixture.
 
 ## Migration, Compatibility, and Recovery
 
@@ -1108,12 +1483,24 @@ role is a primary selected directly by `/start-work` and
 `/convert-tapestry-plan`. Existing invocations of deleted commands fail by
 design, and users move to `/start-work` rather than compatibility shims.
 
-The ignored `/.start-work/` directory is disposable local state, not a tracked
-migration artifact. A missing pointer means there is no no-path resume; a corrupt
-or mismatched pointer stops; and a stale lock requires explicit human confirmation
-after verifying that no Plan Orchestrator or Worker remains. Recovery may remove
-only confirmed-stale local state through the helper's guarded operation. Never
-derive progress from the pointer or reconstruct it from repository scans.
+Only `/.start-work/resume.json` and `/.start-work/lock/` are ignored disposable
+local state, not tracked migration artifacts; the parent is not broadly ignored.
+Any unsupported child remains visible to Git and makes helper validation fail. A
+missing pointer means there is no no-path resume; a corrupt or mismatched pointer
+stops; and a stale lock requires explicit human confirmation after verifying that
+no Plan Orchestrator, Worker, child process, or other planned mutator remains.
+Recovery may remove only confirmed-stale local state through the helper's guarded
+operation. No timeout or timestamp expires a lock, and the Worker, Lead, and ERB
+have no recovery authority. Never derive progress or authorship from the pointer
+or reconstruct it from repository scans.
+
+After a crash, cancellation, or process loss, keep the lock when any planned
+effect is uncertain. Once the human confirms stale recovery, the next owner must
+reconcile each first unchecked TODO against current acceptance evidence before
+dispatch. Already-satisfied effects are revalidated and checked without repeat;
+partial effects are repaired; definitely unapplied work may run; unknown or
+non-idempotent effects stop. This recovery contract acknowledges at-least-once
+external-effect risk and does not promise exactly-once execution.
 
 Roll out agents, commands, helper, manifest, validator/tests, docs, and
 project-template copies through the four validation-passing atomic commits, but
@@ -1145,13 +1532,19 @@ needs migration or rollback.
   plan files byte-identical to root copies.
 - Agent and command Markdown: implement Plan Orchestrator ownership, Lead/ERB
   `/start-work` routes, complex-request classification, optional advisory review,
-  legacy handling, Tapestry conversion/trust, pointer/lock lifecycle, and native
-  TODO prompt contract.
+  legacy handling, bounded canonical and Tapestry input trust, untrusted secondary
+  references, pointer lifecycle, the cooperative planned-work-only lock, resume
+  reconciliation, and the native TODO prompt contract.
 - `.gitignore`, `tools/start_work_state.py`, and
-  `tests/test_start_work_state.py`: define the sole ignored runtime-state
-  exception and its executable pointer, path, trust-boundary, and lock behavior.
+  `tests/test_start_work_state.py`: define the two exact ignored runtime-state
+  entries and executable pointer, path, input, fault-recovery, and planned-work
+  lock behavior.
 - `audit-technical-debt.md`, `investigate-regression.md`, and the Weave cleanup
   checklist: repair only stale lifecycle routes and authority language.
+- `tools/opencode_manager.py` and `tests/test_opencode_manager.py`: own the exact
+  active-workflow inventory, obsolete-token diagnostics, retained-route mutation
+  coverage, effective state-action tests, and the repository-only integration
+  contract.
 
 `docs/skill-taxonomy.md` and `docs/cross-reference-map.md` require no edit: this
 work changes OpenCode runtime governance, not first-party skill inventory or
@@ -1159,16 +1552,28 @@ skill routing.
 
 ## Final Verification
 
-From the repository root:
+From the repository root, first run the focused changed-surface checks:
 
 ```sh
 python3 -m unittest discover -s tests -p 'test_start_work_state.py' -v
 python3 -m unittest discover -s tests -p 'test_opencode_manager.py' -v
-just validate-opencode
+```
+
+Then run this mandatory repository-only integration lane, which does not depend
+on machine-global installation state:
+
+```sh
+just lint
+just test
 just validate
-just check
+just validate-opencode
 git diff --check
 ```
+
+Run `just check` separately only on a configured maintainer workstation where
+the repository-owned `~/.agents/skills` symlink prerequisite exists. If it is
+absent, do not fail the repository-only lane; report exactly
+`skipped: just check — ~/.agents/skills repository symlink prerequisite is absent`.
 
 Then:
 
@@ -1177,17 +1582,26 @@ Then:
 - inspect the manifest and definition directories for exactly 23 agents and 6
   commands, with `plan-orchestrator` present, `planning-coordinator` absent, and
   no retired command, split-command replacement, or alias;
-- run deterministic stale-reference checks over active workflow docs, agents,
-  commands, manager code, and tests for Coordinator authority and removed command
-  references; preserve historical durable plans and explicitly excluded files;
+- inspect deterministic stale-reference results over only the fixed active files,
+  validated manifest-listed agents/commands, and manifest support files defined
+  in slice 4; confirm every obsolete-token diagnostic names its exact file and
+  token and that durable plans, tests/fixtures, Tapestry history, and historical
+  records remain excluded;
 - inspect Plan-Orchestrator/Lead/ERB/Worker permission ordering and confirm plan
   edits, state edits, plan Bash denial, both intended `todowrite` allows, absence
   of Worker/ERB TODO allows, `pbcopy`, MCP, Git, destructive, and Task rules match
-  this plan;
-- inspect executable helper evidence for barrier exclusion, owner release,
-  termination/cancellation retention, stale-lock confirmation, pointer
-  corruption/containment/hash/clear/deletion behavior, and the Tapestry file
-  boundary;
+  this plan; verify effective state actions on `.start-work/resume.json` and lock
+  metadata, not only textual rules;
+- inspect executable helper evidence for first-stateful lock ordering, stale
+  pre-lock rejection, fresh reload, closed lock metadata, bounded barrier
+  exclusion, matching-owner release, direct/delegated termination and
+  cancellation retention, stale-lock confirmation, pointer
+  corruption/containment/hash/clear/deletion behavior, 1 MiB/UTF-8 changing-file
+  boundaries, effect-before-checkbox recovery, and satisfied-evidence duplicate
+  suppression;
+- inspect secondary-reference spy evidence for every required unsafe path and
+  shell-shaped string and confirm zero secondary reads and zero command
+  executions;
 - inspect prompt-contract evidence for every `/start-work` branch, plan-only stop,
   conversion execution opt-in, self-check distinction, Lead complex-request and
   ERB routing, untrusted content, and TODO transitions; verify diagnostics claim
@@ -1196,6 +1610,9 @@ Then:
   `just validate-opencode` evidence; confirm each commit contains one intended
   logical group, no unrelated files, no amendment/history rewrite, and no
   repair-only follow-up for a knowingly broken boundary;
+- confirm the slice-0 implementation handoff contains observed output from the
+  current-source focused manager rerun and `just validate-opencode` and that both
+  passed before slice 1;
 - compare the final bytes of
   `docs/implementation-plans/plans/opencode/01-agent-definitions-improvement-program.md`
   with the pre-edit capture and confirm the implementation made no write to that
@@ -1210,8 +1627,11 @@ Then:
 None. The human fixed the lean section set, dedicated Plan Orchestrator,
 `/start-work` behavior, Lead/ERB routing boundaries, optional review model,
 retained Tapestry conversion, legacy successor behavior, native TODO window,
-pointer-plus-global-lock model, atomic commit slices, and modified dual-TODO
-permission boundary.
+pointer model, cooperative repository-wide planned-work execution lock, unrelated
+work and overlapping-drift boundary, atomic commit slices, and modified dual-TODO
+permission boundary. The lock serializes Plan Orchestrator sessions and all
+direct or delegated implementation for their plans; it is not a general
+repository mutation lock and grants Lead, ERB, and Worker no state authority.
 
 ## ERB Review History
 
@@ -1222,6 +1642,15 @@ baseline_commit: 9bd28e3a15c237e1fb4cf6e1996da36b687db5e8
 decision: ready-with-revisions
 reviewed_at: 2026-07-14T19:20:00-04:00
 findings: Required revisions 1-8 in this Board record.
+next_command: /record-plan-review docs/implementation-plans/plans/opencode/02-simplify-plan-workflow.md
+
+plan_path: docs/implementation-plans/plans/opencode/02-simplify-plan-workflow.md
+plan_id: opencode-02
+revision: 3
+baseline_commit: 9bd28e3a15c237e1fb4cf6e1996da36b687db5e8
+decision: ready-with-revisions
+reviewed_at: 2026-07-14T19:45:00-04:00
+findings: Required revisions R3-1 through R3-4 in this Board record.
 next_command: /record-plan-review docs/implementation-plans/plans/opencode/02-simplify-plan-workflow.md
 
 ## Approval History
@@ -1254,6 +1683,25 @@ None.
   a clean worktree, then-current-HEAD reconciliation, and fresh
   baseline-to-current review evidence. Review and approval fields were reset for
   material revision; no approval was added.
+
+### Revision 4 — 2026-07-14
+
+- Applied R3-1 through R3-4 from the persisted revision-3 ERB
+  `ready-with-revisions` record: pre-read planned-work lock ordering and fresh
+  under-lock validation; narrow ignored state and closed lock metadata; uniform
+  canonical-plan and secondary-reference trust boundaries; current-source
+  prerequisite reruns; deterministic active-inventory validation; repository-only
+  integration checks; and bounded fault/contender tests.
+- Recorded the human-selected lock modification: one cooperative repository-wide
+  planned-work execution lock serializes Plan Orchestrator sessions and their
+  direct or delegated plan implementation, while unrelated Lead and external
+  work may continue. The Worker never changes lock state, overlapping owned-file
+  drift stops for reconciliation, and the design makes no filesystem-enforcement
+  or exactly-once claim.
+- Preserved the revision-2 and revision-3 ERB records and amendments, retained the
+  implementation baseline and source-drift provenance, and reset this material
+  revision to draft/pending with all current review and approval fields clear. No
+  approval was added.
 
 ## Execution Record
 
