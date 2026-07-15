@@ -4,7 +4,7 @@ series: opencode
 sequence: 2
 title: Simplify the OpenCode Plan Workflow
 status: draft
-revision: 5
+revision: 6
 review_decision: pending
 reviewed_at:
 approved_at:
@@ -15,7 +15,7 @@ execution_owner: plan-orchestrator
 source_format: native
 source_plan:
 created: 2026-07-14
-updated: 2026-07-14
+updated: 2026-07-15
 completed_at:
 ---
 
@@ -59,20 +59,33 @@ repository-owned standard-library helper at
 cooperative, repository-wide planned-work execution lock. OpenCode setup exposes
 the helper only through the managed
 `~/.config/opencode/workflow-tools -> <checkout>/opencode/workflow-tools` link;
-every target repository is passed explicitly, and no target-local helper is
-discovered or executed.
+runtime starts in the active OpenCode workspace and passes only literal `.` as
+`--repo-root`, and no target-local helper is discovered or executed. Python runs
+with isolated startup so workspace modules, user site packages, and Python
+environment variables cannot participate in helper import startup.
+
+Setup and every related dry-run, verification, doctor, uninstall, rollback, or
+restoration operation fail closed unless the configured machine-local root and
+all mutable ancestors are real, stable, non-symlink directories outside source
+checkouts and active target workspaces. Mutations remain bound to the validated
+configuration-root directory descriptor and exact device/inode identity rather
+than following a substituted path.
 
 `/start-work`, `/convert-tapestry-plan`, and equivalent ordinary Plan
 Orchestrator conversation share one transition protocol. After parsing the human
-request and locator without reading target plan or state content, the route calls
-the trusted installed helper. The helper performs only canonical target-root
-validation and, when needed, safe empty `.start-work` parent bootstrap before it
-atomically creates `.start-work/lock` as the exclusion point. Only after that
-child lock succeeds may the route load pointer, source, allocation inventory,
-plan bytes and hash, checkboxes, worktree, or execution evidence. The lock is
-held through plan-only writes and pointer updates as well as direct or delegated
-execution. Read-only self-explanation that performs no target mutation does not
-acquire it.
+route intent without parsing a human-supplied plan or Tapestry locator, the route
+calls the trusted installed helper with a fixed allowlisted operation and the
+literal active-workspace root. The helper proves that `.` is exactly the active
+OpenCode workspace root and, when needed, safely bootstraps an empty
+`.start-work` parent before atomically creating `.start-work/lock` as the
+exclusion point. It generates a cooperative owner token and atomically installs
+provisional `owner.json` metadata with `plan_path: null` before acquisition can
+succeed. Only then may the route parse and validate a locator or load pointer,
+source, allocation inventory, plan bytes and hash, checkboxes, worktree, or
+execution evidence. The matching owner finalizes metadata with the canonical
+plan path, and the lock is held through plan-only writes and pointer updates as
+well as direct or delegated execution. Read-only self-explanation that performs
+no target mutation does not acquire it.
 
 The lock serializes Plan Orchestrator sessions and all direct or delegated
 implementation performed for their plans; it does not block unrelated
@@ -147,16 +160,36 @@ plan, and must remain byte-unchanged.
   read-only self-explanation exempt only when it performs no plan, state, or
   repository mutation.
 - Invoke only the trusted installed
-  `~/.config/opencode/workflow-tools/start_work_state.py` with an explicit target
-  repository. Manage its repository-owned source directory as a third paired
-  OpenCode setup link and never discover or execute a target-local helper.
-- Permit only canonical target-root validation and safe empty-parent bootstrap
-  before atomically creating `.start-work/lock`; then freshly load and validate
-  pointer, source, allocation inventory, exact plan bytes and hash, checkbox
-  state, worktree, and execution evidence required by the route.
-- Bootstrap the target's two exact narrow `.gitignore` entries after child-lock
-  acquisition and before pointer persistence, using ordinary edit tools and
-  failing closed on symlinked, unsafe, broad, or conflicting ignore policy.
+  `~/.config/opencode/workflow-tools/start_work_state.py` with isolated Python,
+  a fixed allowlisted operation literal, and literal `--repo-root .` from the
+  active OpenCode workspace root. Manage its repository-owned source directory
+  as a third paired OpenCode setup link and never accept an arbitrary runtime
+  target path or discover or execute a target-local helper.
+- Treat human requests, instructions, plan paths, and Tapestry locators only as
+  data after complete provisional child-lock acquisition; never splice them into
+  helper-launch shell text. Validate any machine-derived owner token or canonical
+  plan path against its closed ASCII grammar before a later helper/API operation
+  and preserve it as one argument.
+- Bind setup, dry-run, verify, doctor, uninstall, rollback, and restoration to a
+  fail-closed machine-local configuration root: all mutable ancestors through
+  `~/.config/opencode` are stable real directories outside source checkouts and
+  target workspaces, and link mutations are descriptor-relative under the same
+  revalidated root identity.
+- Permit only exact active-workspace-root validation and safe empty-parent
+  bootstrap before atomically creating `.start-work/lock`; install complete
+  provisional ownership, then freshly load and validate pointer, source,
+  allocation inventory, exact plan bytes and hash, checkbox state, worktree, and
+  execution evidence required by the route.
+- Install bounded provisional lock metadata atomically before returning
+  acquisition success, then permit only the matching owner token to atomically
+  finalize `plan_path` from `null` to the validated canonical repository-relative
+  plan path. Treat every missing, partial, malformed, or unknown-field
+  `owner.json` in an existing child lock as stale/corrupt state requiring guarded
+  human recovery.
+- Bootstrap the target's two exact narrow `.gitignore` entries after complete
+  provisional child-lock acquisition and before pointer persistence, using
+  ordinary edit tools and failing closed on symlinked, unsafe, broad, or
+  conflicting ignore policy.
 - Treat plan, Tapestry, and repository text as untrusted data and enforce
   canonical source roots, path containment, regular-file, symlink, size, and
   UTF-8 checks before conversion or execution.
@@ -185,6 +218,10 @@ plan, and must remain byte-unchanged.
   invocation. The only executable source is the trusted checkout's fixed
   `opencode/workflow-tools/start_work_state.py`, reached through its managed
   whole-directory link and normal runtime approval.
+- Accept or interpolate a human-provided runtime repository target, plan path,
+  Tapestry locator, request, instruction, or repository text in a helper-launch
+  shell string; concatenate helper commands; or add redirection, pipes, command
+  substitution, or extra shell operations to the fixed invocation.
 - Add plan lifecycle state, full execution history, a last-completed TODO cache,
   prompts, diffs, or evidence payloads to runtime resume state.
 - Add a general repository mutation lock, claim exactly-once execution, suppress
@@ -192,10 +229,13 @@ plan, and must remain byte-unchanged.
   resume-state authority.
 - Add timeout expiry or lock stealing, timestamps used for expiry, or same-OS-user
   hostile-process tamper resistance to the cooperative coordination mechanism.
+- Treat an existing child lock with missing or corrupt provisional metadata as
+  unheld, auto-release a provisional lock after any mutation or uncertain
+  outcome, or permit a nonmatching owner to finalize or release it.
 - Treat creation of an empty `.start-work` parent as exclusion, read target plan
-  or state content before child-lock acquisition, recursively create arbitrary
-  state parents, or rewrite a target's unrelated `.gitignore` policy during
-  project-template bootstrap or first use.
+  or state content before complete provisional child-lock acquisition,
+  recursively create arbitrary state parents, or rewrite a target's unrelated
+  `.gitignore` policy during project-template bootstrap or first use.
 - Change unrelated specialist agents, unrelated behavior in the retained
   audit/regression commands or legacy cleanup checklist, or skills. Their stale
   lifecycle routes are in scope for targeted repair only.
@@ -220,9 +260,13 @@ plan, and must remain byte-unchanged.
 - `tools/opencode_manager.py` currently models only `agents` and `commands` as
   the two managed definition kinds. Its setup, verification, rollback, uninstall,
   CLI help, and tests describe that pair, while the manifest schema contains only
-  `agents`, `commands`, and `support_files`. Revision 5 extends that existing
+  `agents`, `commands`, and `support_files`. This plan extends that existing
   whole-directory-link model with one explicit runtime-helper inventory and one
-  `workflow-tools` link rather than adding a custom OpenCode tool.
+  `workflow-tools` link rather than adding a custom OpenCode tool. The current
+  setup evidence does not establish stable no-symlink ownership for every
+  mutable configuration-root ancestor or descriptor-relative mutation across
+  setup, dry-run, verify, doctor, uninstall, rollback, and restoration; revision
+  6 makes those controls and their substitution tests mandatory.
 - `docs/engineering-agent-governance.md` owns role authority, exact runtime Task
   IDs, one-level delegation, command ownership, and ERB independence.
 - Until this plan is implemented, `docs/implementation-plans/README.md` and
@@ -239,16 +283,17 @@ plan, and must remain byte-unchanged.
   advanced `HEAD` to `d6e56e67009ca5a4ddda4edc6dc189ea3b3412e8`, the
   revision-3 plan commit advanced it to
   `f8fa6b0c6608b81b987db9aad01c4b50c28cf4cf`, and the revision-4 plan commit
-  advanced it to `34da83afbb5807689166590447bfab2a283eaf9c`. The worktree was
-  clean at the revision-4 review. Before this revision, `HEAD` still matched
-  `34da83a` and the only worktree change was the subsequently persisted matching
-  revision-4 ERB record in this plan. Supplied range evidence covers the full
-  baseline-to-HEAD interval: the planning commits changed only the two durable
-  plan files, `d6e56e6` changed exactly the four source files named below,
-  `f8fa6b0` changed only this plan, and `34da83a` changed only this plan. Review
-  and execution must continue to account for that source drift rather than
-  treating the metadata baseline or an earlier assignment start as the current
-  checkout.
+  advanced it to `34da83afbb5807689166590447bfab2a283eaf9c`. The revision-5
+  plan commit then advanced `HEAD` to
+  `dfc6c7f7306ca6db1e458a807dd42730a10d6d9f`. The worktree was clean at the
+  revision-5 review. At revision-6 intake, `HEAD` still matched `dfc6c7f` and the
+  only worktree change was the subsequently persisted matching revision-5 ERB
+  record in this plan. Supplied equivalent range evidence covers the complete
+  baseline-to-HEAD interval: the planning commits changed only durable plan
+  files, `d6e56e6` changed exactly the four source files named below, and
+  `f8fa6b0`, `34da83a`, and `dfc6c7f` each changed only this plan. Review and
+  execution must continue to account for that source drift rather than treating
+  the metadata baseline or an earlier assignment start as the current checkout.
 - The `opencode` series contained only
   `01-agent-definitions-improvement-program.md` when sequence `02` was allocated.
   Both `opencode-01` and `opencode-02` are tracked at current `HEAD`.
@@ -310,24 +355,26 @@ plan, and must remain byte-unchanged.
   `tests/test_start_work_state.py`, or tracked `/.start-work/` runtime-state
   contract exists in the observed source. There is no `opencode/workflow-tools/`
   directory or runtime-helper manifest key. Current setup manages only
-  `~/.config/opencode/agents` and `~/.config/opencode/commands`.
+  `~/.config/opencode/agents` and `~/.config/opencode/commands`. No runtime-helper
+  tests exist yet, and no machine-local configuration or secrets were inspected
+  for revision 6.
 - The specialist inspection supplied by the human reports that
   `just validate-opencode` and all 58 focused OpenCode manager tests passed before
   initial planning. That is historical prompt-contract evidence, not current
   runtime proof or preserved evidence for `d6e56e6`; this Coordinator did not
-  rerun implementation checks. Because all later commits through `34da83a` affect
+  rerun implementation checks. Because all later commits through `dfc6c7f` affect
   only durable plans, rerunning the focused manager suite and
   `just validate-opencode` at then-current `HEAD` before slice 1 validates the
   same source behavior.
 - The latest persisted ERB record exactly matches this path, `opencode-02`,
-  revision 4, and baseline, and records `ready-with-revisions` at
-  `2026-07-14T20:05:00-04:00`. It follows the preserved revision-2 and revision-3
-  records. No approval exists. The supplied `change-verifier` evidence reports
-  R3-2 through R3-4 closed and leaves the shared-route lock coverage gap in R4-1.
-  The supplied `adversarial-reviewer` evidence reports `just validate-opencode`
-  and `just validate` passing and identifies the trusted-distribution and fresh
-  parent-bootstrap gaps in R4-2 and R4-3; it did not run the focused manager suite
-  or runtime-helper scenarios.
+  revision 5, and baseline, and records `ready-with-revisions` at
+  `2026-07-14T22:40:00-04:00`. It follows the preserved revision-2 through
+  revision-4 records. No approval exists. The supplied `change-verifier` reports
+  R4-1 through R4-3 closed and revision 5 otherwise execution-ready. The supplied
+  `security-critic` identifies the shell-safe helper invocation, machine-local
+  configuration-root ownership, and provisional child-lock ownership gaps now
+  addressed as R5-1 through R5-3. No required human product or workflow decision
+  remains.
 
 ## Revision 3 Finding Dispositions
 
@@ -395,32 +442,71 @@ plan, and must remain byte-unchanged.
 
 1. **R4-1 accepted — one shared state-transition protocol.** `/start-work`,
    `/convert-tapestry-plan`, and equivalent ordinary Plan Orchestrator
-   conversation parse the human request and locator without reading target plan
-   or state content, invoke the fixed trusted installed helper for the explicit
-   target, complete child-lock acquisition, and only then freshly load the route's
-   pointer, source, allocation, plan, checkbox, worktree, and execution evidence.
-   Plan-only writes and pointer updates remain under the same lock as direct or
-   delegated execution. Read-only self-explanation with no target mutation is the
-   only exemption.
+   conversation use the fixed trusted installed helper, complete child-lock
+   acquisition, and only then freshly load the route's pointer, source,
+   allocation, plan, checkbox, worktree, and execution evidence. Revision 6
+   further requires that human locators are not parsed or passed at launch and
+   that provisional ownership completes before those reads. Plan-only writes and
+   pointer updates remain under the same lock as direct or delegated execution.
+   Read-only self-explanation with no target mutation is the only exemption.
 2. **R4-2 accepted with a concrete trusted distribution model.** Place
    the sole helper source at `opencode/workflow-tools/start_work_state.py`, add an
    exact manifest runtime-helper inventory containing only
    `workflow-tools/start_work_state.py`, and manage
    `~/.config/opencode/workflow-tools` as a third paired whole-directory link
    beside `agents` and `commands`. All routes invoke only that installed fixed
-   path with `--repo-root <target>` under normal runtime approval. First planned
-   use adds the two exact narrow target ignore entries through ordinary edit
-   tools after child-lock acquisition; target-local helpers and unsafe or
-   conflicting ignore policy fail closed.
+   path under normal runtime approval. Revision 6 supersedes the earlier
+   arbitrary-target invocation mechanics with isolated Python and literal
+   `--repo-root .` from the active workspace. First planned use adds the two exact
+   narrow target ignore entries through ordinary edit tools after child-lock
+   acquisition; target-local helpers and unsafe or conflicting ignore policy fail
+   closed.
 3. **R4-3 accepted — safe parent bootstrap and child-lock exclusion.** Before
-   exclusion, permit only explicit-target parsing, minimum canonical regular
-   repository-root validation, and non-recursive creation or revalidation of an
-   empty real `.start-work` parent. Atomic `.start-work/lock` creation is the
-   actual exclusion point and first exclusion-protected mutation. All target
-   plan, state, source, allocation, worktree, and execution reads follow child
-   acquisition. Empty interruption residue is reusable; symlinked or
-   non-directory parents, unsupported children, corrupt state, and losing race
-   contenders fail closed.
+   exclusion, permit only fixed route selection and helper launch, minimum active
+   canonical regular workspace-root validation, and non-recursive creation or
+   revalidation of an empty real `.start-work` parent. Atomic
+   `.start-work/lock` creation is the actual exclusion point and first
+   exclusion-protected mutation. Revision 6 requires immediate provisional
+   metadata before acquisition success. All target plan, state, source,
+   allocation, worktree, and execution reads follow that acquisition. Empty
+   interruption residue is reusable; symlinked or non-directory parents,
+   unsupported children, corrupt state, and losing race contenders fail closed.
+
+## Revision 6 Finding Dispositions
+
+1. **R5-1 accepted — fixed isolated active-workspace helper invocation.** Every
+   runtime route starts at the active OpenCode workspace root and uses exactly
+   `python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py"
+   <literal-operation> --repo-root .`, where the operation is a checked-in
+   allowlisted literal and `.` is one literal argument. Human-derived targets,
+   locators, requests, instructions, and repository text never enter shell
+   construction. The helper proves `.` is exactly the active workspace root;
+   rejects nested, mismatched, aliased, symlinked, unrelated, or alternate roots;
+   and remains standard-library-only. Any later machine-derived token or plan
+   path is grammar-validated and preserved as one argument, preferably through
+   structured API/argv tests. Runtime approval remains required.
+2. **R5-2 accepted — bound machine-local configuration-root ownership.** Setup,
+   dry-run, verify, doctor, uninstall, rollback, and restoration validate every
+   mutable path component through `~/.config/opencode` as a stable real directory
+   outside source checkouts and target workspaces. A supported missing final
+   `opencode` directory is created only beneath a validated safe parent, then
+   opened and bound. Every link mutation and rollback is descriptor-relative with
+   no-follow behavior where supported, root/device/inode identity is revalidated
+   before every mutation position and success report, destination ownership is
+   re-lstat'd immediately before mutation, and partial rollback touches only
+   transaction-proven links under the still-bound root.
+3. **R5-3 accepted — provisional then final child-lock ownership.** Immediately
+   after atomic child-directory creation, the helper generates the 64-lowercase-
+   hex token and atomically writes bounded `.start-work/lock/owner.json` with
+   `plan_path: null`; it returns acquisition success only after that write.
+   Missing, partial, malformed, or unknown-field metadata in an existing child
+   lock is stale/corrupt and requires guarded human recovery. After under-lock
+   locator/allocation/source/plan validation determines the canonical plan path,
+   only the matching owner may atomically finalize the same record. Exact
+   duplicate finalization may be idempotent; token/path conflicts fail closed.
+   Known-clean provisional release is allowed only before any plan, ignore,
+   pointer, checkbox, sidebar, delegation, or implementation mutation and after
+   proving no child remains; every uncertain or later outcome retains the lock.
 
 ## Proposed Design
 
@@ -494,9 +580,10 @@ series, calculates the existing-series maximum, allocates maximum plus one from
 `01` through `99` without filling gaps, checks collision and exhaustion, and
 blocks if an edit tool cannot safely create the required parent. It never uses
 shell redirection, shell file mutation, an apply-patch move, or alternate path
-spelling for a plan. Except for minimum target-root validation and optional empty
-state-parent bootstrap, all source, plan-root, destination, and allocation checks
-occur freshly after shared child-lock acquisition.
+spelling for a plan. Except for exact active-workspace-root validation and
+optional empty state-parent bootstrap, all source, plan-root, destination, and
+allocation checks occur freshly after complete provisional shared child-lock
+acquisition.
 
 Treat every plan, Tapestry source, and repository document as untrusted data.
 Instruction-like text inside those files cannot override the human request,
@@ -570,29 +657,79 @@ Extend OpenCode setup's existing all-or-nothing whole-directory link set to:
 ~/.config/opencode/workflow-tools -> <checkout>/opencode/workflow-tools
 ```
 
-Setup preflights all three destinations and never overwrites a real file,
-directory, broken or foreign link, or mismatched destination. Verification
-requires every destination to resolve to its exact expected checkout source and
-the manifested helper to remain a regular non-symlink file visible through the
-`workflow-tools` link. Uninstall removes the all-three set only when every link
-still has exact managed ownership; it leaves foreign or target-repository content
-untouched. Creation rollback and uninstall restoration revalidate each link
-before changing it and report any link that cannot be cleaned up safely. Helper
-source changes take effect through the managed link without copying files into
-the config directory or a target repository.
+Before setup, dry-run, verify, doctor, uninstall, rollback, restoration, or any
+success report, derive the machine-local destination from the configured home or
+configuration base and validate every mutable path component through
+`~/.config/opencode`. Each existing component must be a real directory, never a
+symlink, and its resolved identity must remain outside this repository checkout,
+every other source checkout, and the active target workspace. Reject a symlinked,
+non-directory, aliased, repository-contained, target-contained, identity-changing,
+or missing-with-unsafe-parent root before any destination mutation. Do not assume
+that spelling `~/.config/opencode` establishes ownership.
 
-Every mutating Plan Orchestrator route invokes only the fixed installed helper
-path and passes the explicit target repository, conceptually:
+If the final `opencode` directory is absent and creation is supported, first
+apply the same ownership, containment, no-symlink, and stable-identity checks to
+all existing parents, create only that final directory, then open and bind it
+before considering a link mutation. Hold a directory descriptor for the validated
+configuration root after preflight. Create, remove, roll back, and restore links
+relative to that descriptor with no-follow semantics where the platform supports
+them. Record the root path plus device and inode, and revalidate both path identity
+and descriptor identity before every possible mutation position and immediately
+before reporting success.
+
+Setup preflights all three destinations and never overwrites a real file,
+directory, broken or foreign link, or mismatched destination. Immediately before
+each mutation, re-lstat and ownership-check the `agents`, `commands`, and
+`workflow-tools` entry relative to the still-bound root. Any root or destination
+substitution, alias, disappearance, or identity mismatch stops the transaction.
+Rollback or restoration may touch only an entry proven to be the exact link
+created or removed by that transaction beneath the same bound root; it never
+follows a moved root or recreates/removes through a substituted parent. Report
+partial rollback precisely and leave unrelated sentinels untouched.
+
+Verification requires every destination to resolve to its exact expected checkout
+source and the manifested helper to remain a regular non-symlink file visible
+through the `workflow-tools` link. Uninstall removes the all-three set only when
+every link still has exact managed ownership under the bound root; it leaves
+foreign or target-repository content untouched. Helper source changes take effect
+through the managed link without copying files into the config directory or a
+target repository.
+
+Every mutating Plan Orchestrator route starts from the active OpenCode repository
+workspace root and invokes only this fixed shell form:
 
 ```text
-python3 ~/.config/opencode/workflow-tools/start_work_state.py <operation> --repo-root <target>
+python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" <literal-operation> --repo-root .
 ```
 
-The exact invocation remains subject to normal runtime approval; do not add a
-broad Bash allow. Resolve and validate the explicit target root and store no
-absolute path in pointer or lock metadata. Never invoke
-`tools/start_work_state.py`, a helper found relative to the target, the checkout
-source path relative to the target, or any same-name target-local file.
+`<literal-operation>` denotes one fixed allowlisted operation selected by the
+checked-in route, never user or repository content. The runtime Bash prompt must
+prescribe the exact quoting above and prohibit concatenation, redirection, pipes,
+substitution, and extra shell operations. It must pass literal `.` as one
+`--repo-root` argument and never accept or interpolate a human-provided target,
+plan path, Tapestry locator, request, instruction, or repository string. The
+invocation remains subject to normal runtime approval; do not add a broad Bash
+allow.
+
+Python isolated startup (`-I`) prevents current-workspace imports, user site
+packages, and Python environment variables from participating in helper startup;
+the helper remains standard-library-only. It resolves `.` and proves that the
+result is exactly the active OpenCode workspace root, not a nested directory,
+symlinked or aliased spelling, unrelated path, mismatched root, or alternate
+target. Store no absolute path in pointer or lock metadata. Never invoke
+`tools/start_work_state.py`, a helper found relative to the active workspace, the
+checkout source path relative to that workspace, or any same-name workspace-local
+file.
+
+If a later fixed-literal helper operation carries a machine-derived owner token
+or canonical plan path, first validate the value against exactly 64 lowercase
+hex characters or the canonical repository-relative plan-path grammar,
+respectively, and preserve it as one argv element. Prefer direct helper/API tests
+that construct `subprocess` argv arrays. No token, path, user content, target
+absolute path, or repository text may enter shell interpolation. Human-supplied
+plan and Tapestry locators are parsed and validated only after complete
+provisional child-lock acquisition through edit/read/helper-safe structured
+operations; they are never helper-launch arguments.
 
 The target repository uses exactly these two narrow local-state ignore entries:
 
@@ -603,13 +740,13 @@ The target repository uses exactly these two narrow local-state ignore entries:
 
 Do not ignore `/.start-work/` broadly. Project-template guidance documents the
 two lines but project bootstrap does not create or overwrite a target
-`.gitignore`. On first planned-work use, after successful child-lock acquisition
-and before pointer persistence, the Plan Orchestrator verifies that a regular,
-non-symlink target `.gitignore` contains each exact line once and no broad or
-conflicting custom `.start-work` rule. If the file is safely absent or only the
-required lines are missing, add the exact lines with ordinary edit tools as an
-explicit plan-owned infrastructure change and report them in plan scope. If the
-file or any component is symlinked or unsafe, or ignore policy is broad,
+`.gitignore`. On first planned-work use, after complete provisional child-lock
+acquisition and before pointer persistence, the Plan Orchestrator verifies that a
+regular, non-symlink target `.gitignore` contains each exact line once and no
+broad or conflicting custom `.start-work` rule. If the file is safely absent or
+only the required lines are missing, add the exact lines with ordinary edit tools
+as an explicit plan-owned infrastructure change and report them in plan scope. If
+the file or any component is symlinked or unsafe, or ignore policy is broad,
 ambiguous, or conflicting, stop for the human rather than rewriting unrelated
 policy. The helper refuses pointer persistence until this contract is valid. A
 plan-only route may create or update the lean plan and these exact ignore lines,
@@ -653,32 +790,43 @@ creation. Retain it on explicit pause, blocker, failure, or cancellation. Clear
 it only after every plan TODO and final validation succeed and native TODOs are
 cleared, and only when the pointer still names the same plan and hash. A hash
 mismatch never auto-executes: no-path resume stops for the human, while an
-explicit safe path may replace the pointer only after lock acquisition and a
-complete self-check. If the pointed-to plan has been deleted, no-path resume
-fails closed; an explicit valid path may safely replace the stale pointer under
-the same rules.
+explicit safe path may replace the pointer only after complete provisional lock
+acquisition, matching-owner finalization, and a complete self-check. If the
+pointed-to plan has been deleted, no-path resume fails closed; an explicit valid
+path may safely replace the stale pointer under the same rules.
 
 All routes that create, allocate, update, convert, write, resume, or execute a
 plan use this shared state-transition protocol:
 
-1. Parse the human request and locator without reading target-repository plan,
-   Tapestry source, state, allocation, worktree, or execution content.
-2. Invoke the trusted installed helper's acquisition/bootstrap operation with the
-   explicit target repository.
-3. Permit only the minimum read-only validation needed to establish one canonical
-   regular repository root. Reject symlinked roots, path components, or
+1. Select only the checked-in route's fixed allowlisted acquisition operation.
+   Do not parse a human plan or Tapestry locator and do not read plan, source,
+   state, allocation, worktree, or execution content.
+2. From the active OpenCode workspace root, invoke exactly `python3 -I
+   "$HOME/.config/opencode/workflow-tools/start_work_state.py"
+   <literal-operation> --repo-root .` with literal argv boundaries and normal
+   runtime approval. No human or repository content participates in the shell
+   string.
+3. Permit the helper only the minimum read-only validation needed to prove that
+   literal `.` resolves to the exact active canonical regular workspace root.
+   Reject nested, mismatched, aliased, symlinked, unrelated, alternate, or
    outside-root ambiguity. If `.start-work` is absent, create only that one parent
    non-recursively; if a contender creates it first, revalidate and continue.
-4. Require `.start-work` to be a real directory inside the target. Atomically
-   create `.start-work/lock` as the child exclusion point. Exactly one contender
-   succeeds; every loser fails immediately as held without reading target plan or
-   state content.
-5. Under the acquired child lock, reject unsupported state children, freshly
-   resolve only the route locator or allocation needed to determine the canonical
-   plan path, and finalize closed lock metadata. Then freshly load and validate
-   every pointer, source, allocation inventory, exact plan byte/hash snapshot,
-   checkbox, worktree, and execution item required by that route. Never use a
-   pre-lock snapshot.
+4. Require `.start-work` to be a real directory inside the active workspace.
+   Atomically create `.start-work/lock` as the child exclusion point. The winner
+   immediately generates a collision-resistant 64-lowercase-hex owner token and
+   atomically installs bounded provisional `.start-work/lock/owner.json` with
+   `version: 1`, that token, and `plan_path: null`. Acquisition succeeds and the
+   token may be returned only after the complete provisional file is installed.
+   Exactly one contender succeeds; every loser fails immediately as held without
+   reading target plan, source, state, allocation, worktree, or execution content.
+5. Under the acquired child lock, reject unsupported state children; then parse
+   and validate only the route locator and freshly load the pointer, source,
+   allocation inventory, or plan evidence needed to determine the canonical
+   repository-relative plan path. Only the matching owner token may atomically
+   replace provisional metadata with the final closed record. Then freshly load
+   or revalidate every pointer, source, allocation inventory, exact plan byte/hash
+   snapshot, checkbox, worktree, and execution item required by that route. Never
+   use a pre-lock snapshot.
 6. Validate or bootstrap the exact target ignore contract before pointer
    persistence. Complete plan self-checks before execution.
 7. Hold the child lock through plan-only plan writes and pointer changes and
@@ -688,19 +836,24 @@ plan use this shared state-transition protocol:
 Read-only self-explanation or advisory discussion that performs no plan, state,
 or repository mutation does not acquire the lock. Ordinary Plan Orchestrator
 conversation is otherwise not a bypass. Tapestry conversion acquires before
-reading the source or scanning allocation inventory, and new-plan creation
-acquires before inspecting series allocation.
+parsing its source locator, reading the source, or scanning allocation inventory,
+and new-plan creation acquires before inspecting series allocation.
 
 An interruption after parent creation but before child-lock creation may leave an
 empty `.start-work` directory. That empty real parent is valid bootstrap residue
-and a later acquisition may reuse it. On bootstrap or ignore failure, release
-only a child lock whose owner token still matches, then remove the parent only if
-it is safely verified as the same empty real directory; otherwise leave the empty
-parent for safe reuse. A non-directory or symlinked parent, unsupported child,
-existing lock directory, or corrupt lock state fails closed. Parent creation is
-not exclusion: child-lock creation is the first exclusion-protected mutation,
+and a later acquisition may reuse it. On bootstrap or pre-mutation ignore
+validation failure, release a provisional child lock only when the owner token
+still matches, no mutation occurred, and no child can still mutate; a final lock
+uses the ordinary matching-owner known-outcome rule. Then remove the parent only
+if it is safely verified as the same empty real directory; otherwise leave the
+empty parent for safe reuse. A non-directory or symlinked parent, unsupported
+child, existing lock directory, or corrupt lock state fails closed. A crash after
+child creation but before complete provisional metadata leaves stale/corrupt
+state; the directory is never treated as unheld or automatically released. A
+crash after provisional metadata leaves a held provisional lock. Parent creation
+is not exclusion: child-lock creation is the first exclusion-protected mutation,
 and all target plan, state, source, allocation, worktree, and execution reads
-occur after it.
+occur only after complete provisional ownership is installed.
 
 The child lock is one cooperative, repository-wide planned-work execution lock.
 It serializes all Plan Orchestrator sessions and their direct or delegated plan
@@ -708,33 +861,60 @@ implementation because distinct plans may overlap files. It does not serialize
 ordinary repository work, prevent filesystem writes, or grant authority over
 unrelated Lead, ERB, human, agent, or process activity.
 
-Lock metadata is one bounded, strict-UTF-8, duplicate-rejecting JSON object with
-exactly this schema:
+Lock metadata lives only at `.start-work/lock/owner.json` and is one bounded,
+strict-UTF-8, duplicate-rejecting JSON object. Immediately after child-directory
+creation, acquisition atomically writes exactly this provisional schema:
 
 ```json
 {
   "version": 1,
   "owner_token": "<64 lowercase hex>",
+  "plan_path": null
+}
+```
+
+After under-lock pointer, allocation, source, and plan validation determines the
+canonical repository-relative plan path, only the matching owner may atomically
+replace the provisional file with exactly this final schema:
+
+```json
+{
+  "version": 1,
+  "owner_token": "<same 64 lowercase hex>",
   "plan_path": "docs/implementation-plans/plans/<series>/<NN>-<slug>.md"
 }
 ```
 
-Reject malformed, oversized, duplicate- or unknown-field, unsupported-version,
-invalid-token, unsafe-path, symlinked, or non-regular metadata. Store only the
-repository-relative plan path and write no target absolute path or timestamp used
-for expiry. Generate a collision-resistant owner token for cooperative
-coordination, not as a credential; only its matching owner may release the lock.
-Same-OS-user hostile-process tamper resistance is out of scope. Acquisition fails
-immediately when held and never waits, retries, expires, or steals by timeout.
+Use atomic file replacement and bounded stable reads for both writes and every
+ownership check. Empty, partially written, malformed, oversized, duplicate- or
+unknown-field, unsupported-version, invalid-token, invalid-null-transition,
+unsafe-path, symlinked, missing, or non-regular `owner.json` beneath an existing
+child lock is stale/corrupt state. It is never treated as unheld and is never
+released automatically; guarded human stale recovery remains required. Store only
+the repository-relative final plan path and write no target absolute path or
+timestamp used for expiry.
+
+Finalization accepts only a canonical validated plan path and the same owner
+token. Repeating finalization with that token and identical path may be
+idempotent; a different token, different path, second transition, or attempt to
+return to `null` fails closed. Generate the owner token for cooperative
+coordination, not as a credential; only its matching owner may finalize or
+release the lock. Same-OS-user hostile-process tamper resistance is out of scope.
+Acquisition fails immediately when held and never waits, retries, expires, or
+steals by timeout.
 
 The Plan Orchestrator holds the lock through every direct planned mutator,
 delegated Worker, child process, timeout, cancellation path, and Task. The Worker
-does not acquire, release, or mutate lock state. Release after normal completion,
-explicit pause, blocker, failure, cancellation, or a plan-only return only when
-every planned mutation outcome is known and no child can still mutate. Retain the
-lock whenever any direct or delegated planned outcome is uncertain, not only when
-Worker status is uncertain. Abrupt process termination must not auto-release it.
-A stale lock may be cleared only after explicit human confirmation that no Plan
+does not acquire, finalize, release, or mutate lock state. The matching owner may
+release a known-clean provisional lock only when the route failed before any
+plan, ignore, pointer, checkbox, sidebar, delegation, implementation, or other
+planned mutation and no child can still mutate. After finalization, release after
+normal completion, explicit pause, blocker, failure, cancellation, or a plan-only
+return only when every planned mutation outcome is known and no child can still
+mutate. Retain either phase whenever mutation occurred, mutation status is
+uncertain, or any direct or delegated outcome is uncertain, not only when Worker
+status is uncertain. Abrupt process termination must not auto-release it. A stale
+lock may be cleared only after explicit human confirmation that no Plan
 Orchestrator, Worker, child process, or planned mutator remains active; corrupt or
 uncertain lock state fails closed.
 
@@ -745,11 +925,11 @@ concurrent work overlaps an owned file or invalidates evidence, stop for
 reconciliation; do not absorb or overwrite it. Unrelated drift alone neither
 blocks that work nor gives the Plan Orchestrator authority over it.
 
-On no-path resume, after lock acquisition and fresh validation, display the
-resolved canonical plan path and the checked and unchecked numbered TODO state.
-Obtain explicit human confirmation before any plan edit, checkbox write,
-delegation, implementation mutation, or planned sidebar mutation. A pointer alone
-never authorizes execution.
+On no-path resume, after complete provisional lock acquisition, fresh pointer
+validation, and matching-owner finalization, display the resolved canonical plan
+path and the checked and unchecked numbered TODO state. Obtain explicit human
+confirmation before any plan edit, checkbox write, delegation, implementation
+mutation, or planned sidebar mutation. A pointer alone never authorizes execution.
 
 Before the first unchecked TODO on every resume—and especially after a blocker,
 failure, cancellation, process loss, or stale-lock recovery—reconcile current
@@ -773,36 +953,43 @@ four roles rather than checking only for textual rule presence.
 `/start-work [<request-or-plan-path>] [instructions]` is the single create, update,
 and execute entry point, owned by `plan-orchestrator`:
 
-- With no path or request, parse that intent, invoke the installed helper for the
-  explicit target, acquire the child lock before reading the pointer, resume only
-  the freshly validated pointer, display the resolved canonical path and
+- With no path or request, select the route's fixed acquisition operation and use
+  the isolated literal-dot installed-helper invocation from the active workspace.
+  Acquire the child lock and complete provisional ownership before reading the
+  pointer, resume only the freshly validated pointer, finalize `owner.json` with
+  the resolved canonical path, display that path and
   checked/unchecked TODOs, and require explicit human confirmation before
   mutation. Never infer an active plan from filenames, TODO state, recent edits,
   or repository scans.
-- For a new request, acquire the child lock before inspecting repository evidence
-  or series allocation, then freshly inspect current evidence, select a valid
-  series, allocate and write a lean plan, self-check it, and execute by default.
-  If series choice has material organizational consequences, stop for the human
-  rather than guessing.
-- For an explicit plan path, parse only the locator, invoke the installed helper,
-  acquire the child lock, and then enforce the relative canonical path,
+- For a new request, do not splice or parse request content into helper launch.
+  Acquire the child lock and provisional owner first, then inspect the request,
+  current repository evidence, and series allocation; select a valid series,
+  allocate the canonical path, finalize ownership, write a lean plan, self-check
+  it, and execute by default. If series choice has material organizational
+  consequences, stop for the human rather than guessing.
+- For an explicit plan path, invoke the same fixed isolated literal-dot helper
+  form without parsing or passing the locator, acquire the child lock and
+  provisional owner, and only then parse and enforce the relative canonical path,
   containment, regular-file, non-symlink, 1 MiB, stable-read, and strict-UTF-8
-  rules before using its bytes.
+  rules before using its bytes or finalizing ownership.
   For a lean plan, apply requested conversational changes in place, self-check
   the complete result, then execute unchecked TODOs by default. For a legacy
   plan, preserve the source byte-for-byte, allocate a lean successor under the
-  same series, self-check it, and execute that successor by default.
+  same series, finalize ownership to the successor, self-check it, and execute
+  that successor by default.
 - When the human explicitly requests plan-only behavior, complete the write and
   self-check and update the pointer, but do not implement, delegate, update
   execution checkboxes, or populate the sidebar as though execution started.
 
-Every branch uses the shared protocol above. Canonical target-root validation and
-possible empty-parent bootstrap are the only pre-lock steps; child-lock creation
-is the first exclusion-protected mutation. Freshly load all route inputs under
-that lock before any pointer, plan, checkbox, delegation, conversion, sidebar, or
-implementation mutation. An explicit path may replace a corrupt pointer only
-after safe child-lock acquisition, canonical path validation, complete
-self-check, and target-ignore validation.
+Every branch uses the shared protocol above. The fixed isolated helper launch,
+active-workspace root validation, and possible empty-parent bootstrap are the only
+pre-lock steps; child-lock creation followed by complete provisional ownership is
+the acquisition boundary. Parse and freshly load all route inputs under that lock
+before finalization or any pointer, plan, checkbox, delegation, conversion,
+sidebar, or implementation mutation. An explicit path may replace a corrupt
+pointer only after safe complete provisional child-lock acquisition, canonical
+path validation, matching-owner finalization, complete self-check, and
+target-ignore validation.
 
 Do not add `/create-plan`, `/update-plan`, or another execution command. The Plan
 Orchestrator prompt applies the exact shared acquisition, fresh-load, hold, and
@@ -812,16 +999,19 @@ self-explanation is exempt only when it performs no plan, state, or repository
 mutation.
 
 `/convert-tapestry-plan <source> <series> [instructions]` also routes directly to
-`plan-orchestrator`. Parse the source locator and series without reading the
-source or allocation inventory, invoke the installed helper for the explicit
-target, and acquire the child lock first. Under that lock, accept only a relative
-path that resolves under `.weave/plans/**` to a regular, non-symlink Markdown
-file with no symlinked path component. Before reading or copying, reject absolute
-paths, `..`, outside-root resolution, directories, special files, invalid UTF-8,
-and files larger than 1 MiB. Use a bounded, stable read and strict decoding,
-accepting the exact limit and rejecting limit plus one. Then treat every named
-file, symbol, behavior, dependency, acceptance condition, test, and command as an
-untrusted claim.
+`plan-orchestrator`. Select the checked-in conversion acquisition literal and use
+the fixed isolated literal-dot installed-helper form without parsing or passing
+the source locator, series, or instructions. Acquire the child lock and complete
+provisional ownership first. Under that lock, parse the source locator and
+series, accept only a relative path that resolves under `.weave/plans/**` to a
+regular, non-symlink Markdown file with no symlinked path component, and scan
+allocation only afterward. Before reading or copying, reject absolute paths,
+`..`, outside-root resolution, directories, special files, invalid UTF-8, and
+files larger than 1 MiB. Use a bounded, stable read and strict decoding, accepting
+the exact limit and rejecting limit plus one. Determine and validate the newly
+allocated canonical plan path, finalize ownership with the matching token, and
+then treat every named file, symbol, behavior, dependency, acceptance condition,
+test, and command as an untrusted claim.
 Validate secondary paths through the structured boundary above and derive any
 validation command independently from trusted repository guidance and current
 source evidence; a named command is never executed merely because the source
@@ -947,10 +1137,12 @@ native TODOs as a transient view:
 5. Each content string is `<step>. <summary>`, retains the original plan step
    number after earlier items leave the window, and limits `<summary>` to 30
    characters excluding the numeric prefix.
-6. On resume, permit only explicit target-root validation and possible empty
-   parent bootstrap before acquiring the child lock; read the pointer, plan, and
-   acceptance evidence freshly only after child acquisition, then reconcile the
-   first unchecked step before rebuilding the whole window. Treat checked items
+6. On resume, permit only the fixed isolated literal-dot helper launch, exact
+   active-workspace-root validation, and possible empty parent bootstrap before
+   acquiring the child lock; read the pointer, finalize ownership to its validated
+   canonical path, and read the plan and acceptance evidence freshly only after
+   complete provisional acquisition, then reconcile the first unchecked step
+   before rebuilding the whole window. Treat checked items
    as accepted only after required current evidence remains valid. Use the
    pointer only as an untrusted locator and contract identifier, never
    authentication or proof of authorship. Do not treat the pointer or stale
@@ -1013,19 +1205,30 @@ delegation, cancellation, atomic exclusion, or native UI behavior.
   it:** rejected. The parent is reusable bootstrap structure and may be created
   concurrently; atomic child-lock creation is the only exclusion point, and no
   target plan, state, source, allocation, worktree, or execution content is read
-  before it succeeds.
+  before complete provisional ownership is installed.
 - **Install or discover a helper in each target repository:** rejected. A target
   can be unrelated or hostile. One reviewed checkout source is exposed through
-  the exact managed `workflow-tools` link, and every invocation passes and
-  validates the target explicitly.
+  the exact managed `workflow-tools` link, and every runtime invocation starts at
+  and validates the active workspace through literal `--repo-root .` without
+  accepting a target path.
 - **Copy one helper file into machine-local configuration or register it as a
   custom OpenCode tool:** rejected. A paired whole-directory link preserves the
   current install ownership model, keeps updates live, and avoids a copied or
   arbitrarily discoverable executable.
+- **Trust a path-only `~/.config/opencode` preflight:** rejected. A mutable
+  machine-local path can be symlinked or substituted between checks. Bind a
+  validated configuration-root descriptor, record device/inode identity, and
+  perform no-follow descriptor-relative mutations with immediate identity and
+  destination ownership revalidation.
+- **Create the child lock without provisional metadata or derive the plan path
+  before acquisition:** rejected. New requests and no-path resume may not yet
+  know a path, while a directory without complete ownership metadata is
+  ambiguous. Atomically install `plan_path: null` ownership first, then parse and
+  validate route locators and finalize with the matching token.
 - **Broadly ignore `/.start-work/` or rewrite ignore policy during project
   bootstrap:** rejected. The template documents only the two narrow entries;
-  first use adds missing exact entries under the child lock or stops on unsafe,
-  broad, or conflicting policy.
+  first use adds missing exact entries under complete provisional ownership or
+  stops on unsafe, broad, or conflicting policy.
 - **Claim exactly-once TODO effects:** rejected. Checkboxes and acceptance
   evidence support safe reconciliation, but external effects retain at-least-once
   risk and require operation-specific idempotency or human resolution when the
@@ -1102,6 +1305,14 @@ evidence and stops the Plan Orchestrator for reconciliation.
   passing, identified the trusted helper distribution and fresh-target parent
   bootstrap gaps addressed by R4-2 and R4-3, and reported the focused manager
   suite and runtime-helper scenarios as unrun.
+- `change-verifier` found R4-1 through R4-3 closed in revision 5 and found that
+  revision otherwise execution-ready.
+- `security-critic` identified R5-1 through R5-3: runtime helper shell
+  construction still admitted an arbitrary target, machine-local configuration
+  root ownership was not bound across every mutation, and child-lock acquisition
+  lacked atomic provisional owner metadata for unknown-path routes. No helper
+  runtime tests or machine-local configuration inspection accompanied that
+  review.
 
 ## Risks and Guardrails
 
@@ -1126,21 +1337,43 @@ evidence and stops the Plan Orchestrator for reconciliation.
   auto-execute after a mismatch. Ignore only the two exact state entries and fail
   on every unsupported `.start-work/` child.
 - A target-local same-name helper can be hostile, and a copied machine-local
-  helper can drift from reviewed source. Invoke only the fixed installed path,
-  validate the one-item manifest inventory and regular checkout source, and keep
-  setup, verify, uninstall, rollback, and reporting fail-closed across all three
-  managed directory links.
+  helper can drift from reviewed source. Invoke only the fixed installed path
+  using `python3 -I`, a checked-in literal operation, and literal
+  `--repo-root .`; forbid human or repository content in shell construction;
+  validate the one-item manifest inventory and regular checkout source; and keep
+  setup, dry-run, verify, doctor, uninstall, rollback, restoration, and reporting
+  fail-closed across all three managed directory links.
+- A workspace name can contain shell-shaped bytes, and ambient Python startup can
+  import hostile workspace or user code. Exact quoting, isolated startup,
+  literal-dot argv, closed operation literals, grammar checks for later
+  machine-derived arguments, and tests over spaces, quotes, leading hyphens,
+  semicolons, newlines, backticks, and `$()`-shaped names must prove that no
+  marker command or target-local executable/module runs.
+- A machine-local configuration root or destination can be swapped after
+  preflight. Validate every mutable ancestor as a stable real directory outside
+  source and target workspaces, bind the root descriptor/device/inode, mutate
+  descriptor-relatively with no-follow behavior, re-lstat each destination before
+  each position, and limit rollback/restoration to exact transaction-proven links
+  under the still-bound root. Never follow a moved root or disturb unrelated
+  sentinels.
 - Fresh repositories have no `.start-work` parent or ignore entries. Treat an
   empty real parent as reusable bootstrap residue, not exclusion; use atomic
-  child-lock creation for exclusion; add only missing exact ignore lines under
-  the child lock; and stop rather than following symlinks or rewriting broad,
-  custom, or conflicting ignore policy.
+  child-lock creation for exclusion; add only missing exact ignore lines after
+  complete provisional ownership; and stop rather than following symlinks or
+  rewriting broad, custom, or conflicting ignore policy.
 - The planned-work lock can remain after a crash or any uncertain direct or
   delegated mutation. This is the intended safety trade-off: do not expire or
   steal it, and require explicit human confirmation after checking that no Plan
   Orchestrator, Worker, child, or other planned mutator remains. The owner token
   coordinates release but is not a credential, and hostile same-user tampering is
   out of scope.
+- A crash between child-directory creation and complete provisional `owner.json`
+  leaves ambiguous stale state. Never infer that such a directory is unheld;
+  bounded stable metadata reads, atomic provisional/final replacement,
+  token-matched finalization/release, and guarded human stale recovery make the
+  ambiguity fail closed. Release provisional ownership only after proving the
+  route made no plan, ignore, pointer, checkbox, sidebar, delegation, or
+  implementation mutation and no child can still act.
 - The planned-work lock is cooperative, not a filesystem enforcement mechanism.
   It serializes Plan Orchestrator work only; unrelated mutations can occur. Fresh
   under-lock drift checks stop on overlapping owned files, while unrelated work
@@ -1217,13 +1450,26 @@ Stop planned execution if:
   parent with an available edit tool;
 - any mutating `/start-work`, `/convert-tapestry-plan`, or equivalent ordinary
   conversation route bypasses the shared helper protocol, or a route other than
-  mutation-free self-explanation proceeds without child-lock acquisition;
-- a pre-lock operation exceeds explicit-target parsing, minimum canonical regular
-  repository-root validation, or safe non-recursive empty-parent bootstrap; the
-  parent is treated as exclusion; any pointer, source, allocation inventory,
-  plan, checkbox, hash, worktree, or execution snapshot is read or relied on
-  before child-lock acquisition; or post-acquisition evidence is not freshly
-  loaded and revalidated;
+  mutation-free self-explanation proceeds without complete provisional child-lock
+  acquisition;
+- a runtime helper launch differs from `python3 -I
+  "$HOME/.config/opencode/workflow-tools/start_work_state.py"
+  <literal-operation> --repo-root .`, uses a non-allowlisted operation, accepts or
+  interpolates a human target, locator, request, instruction, or repository
+  string, loses argv boundaries, adds concatenation/redirection/pipes/substitution
+  or extra shell operations, lacks normal runtime approval, permits ambient
+  workspace/user Python imports, or executes a target-local executable/module;
+- literal `.` is not one argv value or cannot be proved to be exactly the active
+  OpenCode workspace root; a nested, mismatched, aliased, symlinked, unrelated,
+  alternate, or changing root is accepted; or a later machine-derived token or
+  path does not match its closed ASCII grammar and remain one argument;
+- a pre-lock operation exceeds fixed route selection, fixed helper launch,
+  minimum active canonical regular workspace-root validation, or safe
+  non-recursive empty-parent bootstrap; a human plan/Tapestry locator is parsed or
+  passed to helper launch; the parent is treated as exclusion; any pointer,
+  source, allocation inventory, plan, checkbox, hash, worktree, or execution
+  snapshot is read or relied on before complete provisional child-lock
+  acquisition; or post-acquisition evidence is not freshly loaded and revalidated;
 - `.start-work` is symlinked, outside the target, or not a directory; first-use
   acquisition cannot safely create or revalidate that one parent; child-lock
   creation is not atomic; a losing contender reads target content instead of
@@ -1231,14 +1477,22 @@ Stop planned execution if:
   cleanup removes a parent that is not verified empty and safe;
 - pointer or lock state is malformed, oversized, symlinked, non-regular, corrupt,
   uncertain, outside the repository root, contains unknown or duplicate fields,
-  or cannot fail closed; any unsupported `.start-work/` child exists; a held lock
-  cannot be acquired immediately; a non-owner would release it; a timestamp would
-  drive expiry; or stale-lock cleanup lacks explicit human confirmation that no
-  Plan Orchestrator, Worker, child, or planned mutator remains;
+  or cannot fail closed; `.start-work/lock/owner.json` is missing, empty, partial,
+  unstable, or treated as unheld; acquisition returns before the exact bounded
+  provisional record with `plan_path: null` is atomically installed; any
+  unsupported `.start-work/` child exists; a held lock cannot be acquired
+  immediately; a non-owner would finalize or release it; finalization accepts a
+  noncanonical path, different token/path, or second transition; a timestamp
+  would drive expiry; or stale-lock cleanup lacks explicit human confirmation
+  that no Plan Orchestrator, Worker, child, or planned mutator remains;
 - any direct or delegated planned mutation outcome is uncertain but the lock
   would be released, the Worker would acquire/release/mutate lock state, or the
   design would claim to block unrelated filesystem writes or serialize all
   repository work;
+- a provisional lock is released after any plan, ignore, pointer, checkbox,
+  sidebar, delegation, implementation, or other planned mutation, without proving
+  no child can still mutate, or while any outcome is uncertain; or ordinary
+  release after finalization lacks the matching owner and known outcomes;
 - plan-only creation or update releases before all plan, exact-ignore, and pointer
   writes are complete; execution releases while a direct or delegated mutator can
   still act; or unrelated external writes are claimed to be blocked;
@@ -1260,6 +1514,20 @@ Stop planned execution if:
 - the manifest would add a second planning agent, omit the dedicated primary Plan
   Orchestrator, differ from 23 agents and 6 commands, or contain any runtime
   helper other than the single `workflow-tools/start_work_state.py` entry;
+- setup, dry-run, verify, doctor, uninstall, rollback, or restoration does not
+  reject a symlinked, non-directory, aliased, repository-contained,
+  target-contained, identity-changing, or missing-with-unsafe-parent
+  configuration root or mutable ancestor before destination mutation; a missing
+  final `opencode` directory is created without safe-parent checks or more than
+  that final directory is created; or no validated root descriptor/device/inode
+  remains bound;
+- any `agents`, `commands`, or `workflow-tools` create/remove/rollback/restoration
+  mutation is path-following rather than no-follow descriptor-relative where
+  supported; root path/descriptor identity or destination ownership is not
+  revalidated immediately before every mutation position and success report; a
+  substituted, moved, missing, or mismatched parent/destination is followed; a
+  rollback touches an entry not proven to be the transaction's exact link;
+  partial rollback is hidden; or an unrelated sentinel changes;
 - setup, verify, or uninstall does not manage the exact `agents`, `commands`, and
   `workflow-tools` link set fail-closed; the helper source or directory can be a
   symlink or resolve outside the trusted checkout; rollback leaves a newly
@@ -1267,9 +1535,9 @@ Stop planned execution if:
   or target repository content/state changes during setup, rollback, or uninstall;
 - any Plan Orchestrator route invokes a target-local, copied, discovered, or
   repository-relative helper instead of the fixed
-  `~/.config/opencode/workflow-tools/start_work_state.py`, omits the explicit
-  target root, stores an absolute target path in state, registers a custom tool,
-  or receives a broad automatic Bash allow;
+  `~/.config/opencode/workflow-tools/start_work_state.py`, omits isolated startup
+  or literal active-workspace `--repo-root .`, stores an absolute target path in
+  state, registers a custom tool, or receives a broad automatic Bash allow;
 - the Plan Orchestrator could delegate to any ID other than
   `implementation-worker`, or the Worker could delegate again;
 - the Lead could edit, update, execute, or implement a plan, use TODOs or state for
@@ -1285,9 +1553,9 @@ Stop planned execution if:
   and explicit plan-only behavior;
 - `/convert-tapestry-plan` would be removed, mutate its source, or execute without
   an explicit human execution request, read its source or scan allocation before
-  child-lock acquisition, or read a source before enforcing the
-  `.weave/plans/**` containment, regular-file, symlink, stable 1 MiB, and strict
-  UTF-8 boundary;
+  complete provisional child-lock acquisition, or read a source before enforcing
+  the `.weave/plans/**` containment, regular-file, symlink, stable 1 MiB, and
+  strict UTF-8 boundary;
 - a Tapestry-named path, command, test, or symbol would trigger a secondary read
   or command before string and path validation; a command would run merely
   because source content named it; or a control character, newline, shell
@@ -1311,6 +1579,20 @@ Stop planned execution if:
 - contention tests use sleeps or unbounded waits, omit explicit child results or
   parent-side `finally` cleanup, or leave a child process or lock fixture after a
   bounded failure;
+- helper-invocation tests omit active workspace directories containing spaces,
+  quotes, leading hyphens, semicolons, newlines, backticks, or `$()`-shaped text;
+  do not assert literal-dot argv and zero marker/target-local execution; or fail
+  to reject nested, mismatched, aliased, symlinked, unrelated, or alternate roots;
+- provisional-lock tests omit unknown-path new requests, no-path/explicit/legacy/
+  conversion finalization, token-mismatch finalize/release, crash positions
+  before and after provisional metadata, exact duplicate versus conflicting
+  finalization, mutation-aware provisional release, atomic replacement, or proof
+  that every second contender loses without reading target content;
+- configuration-root tests omit mutable-ancestor symlinks to byte-snapshotted
+  unrelated repositories/targets, safe and unsafe missing-final-root parents, or
+  root/destination swaps before every create/remove/rollback/restoration position;
+  or an unsafe case changes a sentinel or a successful case escapes the bound
+  root descriptor;
 - route tests omit any of `/start-work`, `/convert-tapestry-plan`, or equivalent
   ordinary conversation, or fail to cover immediate held-lock failure, absence of
   pre-lock state/source/allocation reads, fresh post-lock reload, plan-only
@@ -1412,7 +1694,8 @@ its tests together before slice 2.
 
 **Objective:** Replace the Coordinator with the dedicated primary Plan
 Orchestrator, distribute one trusted runtime helper through the existing managed
-link model, and add safe fresh-target resume and exclusion infrastructure.
+link model, bind machine-local configuration-root ownership, and add safe
+fresh-target resume and two-phase exclusion infrastructure.
 
 **Scope and stable interfaces:** Replace
 `opencode/agents/planning-coordinator.md` with
@@ -1422,11 +1705,11 @@ clauses; update the repository `.gitignore`; add
 `tests/test_start_work_state.py`; add the exact one-item `runtime_helpers`
 manifest inventory; and extend `tools/opencode_manager.py`, its tests, and
 applicable `README.md`, `Justfile`, governance, and project-template guidance for
-the third managed `workflow-tools` link and target ignore bootstrap. Include
-permission, Task, state, helper, installer, fixture, mutation, cleanup, and
-reporting validation in this group. Preserve the concurrent Lead TODO/Git work,
-the 23-agent inventory, current command inventory until slice 3, and all
-unrelated permissions.
+the third managed `workflow-tools` link, descriptor-bound configuration-root
+ownership, and target ignore bootstrap. Include permission, Task, state, helper,
+installer, fixture, mutation, cleanup, and reporting validation in this group.
+Preserve the concurrent Lead TODO/Git work, the 23-agent inventory, current
+command inventory until slice 3, and all unrelated permissions.
 
 **Acceptance criteria:**
 
@@ -1441,17 +1724,44 @@ unrelated permissions.
   an agent, command, support file, or OpenCode custom tool.
 - Setup, dry-run, verify, doctor, uninstall, rollback, restoration, CLI help, and
   reporting manage `agents`, `commands`, and `workflow-tools` as one exact
-  three-link set. Tests cover idempotent exact and relative links, all-destination
-  preflight, real/foreign/broken/mismatched destinations, failure at each creation
-  position, rollback/restoration revalidation, visible helper source, mixed
-  ownership, dry runs, and uninstall that removes only exact managed links.
-  Foreign content and every target repository remain byte-untouched.
+  three-link set. Starting from the configured home/config base, every mutable
+  component through `~/.config/opencode` must be a stable real directory outside
+  source checkouts and target workspaces. Tests reject symlinked, non-directory,
+  aliased, repository-contained, target-contained, identity-changing, and
+  missing-with-unsafe-parent roots before mutation; safe missing-final-root
+  creation creates only `opencode`, opens it, and binds its path/device/inode.
+- All link creates, removes, rollbacks, and restorations are descriptor-relative
+  under that still-bound root with no-follow behavior where supported. Tests
+  re-lstat root identity and destination ownership before every mutation position
+  and success report; swap the root or destination parent before each create,
+  remove, rollback, and restoration position; and prove substitution stops without
+  following a moved root. Rollback/restoration touches only exact transaction-
+  proven links, reports partial cleanup, and leaves unrelated sentinels untouched.
+- Installer tests also cover idempotent exact and relative links,
+  all-destination preflight, real/foreign/broken/mismatched destinations, visible
+  helper source, mixed ownership, dry runs, and uninstall that removes only exact
+  managed links. Mutable-ancestor symlink fixtures point to byte-snapshotted
+  unrelated repositories and targets; every unsafe case leaves those bytes and
+  sentinels unchanged, and successful operations remain under the originally
+  bound root.
 - Every Plan Orchestrator state operation names only the fixed installed helper
-  path, remains runtime-approval-gated, and passes `--repo-root` for an explicit
-  target. An unrelated target requires no local helper; a hostile target-local
-  `tools/start_work_state.py`, `opencode/workflow-tools/start_work_state.py`, or
-  same-name file is never read or executed, and state is written only beneath the
-  validated explicit target root.
+  path, remains runtime-approval-gated, and uses exactly `python3 -I
+  "$HOME/.config/opencode/workflow-tools/start_work_state.py"
+  <literal-operation> --repo-root .` from the active workspace. Operation names
+  are checked-in allowlisted literals; literal `.` is one argv value; no human
+  target, plan/Tapestry locator, request, instruction, or repository text enters
+  shell construction; and the runtime prompt forbids concatenation, redirection,
+  pipes, substitution, and extra operations.
+- The helper remains standard-library-only, isolated startup imports no workspace
+  module or user site, and root validation proves `.` is exactly the active
+  workspace. Deterministic directories containing spaces, quotes, leading
+  hyphens, semicolons, newlines, backticks, and `$()`-shaped text still pass
+  literal `.` as one root argument, execute no marker or target-local
+  executable/module, and keep state under that workspace. Nested, mismatched,
+  aliased, symlinked, unrelated, and alternate roots fail closed. Later
+  machine-derived owner tokens and canonical paths pass only after closed-grammar
+  validation and remain one argv element, preferably in structured API/
+  `subprocess` argv tests.
 - The Lead retains flat `todowrite: allow` only for generic unplanned-session
   coordination, Lead and Worker explicitly deny `.start-work/**` edits, and
   Worker and ERB have no explicit TODO allow. Deterministic tests reject Lead,
@@ -1471,37 +1781,56 @@ unrelated permissions.
   normalization and no authentication or authorship claim.
 - Project-template guidance documents those two lines but does not overwrite a
   target `.gitignore` during project bootstrap. On first planned-work use, after
-  child-lock acquisition, the Plan Orchestrator creates a safely absent file or
-  adds missing exact entries through ordinary edit tools, includes that change in
-  plan-owned scope, and does so before pointer persistence. The helper verifies
-  the contract before pointer writes. Symlinked or unsafe files and broad,
-  duplicate, ambiguous, or conflicting `.start-work` rules stop for the human.
-  Plan-only behavior may make only the plan and required exact ignore change.
+  complete provisional child-lock acquisition, the Plan Orchestrator creates a
+  safely absent file or adds missing exact entries through ordinary edit tools,
+  includes that change in plan-owned scope, and does so before pointer persistence.
+  The helper verifies the contract before pointer writes. Symlinked or unsafe
+  files and broad, duplicate, ambiguous, or conflicting `.start-work` rules stop
+  for the human. Plan-only behavior may make only the plan and required exact
+  ignore change.
 - Every explicit or pointer-located canonical lean or legacy plan uses a stable
   bounded read before hash, decode, parse, display, or agent use. Tests accept
   exactly 1 MiB; reject limit plus one, invalid UTF-8, and a file whose size or
   content changes during validation; and leave invalid legacy plans untouched
   with a human-actionable error.
-- For a fresh explicit target, the helper performs only canonical regular-root
-  validation before state bootstrap, creates `.start-work` once non-recursively
-  when absent, revalidates it if a contender wins parent creation, requires a real
-  in-root directory, and atomically creates `.start-work/lock` as the actual
-  exclusion point. Parent creation is not exclusion. No pointer, plan, Tapestry
-  source, allocation inventory, worktree, or execution evidence is read before
-  child-lock success.
+- For a fresh active workspace, the helper performs only canonical regular-root
+  validation of the literal-dot workspace before state bootstrap, creates
+  `.start-work` once non-recursively when absent, revalidates it if a contender
+  wins parent creation, requires a real in-root directory, and atomically creates
+  `.start-work/lock` as the actual exclusion point. Parent creation is not
+  exclusion. No pointer, plan, Tapestry locator/source, allocation inventory,
+  worktree, or execution evidence is parsed or read before complete provisional
+  child-lock ownership.
 - The cooperative repository-wide planned-work child lock fails immediately when
-  held and freshly reloads every route input after acquisition. Under it, the
-  helper rejects unsupported state children and finalizes closed bounded metadata
-  containing only `version`, a 64-lowercase-hex `owner_token`, and canonical
-  repository-relative `plan_path`; only the matching owner releases it; no
-  absolute target path or expiry timestamp is stored; no timeout expires or steals
-  it; interrupted metadata and corrupt or uncertain state fail closed.
+  held and freshly reloads every route input after complete provisional
+  acquisition. Immediately after child-directory creation, the helper generates a
+  64-lowercase-hex token and atomically installs bounded `owner.json` containing
+  only `version`, that token, and `plan_path: null`; it returns acquisition
+  success/token only afterward.
+  Empty, partial, malformed, missing, unstable, duplicate/unknown-field, or
+  otherwise corrupt metadata under an existing child lock is stale and requires
+  guarded human recovery rather than automatic release.
+- Under provisional ownership, the route parses/validates its locator or
+  allocation and derives a canonical repository-relative plan path. Only the
+  matching owner may atomically replace provisional metadata with the final same-
+  token path. Identical duplicate finalization may be idempotent; token mismatch,
+  path mismatch, a second transition, or noncanonical path fails closed. No
+  absolute target path or expiry timestamp is stored; no timeout expires or
+  steals the lock.
+- Matching-owner provisional release is allowed only for a known-clean failure
+  before any plan, ignore, pointer, checkbox, sidebar, delegation,
+  implementation, or other planned mutation and after proving no child remains.
+  Any mutation or uncertainty retains the lock. Normal post-finalization release
+  still requires the matching owner and known outcomes.
 - Deterministic bootstrap tests cover first acquisition with no parent, two
   contenders racing through parent creation and child-lock acquisition, a crash
-  after parent creation but before child creation, reuse and safe removal of an
-  empty parent, loser immediate failure, symlinked/non-directory/outside-root
-  parent rejection, unsupported children after acquisition, and proof that all
-  plan/state/source/allocation/worktree reads occur only after child success.
+  after parent creation but before child creation, a crash after child creation,
+  partial write before provisional metadata, a crash after provisional metadata,
+  reuse and safe removal of an empty parent, loser immediate failure, symlinked/
+  non-directory/outside-root parent rejection, unsupported children after
+  acquisition, and proof that all plan/state/source/allocation/worktree reads
+  occur only after complete provisional success. Every second contender loses
+  without reading target content.
 - The Plan Orchestrator holds the lock through direct mutators, Workers, Tasks,
   child processes, timeouts, and cancellation paths. Worker never changes lock
   state. Any uncertain planned mutation retains the lock. Unrelated repository
@@ -1509,17 +1838,22 @@ unrelated permissions.
   reconciliation.
 - Executable helper tests cover stale pre-lock snapshots, fresh reload after
   acquisition, exclusive acquisition under a process barrier, owner-only release,
-  process termination after acquisition, direct and delegated cancellation,
-  plan-only release after plan/ignore/pointer writes, execution retention,
-  unrelated external writes remaining unblocked, effect-before-checkbox crashes,
-  stale-lock handling with explicit human confirmation, pointer corruption,
-  plan-path containment, hash mismatch, clear-on-completion, deletion-safe
-  explicit-path resume, and no duplicate dispatch when current evidence already
-  satisfies a TODO.
+  unknown-path new requests; no-path, explicit-plan, legacy-successor, and
+  conversion finalization; token-mismatch finalize/release; exact duplicate and
+  conflicting finalization; atomic provisional-to-final replacement; known-clean
+  pre-mutation provisional release; prohibited release after mutation or
+  uncertainty; process termination after acquisition; direct and delegated
+  cancellation; plan-only release after plan/ignore/pointer writes; execution
+  retention; unrelated external writes remaining unblocked;
+  effect-before-checkbox crashes; stale-lock handling with explicit human
+  confirmation; pointer corruption; plan-path containment; hash mismatch;
+  clear-on-completion; deletion-safe explicit-path resume; and no duplicate
+  dispatch when current evidence already satisfies a TODO.
 - Unrelated-target tests prove no local helper requirement, no target-local helper
-  execution, state containment beneath the explicit target, exact ignore
+  execution, state containment beneath the active workspace, exact ignore
   bootstrap before pointer persistence, fail-closed unsafe/conflicting ignore
-  handling, and setup/rollback/uninstall isolation from target content and state.
+  handling, and setup/dry-run/verify/doctor/uninstall/rollback/restoration
+  isolation from target content and state.
 - Every process test uses bounded barriers and joins, explicit child result
   reporting, and parent-side `finally` cleanup without sleep-based race
   assertions. A deliberately stalled child fails within the bound and leaves no
@@ -1530,11 +1864,12 @@ unrelated permissions.
   exclusion, or sidebar behavior.
 
 **Validation and commit boundary:** Run `tests/test_start_work_state.py`, focused
-agent/permission/Task/state/manifest/setup/verify/uninstall manager tests, the
-complete focused manager suite, `just validate-opencode`, and `just validate`.
-Commit the agent replacement, trusted helper directory, repository ignore rule,
-runtime-helper inventory, three-link installer and cleanup behavior, applicable
-docs, validator changes, and tests as one group before slice 3.
+agent/permission/Task/state/manifest/setup/dry-run/verify/doctor/uninstall/
+rollback/restoration manager tests, the complete focused manager suite,
+`just validate-opencode`, and `just validate`. Commit the agent replacement,
+trusted helper directory, repository ignore rule, runtime-helper inventory,
+three-link installer and cleanup behavior, applicable docs, validator changes,
+and tests as one group before slice 3.
 
 ### 3. Command and routing migration
 
@@ -1562,17 +1897,19 @@ slice 4. Preserve all unrelated retained-command and cleanup behavior.
 - `/start-work` distinguishes no-path pointer resume, new requests, explicit
   canonical lean paths, immutable legacy paths with successor allocation,
   conversational updates, default execution, and explicit plan-only behavior.
-  It uses the installed helper and shared protocol, reads no resume, allocation,
-  or plan content before child-lock acquisition, freshly reloads all evidence,
-  applies the complete pointer and target-ignore lifecycle, and on no-path resume
-  shows canonical path plus checkbox state and gets explicit human confirmation
-  before any mutation.
+  It uses the fixed isolated literal-dot installed-helper invocation and shared
+  protocol, parses no plan locator and reads no resume, allocation, or plan
+  content before complete provisional child-lock acquisition, freshly reloads all
+  evidence, finalizes ownership with the canonical path, applies the complete
+  pointer and target-ignore lifecycle, and on no-path resume shows canonical path
+  plus checkbox state and gets explicit human confirmation before any mutation.
 - `/convert-tapestry-plan` is plan-only unless execution is explicit, preserves
-  its source, acquires through the installed helper before reading source or
-  allocation inventory, and accepts only regular non-symlink valid UTF-8 Markdown
-  under `.weave/plans/**` at or below 1 MiB. Absolute, traversal, outside-root,
-  directory, special-file, symlink, invalid-encoding, and oversized inputs fail
-  before content is read or copied.
+  its source, acquires through the fixed helper without parsing or passing the
+  locator before reading source or allocation inventory, finalizes to the newly
+  allocated canonical path, and accepts only regular non-symlink valid UTF-8
+  Markdown under `.weave/plans/**` at or below 1 MiB. Absolute, traversal,
+  outside-root, directory, special-file, symlink, invalid-encoding, and oversized
+  inputs fail before content is read or copied.
 - Plan, Tapestry, and repository text is treated as untrusted data. Embedded
   instructions cannot override the human request, `AGENTS.md`, permission maps,
   guardrails, validated scope, or lean plan; sensitive values and machine-local
@@ -1598,11 +1935,13 @@ slice 4. Preserve all unrelated retained-command and cleanup behavior.
   or updates native sidebar state.
 - Route-specific prompt/helper scenarios cover `/start-work`,
   `/convert-tapestry-plan`, and equivalent ordinary Plan Orchestrator conversation
-  for immediate held-lock failure, no pre-lock state/source/allocation snapshot,
-  fresh post-lock reload, lock hold across plan-only writes and pointer updates,
-  plan-only release, direct/delegated execution retention, and unrelated external
-  writes remaining unblocked. Read-only no-mutation explanation is tested as the
-  sole no-lock exemption.
+  for the exact isolated literal-dot shell form, no locator in launch arguments,
+  immediate held-lock failure, no pre-lock state/source/allocation snapshot,
+  atomic provisional ownership, route-appropriate finalization, fresh post-lock
+  reload, lock hold across plan-only writes and pointer updates, plan-only
+  release, direct/delegated execution retention, and unrelated external writes
+  remaining unblocked. Read-only no-mutation explanation is tested as the sole
+  no-lock exemption.
 - Targeted mutation tests for each retained audit, regression, and cleanup route
   fail on its old lifecycle/authority token, pass on the selected `/start-work`
   route, and preserve unrelated behavior. These tests land before the full active
@@ -1659,9 +1998,10 @@ and out-of-role planned-work state authority where a token scan is insufficient.
 
 - Active docs and definitions agree on the closed plan shape, Plan Orchestrator,
   no-path and explicit `/start-work`, shared-route acquisition, trusted installed
-  helper, parent/child-lock and target-ignore lifecycle, optional advisory review,
-  legacy succession, Tapestry trust boundary, TODO ownership, and the Lead's
-  complex-request route.
+  helper, fixed isolated literal-dot invocation, bound machine-local configuration
+  root, provisional/final parent-child lock lifecycle, target-ignore behavior,
+  optional advisory review, legacy succession, Tapestry trust boundary, TODO
+  ownership, and the Lead's complex-request route.
 - Deterministic validation rejects active Coordinator authority, deleted
   lifecycle commands, approval gates, prohibited aliases, broad state-helper Bash
   permission, or stale planned-work TODO/state authority outside the Plan
@@ -1671,8 +2011,9 @@ and out-of-role planned-work state authority where a token scan is insufficient.
   diagnostics, and exclusion fixtures prove plans, tests, and historical records
   are not scanned.
 - Agent/command counts, owners, exact Task edges, plan/state permissions,
-  one-item runtime-helper inventory, three-link install ownership, MCP/clipboard
-  access, Worker restrictions, and synchronized templates match this plan.
+  one-item runtime-helper inventory, descriptor-bound three-link install
+  ownership, MCP/clipboard access, Worker restrictions, and synchronized
+  templates match this plan.
 - Prompt-test diagnostics consistently describe checked-in contract coverage,
   not runtime proof. Any unobserved runtime OpenCode, delegation, cancellation,
   or sidebar check is explicitly reported as skipped.
@@ -1701,10 +2042,16 @@ Required groups are:
   one-item `runtime_helpers` inventory without custom-tool registration.
 - **Trusted helper installation:** regular non-symlink checkout source at
   `opencode/workflow-tools/start_work_state.py`; exact installed `workflow-tools`
-  link; all-three setup preflight, idempotency, dry-run, verification, visibility,
-  rollback, restoration, mixed ownership, and uninstall; hostile or mismatched
-  destination rejection; no copied helper; and no target repository or state
-  mutation from setup, rollback, verify, or uninstall.
+  link; all-three setup preflight, idempotency, dry-run, verification, doctor,
+  visibility, rollback, restoration, mixed ownership, and uninstall; hostile or
+  mismatched destination rejection; no copied helper; and no target repository or
+  state mutation from setup, dry-run, verify, doctor, uninstall, rollback, or
+  restoration. Cover every mutable configuration-root ancestor, safe versus
+  unsafe missing final root, bound root/device/inode identity, no-follow
+  descriptor-relative mutation, immediate destination re-lstat, swaps before
+  every create/remove/rollback/restoration position, transaction-only cleanup,
+  partial rollback reporting, and unchanged byte-snapshotted unrelated targets/
+  repositories and sentinels.
 - **Permissions:** Plan Orchestrator broad-ask implementation authority, flat
   `todowrite: allow`, plan edit `ask`, plan-path Bash denial, and Task access only
   to Worker; Lead plan edit `deny`, generic `todowrite: allow`, retained `pbcopy`
@@ -1719,12 +2066,20 @@ Required groups are:
   succession, and lean Tapestry output. Explicit and pointer-located lean and
   legacy fixtures accept exactly 1 MiB, reject limit plus one and invalid UTF-8,
   and fail closed when file size or content changes during validation.
-- **Explicit-target and ignore bootstrap:** canonical regular target-root
-  validation, state containment beneath only that target, no target-local helper
-  dependency or execution, exact two-line target `.gitignore` validation,
-  ordinary-edit addition before pointer persistence, plan-owned reporting,
-  project-template non-overwrite, and fail-closed symlinked, unsafe, broad,
-  duplicate, ambiguous, or conflicting ignore policy.
+- **Fixed active-workspace invocation and ignore bootstrap:** exact `python3 -I
+  "$HOME/.config/opencode/workflow-tools/start_work_state.py"
+  <literal-operation> --repo-root .`, allowlisted literal operations, normal
+  approval, exact quoting, and no concatenation, redirection, pipes, substitution,
+  extra operations, or human/repository shell content. Use workspaces containing
+  spaces, quotes, leading hyphens, semicolons, newlines, backticks, and
+  `$()`-shaped text; assert literal-dot argv, no marker or target-local executable/
+  module execution, and state containment beneath only the active workspace.
+  Reject nested, mismatched, aliased, symlinked, unrelated, and alternate roots.
+  Structured test APIs may pass explicit roots and use `subprocess` argv arrays;
+  runtime Bash never does. Also cover exact two-line target `.gitignore`
+  validation, ordinary-edit addition before pointer persistence, plan-owned
+  reporting, project-template non-overwrite, and fail-closed symlinked, unsafe,
+  broad, duplicate, ambiguous, or conflicting ignore policy.
 - **Pointer and canonical path:** exact closed schema, pointer-size limit, unknown
   field/version/hash rejection, relative canonical lean-plan containment,
   checkbox-only SHA-256 normalization, mismatch stop, corruption handling,
@@ -1732,37 +2087,46 @@ Required groups are:
   matching clear-on-completion, deletion-safe explicit replacement, rejection of
   unsupported state children, no authentication claim, and no-path display plus
   explicit-human-confirmation ordering before mutation.
-- **Parent bootstrap and planned-work child lock:** only target-root validation
-  and non-recursive empty-parent creation before exclusion; first acquisition in
-  a fresh target; two contenders racing at parent and child; crash between parent
-  and child; empty-parent reuse and safe cleanup; symlinked/non-directory parent
-  rejection; atomic child-lock exclusion; immediate loser failure; unsupported
-  children rejected under the child lock; stale pre-lock snapshot rejection;
-  fresh under-lock reload; closed bounded metadata; valid 64-hex owner token;
-  matching-owner release; abrupt process termination; direct and delegated
-  cancellation retention; no timeout stealing or expiry timestamp; explicit-human
-  stale-lock recovery; and corrupt-state failure. Spy evidence proves pointer,
-  plan, Tapestry source, allocation inventory, worktree, and execution evidence
-  are not read before child success. Effective tests also prove Worker has no lock
-  operation, unrelated external writes are not blocked, and overlapping drift
-  stops plan work.
+- **Parent bootstrap and planned-work child lock:** only exact active-workspace-
+  root validation and non-recursive empty-parent creation before exclusion; first
+  acquisition in a fresh workspace; two contenders racing at parent and child;
+  crash between parent and child; crash after child creation; partial write before
+  provisional metadata; crash after complete provisional metadata; empty-parent
+  reuse and safe cleanup;
+  symlinked/non-directory parent rejection; atomic child-lock exclusion;
+  immediate loser failure without target-content reads; unsupported children
+  rejected under the child lock; stale pre-lock snapshot rejection; fresh
+  under-lock reload; bounded stable `owner.json`; valid 64-hex owner token; exact
+  provisional `plan_path: null`; unknown-path new requests; no-path, explicit,
+  legacy, and conversion finalization; matching-owner finalize/release;
+  token-mismatch finalize/release; duplicate exact and conflicting finalization;
+  atomic provisional-to-final replacement; known-clean pre-mutation provisional
+  release; prohibited release after mutation/uncertainty; abrupt process
+  termination; direct and delegated cancellation retention; no timeout stealing or
+  expiry timestamp; explicit-human stale-lock recovery; and missing/empty/partial/
+  unknown-field/corrupt-state failure. Spy evidence proves locators, pointer, plan,
+  Tapestry source, allocation inventory, worktree, and execution evidence are not
+  parsed or read before complete provisional success. Effective tests also prove
+  Worker has no lock operation, unrelated external writes are not blocked, and
+  overlapping drift stops plan work.
 - **Shared route transitions:** `/start-work`, `/convert-tapestry-plan`, and
-  equivalent ordinary Plan Orchestrator conversation each use the fixed installed
-  helper and cover held-lock immediate failure, no pre-lock state/source/allocation
-  snapshot, fresh post-lock reload, lock hold through plan and pointer writes,
-  plan-only release, direct/delegated execution retention, and unrelated external
-  writes remaining unblocked. Mutation-free read-only self-explanation is the
-  sole no-lock case.
+  equivalent ordinary Plan Orchestrator conversation each use the fixed isolated
+  literal-dot helper command and cover no human locator in launch argv, held-lock
+  immediate failure, no pre-lock locator parsing or state/source/allocation
+  snapshot, provisional ownership, correct finalization, fresh post-lock reload,
+  lock hold through plan and pointer writes, plan-only release,
+  direct/delegated execution retention, and unrelated external writes remaining
+  unblocked. Mutation-free read-only self-explanation is the sole no-lock case.
 - **Resume reconciliation and fault injection:** deterministic barriers cover an
   effect-before-checkbox crash, already-satisfied evidence with required
   revalidation and no duplicate dispatch, partial-effect repair, definitely
   unapplied execution, and unknown/non-idempotent human stop. Assertions describe
   at-least-once risk rather than exactly-once behavior.
 - **Tapestry trust boundary:** `.weave/plans/**` containment, regular Markdown
-  file, child-lock acquisition before source/allocation reads, non-symlink
-  components, stable 1 MiB maximum, strict UTF-8, source preservation, and
-  rejection of absolute, traversal, outside-root, directory, special-file,
-  symlink, invalid-encoding, and oversized fixtures before read/copy.
+  file, complete provisional child-lock acquisition before source/allocation
+  reads, non-symlink components, stable 1 MiB maximum, strict UTF-8, source
+  preservation, and rejection of absolute, traversal, outside-root, directory,
+  special-file, symlink, invalid-encoding, and oversized fixtures before read/copy.
   Secondary-reference spies cover absolute, traversal, symlink, oversized,
   invalid-encoding, sensitive-local, newline, semicolon, backtick, `$()`,
   control-character, and shell-metacharacter references and prove no secondary
@@ -1795,8 +2159,8 @@ Required groups are:
   inventory and exact obsolete-token set, with exact file/token diagnostics and
   explicit plan/test/history exclusion coverage.
 - **Compatibility:** retained support-file, frontmatter-parser, manifest,
-  Markdown-fence, all-three setup/verify/uninstall, 23-agent/6-command targets,
-  and unrelated command behavior.
+  Markdown-fence, descriptor-bound all-three setup/verify/uninstall,
+  23-agent/6-command targets, and unrelated command behavior.
 
 Executable helper tests prove only the helper behavior they invoke. Prompt tests
 show that checked-in guidance contains required clauses and rejects contradictory
@@ -1828,37 +2192,53 @@ The OpenCode installation expands from two managed whole-directory links to the
 exact `agents`, `commands`, and `workflow-tools` set. After the final repository
 state passes validation, a maintainer previews and runs the existing OpenCode
 setup command, which may add only the missing exact `workflow-tools` link when the
-other links are already correct; any real, foreign, broken, or mismatched
-destination blocks the set without replacement. Verification must pass for all
-three before `/start-work` or conversion uses the helper. The helper is never
-copied, and source updates become live through the managed link. Agent and command
-definition changes still require the documented OpenCode restart; helper-file
-changes through an already valid link do not require a copy step.
+other links are already correct. The configured home/config base, every mutable
+ancestor, the final configuration root, and each destination must pass the bound
+no-symlink/ownership/containment policy; any real, foreign, broken, mismatched,
+aliased, substituted, or unsafe-parent state blocks the set without replacement.
+Verification must pass for all three under the same revalidated descriptor,
+path/device/inode identity before `/start-work` or conversion uses the helper. The
+helper is never copied, and source updates become live through the managed link.
+Agent and command definition changes still require the documented OpenCode
+restart; helper-file changes through an already valid link do not require a copy
+step.
 
 Uninstall removes all three destinations only when all still resolve to this
-checkout and never removes repository sources, target repository files, or target
-`.start-work` state. Setup or uninstall failure uses ownership-revalidated
-rollback/restoration and reports any destination it cannot safely restore or
-remove. Rollback of the repository change uses an ordinary new commit and, if the
-new install was already activated, the guarded uninstall/setup workflow; it never
-falls back to a target-local helper or deletes target state.
+checkout beneath the still-bound root and never removes repository sources,
+target repository files, or target `.start-work` state. Setup or uninstall
+failure uses descriptor-relative, ownership-revalidated rollback/restoration only
+for exact transaction-proven links and reports every destination it cannot safely
+restore or remove. A moved or substituted configuration root stops recovery; it
+is never followed. Rollback of the repository change uses an ordinary new commit
+and, if the new install was already activated, the guarded uninstall/setup
+workflow; it never falls back to a target-local helper or deletes target state.
 
 Only `/.start-work/resume.json` and `/.start-work/lock/` are ignored disposable
 local state, not tracked migration artifacts; the parent is not broadly ignored.
 Project-template bootstrap documents those entries but does not overwrite target
 ignore policy. On the first planned-work operation, the trusted installed helper
 may leave an empty real `.start-work` parent if interrupted before child-lock
-creation; later acquisition reuses it. Under the child lock, the Plan Orchestrator
-adds missing exact ignore entries through normal edit tools before pointer
-persistence. Unsafe, symlinked, broad, or conflicting ignore state stops for the
-human. Any unsupported child remains visible to Git and makes helper validation
-fail. A missing pointer means there is no no-path resume; a corrupt or mismatched
-pointer stops; and a stale lock requires explicit human confirmation after
-verifying that no Plan Orchestrator, Worker, child process, or other planned
-mutator remains. Recovery may remove only confirmed-stale local state through the
-helper's guarded operation. No timeout or timestamp expires a lock, and the
-Worker, Lead, and ERB have no recovery authority. Never derive progress or
-authorship from the pointer or reconstruct it from repository scans.
+creation; later acquisition reuses it. After complete provisional ownership, the
+Plan Orchestrator adds missing exact ignore entries through normal edit tools
+before pointer persistence. Unsafe, symlinked, broad, or conflicting ignore state
+stops for the human. Any unsupported child remains visible to Git and makes
+helper validation fail. A missing pointer means there is no no-path resume; a
+corrupt or mismatched pointer stops; and a stale lock requires explicit human
+confirmation after verifying that no Plan Orchestrator, Worker, child process, or
+other planned mutator remains. Recovery may remove only confirmed-stale local
+state through the helper's guarded operation. No timeout or timestamp expires a
+lock, and the Worker, Lead, and ERB have no recovery authority. Never derive
+progress or authorship from the pointer or reconstruct it from repository scans.
+
+The child lock may be provisional (`plan_path: null`) or final (one canonical
+repository-relative path). A crash before complete provisional `owner.json`, an
+empty/partial/malformed/unknown-field record, or a conflicting finalization is
+stale/corrupt state rather than an unheld lock. A known-clean provisional owner
+may release only before any plan, ignore, pointer, checkbox, sidebar, delegation,
+or implementation mutation and after proving no child remains. Otherwise retain
+the lock for ordinary or guarded stale recovery. Recovery never guesses a path,
+changes the owner token, expires the lock, or follows a symlinked/substituted
+state component.
 
 After a crash, cancellation, or process loss, keep the lock when any planned
 effect is uncertain. Once the human confirms stale recovery, the next owner must
@@ -1891,35 +2271,40 @@ needs migration or rollback.
 - `AGENTS.md` and `README.md`: replace Coordinator/lifecycle and direct-Lead plan
   language with the dedicated Plan Orchestrator, `/start-work`, optional review,
   Lead/ERB routing guardrails, legacy succession, trusted helper installation,
-  and the exact three-link setup/verify/uninstall model.
+  fixed isolated active-workspace invocation, and the descriptor-bound exact
+  three-link setup/verify/uninstall model.
 - `docs/implementation-plans/{README,TEMPLATE}.md`: become the authoritative
   closed contract and exact starter shape.
 - `docs/engineering-agent-governance.md`: update roles, Task topology, command
   ownership, review advice, self-check semantics, execution, and
   Plan-Orchestrator/Lead/Worker/ERB TODO/state boundaries, including the shared
-  route protocol and fixed installed-helper trust boundary.
+  route protocol, provisional/final lock ownership, fixed installed-helper trust
+  boundary, and machine-local configuration-root ownership.
 - `opencode/project-template/`: mirror portable workflow guidance and keep both
   plan files byte-identical to root copies. Document the two exact target ignore
   entries without overwriting `.gitignore` during bootstrap.
 - Agent and command Markdown: implement Plan Orchestrator ownership, Lead/ERB
   `/start-work` routes, complex-request classification, optional advisory review,
   legacy handling, bounded canonical and Tapestry input trust, untrusted secondary
-  references, fixed installed-helper invocation, shared acquisition protocol,
-  safe parent/child-lock lifecycle, target ignore bootstrap, pointer lifecycle,
-  the cooperative planned-work-only lock, resume reconciliation, and the native
-  TODO prompt contract.
+  references, fixed isolated literal-dot installed-helper invocation, shared
+  acquisition protocol, safe parent/child-lock lifecycle, provisional/final owner
+  metadata, target ignore bootstrap, pointer lifecycle, the cooperative
+  planned-work-only lock, resume reconciliation, and the native TODO prompt
+  contract.
 - `.gitignore`, `opencode/workflow-tools/start_work_state.py`, and
   `tests/test_start_work_state.py`: define the two exact ignored runtime-state
-  entries and executable explicit-target, parent-bootstrap, pointer, path, input,
-  fault-recovery, and planned-work lock behavior.
+  entries and executable active-workspace invocation, parent-bootstrap,
+  provisional/final ownership, pointer, path, input, fault-recovery, and
+  planned-work lock behavior.
 - `audit-technical-debt.md`, `investigate-regression.md`, and the Weave cleanup
   checklist: repair only stale lifecycle routes and authority language.
 - `opencode/manifest.json`, `tools/opencode_manager.py`,
   `tests/test_opencode_manager.py`, and applicable `Justfile` reporting: own the
   exact one-item runtime-helper inventory, trusted regular source validation,
-  three-link setup/verify/uninstall/rollback contract, active-workflow inventory,
-  obsolete-token diagnostics, retained-route mutation coverage, effective
-  state-action tests, and repository-only integration contract.
+  descriptor-bound configuration-root and three-link setup/verify/uninstall/
+  rollback contract, active-workflow inventory, obsolete-token diagnostics,
+  retained-route mutation coverage, effective state-action tests, and
+  repository-only integration contract.
 
 `docs/skill-taxonomy.md` and `docs/cross-reference-map.md` require no edit: this
 work changes OpenCode runtime governance, not first-party skill inventory or
@@ -1962,9 +2347,15 @@ Then:
   and inside the trusted checkout;
 - inspect focused installer evidence for the exact `agents`, `commands`, and
   `workflow-tools` destination/source relationships, all-destination preflight,
-  dry-run, idempotency, helper visibility, hostile/foreign/broken/mismatched
-  rejection, rollback/restoration, mixed ownership, and uninstall that changes no
-  target repository content or state;
+  dry-run, verify, doctor, idempotency, helper visibility, hostile/foreign/broken/
+  mismatched rejection, rollback/restoration, mixed ownership, and uninstall.
+  Confirm every mutable configuration-root ancestor is a stable real directory
+  outside source checkouts and target workspaces; safe missing-final creation
+  creates and binds only `opencode`; path/device/inode identity and each
+  destination are revalidated before every mutation/success position; mutations
+  are no-follow descriptor-relative where supported; root/destination swaps fail
+  closed; partial rollback is exact; and no unrelated repository, target, or
+  sentinel byte changes;
 - inspect deterministic stale-reference results over only the fixed active files,
   validated manifest-listed agents/commands, and manifest support files defined
   in slice 4; confirm every obsolete-token diagnostic names its exact file and
@@ -1975,29 +2366,42 @@ Then:
   of Worker/ERB TODO allows, `pbcopy`, MCP, Git, destructive, and Task rules match
   this plan; verify effective state actions on `.start-work/resume.json` and lock
   metadata, not only textual rules;
-- inspect executable helper evidence for explicit-target containment, fixed
-  installed-helper use, hostile target-local helper non-execution, first-use
-  parent creation, parent/child contender races, crash-before-child recovery,
-  empty-parent reuse/cleanup, parent type/symlink rejection, unsupported-child
-  failure, no pre-child target content reads, fresh post-lock reload, closed lock
-  metadata, bounded barrier exclusion, matching-owner release,
-  direct/delegated termination and cancellation retention, plan-only release,
-  execution retention, unrelated writes remaining unblocked, stale-lock
-  confirmation, pointer corruption/containment/hash/clear/deletion behavior,
-  exact target-ignore bootstrap/failure behavior, 1 MiB/UTF-8 changing-file
-  boundaries, effect-before-checkbox recovery, and satisfied-evidence duplicate
-  suppression;
+- inspect executable helper evidence for the exact `python3 -I
+  "$HOME/.config/opencode/workflow-tools/start_work_state.py"
+  <literal-operation> --repo-root .` command, literal operation/root argv, normal
+  runtime approval, no human or repository shell content, and no concatenation,
+  redirection, pipes, substitution, or extra operations. Confirm special-character
+  workspace names execute no marker or target-local executable/module and retain
+  state locally; nested/mismatched/aliased/symlinked/unrelated/alternate roots
+  fail; and later machine-derived token/path values pass closed grammar as one
+  argv element;
+- inspect helper state evidence for first-use parent creation, parent/child
+  contender races, crash-before-child recovery, crashes/partial writes before
+  provisional metadata, crash after provisional metadata, empty-parent reuse/
+  cleanup, parent type/symlink rejection, unsupported-child failure, no pre-child
+  locator parsing or target-content reads, fresh post-lock reload, exact bounded
+  provisional `plan_path: null` and final canonical metadata, bounded barrier
+  exclusion, every second contender losing without target reads, route-complete
+  no-path/explicit/legacy/conversion finalization, duplicate/conflicting
+  finalization, token mismatch, matching-owner release, pre-mutation provisional
+  release, post-mutation/uncertain retention, direct/delegated termination and
+  cancellation retention, plan-only release, execution retention, unrelated
+  writes remaining unblocked, stale-lock confirmation, pointer corruption/
+  containment/hash/clear/deletion behavior, exact target-ignore bootstrap/failure
+  behavior, 1 MiB/UTF-8 changing-file boundaries, effect-before-checkbox
+  recovery, and satisfied-evidence duplicate suppression;
 - inspect secondary-reference spy evidence for every required unsafe path and
   shell-shaped string and confirm zero secondary reads and zero command
   executions;
 - inspect prompt-contract evidence for every `/start-work` branch,
   `/convert-tapestry-plan`, and equivalent ordinary Plan Orchestrator conversation;
-  confirm shared acquisition, no pre-lock source/state/allocation reads, fresh
-  reload, plan-only hold/release, execution retention, fixed installed-helper
-  invocation, and read-only no-mutation exemption; also inspect conversion
-  execution opt-in, self-check distinction, Lead complex-request and ERB routing,
-  untrusted content, and TODO transitions; verify diagnostics claim only
-  checked-in instruction coverage;
+  confirm fixed isolated literal-dot invocation, no locator in helper launch,
+  shared acquisition, no pre-lock locator parsing or source/state/allocation
+  reads, provisional/final ownership, fresh reload, plan-only hold/release,
+  execution retention, and read-only no-mutation exemption; also inspect
+  conversion execution opt-in, self-check distinction, Lead complex-request and
+  ERB routing, untrusted content, and TODO transitions; verify diagnostics claim
+  only checked-in instruction coverage;
 - inspect the four implementation commits and their recorded focused-test plus
   `just validate-opencode` evidence; confirm each commit contains one intended
   logical group, no unrelated files, no amendment/history rewrite, and no
@@ -2026,7 +2430,13 @@ shared route protocol, fixed trusted installed-helper path, three-link
 distribution model, target ignore bootstrap, and safe first-use parent/child
 acquisition. The lock serializes Plan Orchestrator sessions and all direct or
 delegated implementation for their plans; it is not a general repository mutation
-lock and grants Lead, ERB, and Worker no state authority.
+lock and grants Lead, ERB, and Worker no state authority. Revision 6 closes the
+implementation-mechanics findings without changing those selections: helper
+runtime is fixed to isolated Python plus literal active-workspace `--repo-root .`,
+machine-local link operations are bound to a validated configuration-root
+descriptor and stable identity, and child-lock ownership transitions atomically
+from provisional `plan_path: null` to one canonical final plan path. There is no
+remaining human product, workflow, or architecture decision.
 
 ## ERB Review History
 
@@ -2055,6 +2465,15 @@ baseline_commit: 9bd28e3a15c237e1fb4cf6e1996da36b687db5e8
 decision: ready-with-revisions
 reviewed_at: 2026-07-14T20:05:00-04:00
 findings: Required revisions R4-1 through R4-3 in this Board record.
+next_command: /record-plan-review docs/implementation-plans/plans/opencode/02-simplify-plan-workflow.md
+
+plan_path: docs/implementation-plans/plans/opencode/02-simplify-plan-workflow.md
+plan_id: opencode-02
+revision: 5
+baseline_commit: 9bd28e3a15c237e1fb4cf6e1996da36b687db5e8
+decision: ready-with-revisions
+reviewed_at: 2026-07-14T22:40:00-04:00
+findings: Required revisions R5-1 through R5-3 in this Board record.
 next_command: /record-plan-review docs/implementation-plans/plans/opencode/02-simplify-plan-workflow.md
 
 ## Approval History
@@ -2127,6 +2546,28 @@ None.
   evidence through `34da83a`, and reset this material revision to draft/pending
   with current review and approval fields clear. `depends_on` remains empty and no
   approval was added.
+
+### Revision 6 — 2026-07-15
+
+- Applied R5-1 through R5-3 from the persisted revision-5 ERB
+  `ready-with-revisions` record: fixed isolated active-workspace helper invocation
+  with literal `--repo-root .` and closed argv construction; fail-closed,
+  descriptor-bound machine-local configuration-root ownership across setup,
+  dry-run, verify, doctor, uninstall, rollback, and restoration; and atomic
+  provisional-to-final `.start-work/lock/owner.json` ownership.
+- Added deterministic shell-shaped workspace, target-local import/executable,
+  nested/aliased/mismatched root, mutable configuration-ancestor and destination
+  substitution, safe/unsafe missing-root, provisional crash/partial-write,
+  route-finalization, token-mismatch, duplicate/conflicting finalization, and
+  mutation-aware release coverage. Runtime approval, the standard-library-only
+  helper, one-item helper inventory, three-link installation, target ignore
+  bootstrap, and planned-work-only lock remain unchanged.
+- Preserved the revision-2 through revision-5 ERB records and all prior amendments
+  verbatim, retained baseline
+  `9bd28e3a15c237e1fb4cf6e1996da36b687db5e8` and complete source-drift evidence
+  through `dfc6c7f`, kept `depends_on: []`, and reset this material revision to
+  draft/pending with current review and approval fields clear. No approval was
+  added.
 
 ## Execution Record
 
