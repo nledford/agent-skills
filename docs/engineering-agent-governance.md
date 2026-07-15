@@ -20,17 +20,20 @@ lists the tracked definitions.
 | --- | --- | --- |
 | [Engineering Lead](../opencode/agents/engineering-lead.md) | Request intake, process selection, direct or bounded unplanned delivery, integration, validation, and independent-review handoff. | Invoke the ERB as a Task child, claim a Board decision without its output, or write or execute a durable plan or trusted planned-work state. |
 | [Engineering Review Board](../opencode/agents/engineering-review-board.md) | Optional independent read-only advice, specialist selection, evidence synthesis, and severity assessment. Invoke it as a separate primary agent. | Edit the repository, implement a fix, change plans or state, or control plan creation, updates, execution, or persistence. |
+| [Plan Consultant](../opencode/agents/plan-consultant.md) | Bounded read-only decomposition, dependencies, risks, acceptance criteria, and validation advice for the Engineering Lead or ERB. | Inspect `.start-work/**`, mutate, delegate, create or authorize a plan, invoke `/start-work`, or begin implementation. Only the Engineering Lead and Engineering Review Board may request it. |
 | [Plan Orchestrator](../opencode/agents/plan-orchestrator.md) | Safe lean-plan creation and updates, trusted planned-work state, planned execution, integration, validation, and native planned-work TODOs. | Act as a Task child, delegate to anything other than the Worker, or claim ERB advisory evidence controls planned work. |
 | [Implementation Worker](../opencode/agents/implementation-worker.md) | One bounded implementation unit assigned by the Lead or Plan Orchestrator, plus focused validation and an evidence report. It is the only implementation subagent. | Edit durable plans or `.start-work/**`, delegate, commit, push, deploy, broaden scope, or perform destructive migrations. |
 | Review and research specialists | Bounded, decision-relevant analysis for the Lead or ERB using exact runtime-visible IDs. | Implement changes, simulate the ERB, approve plans, or treat advisory output as final authority. |
 
-The Lead may complete narrow unplanned work directly and retains its MCP,
-clipboard, Git, and transient unplanned-TODO authority. When it delegates
-implementation, it uses only `implementation-worker`; durable plan or
-`.start-work` work routes through top-level
-[`/start-work`](../opencode/commands/start-work.md) to the Plan Orchestrator,
-not a Task child. The ERB and its specialists stay on the advisory side of that
-boundary.
+The Lead may directly implement complex work when scope, safety, and validation
+are adequate, and retains its MCP, clipboard, Git, and transient unplanned-TODO
+authority. Complexity may justify a planning recommendation but never creates a
+plan or invokes `/start-work` automatically. The Lead or ERB may request
+read-only `plan-consultant` advice; it is non-recursive and exists only under
+those primary agents. When the Lead delegates implementation, it uses only
+`implementation-worker`. Durable plan or `.start-work` mutations route through a
+top-level Plan Orchestrator command, never a Task child. The ERB and its
+specialists stay on the advisory side of that boundary.
 
 ### Maintainer-authorized Lead tools
 
@@ -93,19 +96,27 @@ session remains unchanged.
 
 ## Handoffs
 
-For ordinary work, start with the Engineering Lead. A direct request may proceed
-under its Trivial or Bounded process. Durable planning, trusted state, planned
-execution, plan checkboxes, and planned-work TODOs route through top-level
-[`/start-work`](../opencode/commands/start-work.md) to the Plan Orchestrator.
+For ordinary work, start with the Engineering Lead. The canonical sequence is
+documented in [`implementation-plans/README.md`](implementation-plans/README.md):
 
-The canonical planned-work sequence is documented in
-[`implementation-plans/README.md`](implementation-plans/README.md):
+1. Deliver directly when scope, safety, and validation are adequate. Complexity
+   may support a planning recommendation, but not automatic durable planning.
+2. The Lead or ERB may obtain bounded, read-only `plan-consultant` advice; it
+   remains advisory and cannot persist or begin work.
+3. On explicit human authorization, top-level
+   [`/create-plan`](../opencode/commands/create-plan.md) acquires trusted state
+   and creates and persists a closed lean plan only.
+4. A separate ERB session may provide optional independent advisory review.
+5. A separate human choice of top-level
+   [`/start-work <existing-plan-path>`](../opencode/commands/start-work.md), or a
+   validated no-argument resume pointer with explicit human confirmation,
+   executes existing planned work. The Plan Orchestrator then executes bounded
+   Worker units and records only observed plan checkbox and state evidence.
 
-1. The Plan Orchestrator acquires trusted provisional state, then creates or
-   updates a closed lean plan when needed.
-2. A separate ERB session may provide optional independent advisory review.
-3. The Plan Orchestrator executes bounded Worker units and records only observed
-   plan checkbox and state evidence.
+An explicit top-level human plan-only update request goes to the Plan
+Orchestrator; it is neither `/create-plan` nor `/start-work`. Legacy conversion
+is plan-only and requires a separate later `/start-work <destination>` choice to
+execute.
 
 ERB output is advisory evidence, not implementation, plan, state, or execution
 authority.
@@ -117,8 +128,9 @@ are authoritative for primary ownership.
 
 | Command | Primary agent | Job |
 | --- | --- | --- |
-| [`/start-work`](../opencode/commands/start-work.md) | Plan Orchestrator | Create, resume, update, or execute closed lean planned work. |
-| [`/convert-tapestry-plan`](../opencode/commands/convert-tapestry-plan.md) | Plan Orchestrator | Revalidate a legacy Tapestry source and create a max-plus-one lean successor; it is plan-only unless execution is explicitly requested. |
+| [`/create-plan`](../opencode/commands/create-plan.md) | Plan Orchestrator | On explicit human authorization, create and persist a closed lean plan only; never execute TODOs. |
+| [`/start-work`](../opencode/commands/start-work.md) | Plan Orchestrator | Execute or resume only an existing valid canonical lean plan; reject free-form creation and plan-update requests. |
+| [`/convert-tapestry-plan`](../opencode/commands/convert-tapestry-plan.md) | Plan Orchestrator | Revalidate a legacy Tapestry source and create a max-plus-one lean successor; always plan-only, with execution requiring separate `/start-work <destination>`. |
 | [`/review-plan`](../opencode/commands/review-plan.md) | Engineering Review Board | Review canonical plans without editing them. |
 | [`/review-implementation`](../opencode/commands/review-implementation.md) | Engineering Review Board | Review completed implementation against the relevant plan and evidence without editing either. |
 | [`/investigate-regression`](../opencode/commands/investigate-regression.md) | Engineering Review Board | Investigate a suspected regression without modifying the repository. |

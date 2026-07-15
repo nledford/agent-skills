@@ -32,6 +32,20 @@ agent IDs and do not grant delegation authority. When a route crosses into an
 OpenCode agent or command, use the exact registered ID and boundaries documented
 in the [engineering agent governance guide](engineering-agent-governance.md).
 
+## OpenCode Runtime Handoff Overlay
+
+This compact overlay is not a skill inventory. Exact agent and command definitions
+and the [engineering agent governance guide](engineering-agent-governance.md)
+remain authoritative.
+
+| Route | Handoff |
+| --- | --- |
+| Direct delivery | The Engineering Lead may implement directly whenever scope, safety, and validation are adequate. Complexity may justify recommending planning, never automatic plan creation or `/start-work`. |
+| Read-only consultation | Only the Engineering Lead and ERB may Task `plan-consultant` for bounded read-only advice. It is non-recursive, cannot inspect `.start-work/**`, and cannot mutate, delegate, create, authorize, or execute work. |
+| Explicit plan creation | A human explicitly chooses top-level `/create-plan`; the Plan Orchestrator creates and persists a plan only. |
+| Existing-plan execution | A separate human chooses execution-only `/start-work <existing-plan-path>`. With no arguments, `/start-work` requires a validated resume pointer and explicit confirmation. It does not create or update plans. |
+| Plan-only operations | Explicit plan-only updates are top-level Plan Orchestrator requests, not `/create-plan` or `/start-work`; `/convert-tapestry-plan` is plan-only and execution needs a separate `/start-work <destination>` choice. |
+
 ## Routing Matrix
 
 ### Skill Authoring and Governance

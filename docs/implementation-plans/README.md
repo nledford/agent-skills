@@ -28,6 +28,18 @@ ordered, bounded, numbered Markdown checkboxes. Resolve decisions through the
 plan's authorized sections rather than adding an open-decision ledger, history,
 amendment, alternatives, or execution record.
 
+## Human-Controlled Lifecycle
+
+Direct implementation may proceed when scope, safety, and validation are
+adequate; complexity may justify recommending a plan but never creates one
+automatically. The Engineering Lead or ERB may request read-only
+`plan-consultant` advice. Explicit `/create-plan` creates and persists a plan
+only, while execution-only `/start-work` accepts an existing valid canonical lean
+plan or validated no-argument resume pointer with explicit human confirmation.
+Explicit plan-only updates are top-level Plan Orchestrator requests, not
+`/create-plan` updates or `/start-work`. `/convert-tapestry-plan` is always
+plan-only; execution requires a separate `/start-work <destination>` choice.
+
 ## Legacy Plan Succession
 
 Existing verbose plans with lifecycle metadata or history are immutable legacy

@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from tools.opencode_manager import (
     COMMAND_PROMPT_CONTRACTS,
+    HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS,
     PLAN_ORCHESTRATOR_COMMIT_PROMPT_REQUIREMENTS,
     PLAN_ORCHESTRATOR_GIT_BASH_RULES,
     OpenCodeInstallService,
@@ -33,6 +34,7 @@ ACTIVE_WORKFLOW_FIXED_FILES = (
     "AGENTS.md",
     "README.md",
     "docs/engineering-agent-governance.md",
+    "docs/cross-reference-map.md",
     "docs/implementation-plans/README.md",
     "docs/implementation-plans/TEMPLATE.md",
     "opencode/manifest.json",
@@ -2976,6 +2978,49 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         for name, required in retained_route_contracts.items():
             with self.subTest(command=name):
                 assert_contract(command_root / name, required)
+
+    def test_checked_in_human_controlled_lifecycle_docs_fail_closed(self) -> None:
+        """Require lifecycle guidance and reject stale automatic `/start-work` creation."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_canonical_active_workflow_repo(root)
+
+            self.assertTrue(OpenCodeInstallService(repo, root / "config").validate().ok)
+
+            def remove_token(text: str, token: str) -> str:
+                pattern = re.escape(token).replace(r"\ ", r"\s+")
+                changed, count = re.subn(pattern, "contract removed", text, count=1)
+                self.assertEqual(count, 1, token)
+                return changed
+
+            for relative_path, tokens in HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS.items():
+                document = repo / relative_path
+                original = document.read_text(encoding="utf-8")
+                for token in tokens:
+                    with self.subTest(document=relative_path, token=token):
+                        document.write_text(remove_token(original, token), encoding="utf-8")
+
+                        result = OpenCodeInstallService(repo, root / "config").validate()
+
+                        self.assertIn(
+                            f"human-controlled lifecycle document '{relative_path}' contract is incomplete",
+                            result.errors,
+                        )
+                document.write_text(original, encoding="utf-8")
+
+            document = repo / "docs" / "cross-reference-map.md"
+            original = document.read_text(encoding="utf-8")
+            document.write_text(
+                original + "\nComplexity automatically creates a plan through `/start-work`.\n",
+                encoding="utf-8",
+            )
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertIn(
+                "human-controlled lifecycle document 'docs/cross-reference-map.md' contains forbidden automatic `/start-work` creation",
+                result.errors,
+            )
 
     def test_checked_in_plan_consultant_topology_is_read_only(self) -> None:
         """Protect the consultant's manifested, read-only Task topology."""

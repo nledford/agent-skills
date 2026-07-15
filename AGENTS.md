@@ -40,17 +40,23 @@ for OpenCode role authority, command ownership, Task boundaries, and handoffs.
 
 Project-local implementation plans use the canonical contract in
 [`docs/implementation-plans/README.md`](docs/implementation-plans/README.md).
-Route durable planning, trusted planned-work state, and planned execution through
-top-level [`/start-work`](opencode/commands/start-work.md), whose Plan
-Orchestrator is the exclusive durable-plan and state writer. The Engineering
-Review Board is a separate, optional, read-only advisory role. Keep OpenCode's
-live configuration machine-local; repository files are reviewed definitions and
-templates, not credentials or a replacement for a user's `opencode.jsonc`. The
-Plan Orchestrator may construct a commit only for an explicit current human
-request or bounded planned TODO, while retaining its planned-work lock; the
-Worker remains forbidden to stage or commit. Agent-definition permission changes
-take effect only after a full OpenCode restart, never in the running session.
-Approval for `git add --` is an additional human check, not proof that a path is
-safe: the Plan Orchestrator must derive, separately enumerate, and literally
-quote each repository-relative path from fresh trusted worktree evidence, and
-stop on any expansion syntax or path it cannot represent literally.
+Prefer direct implementation when scope, safety, and validation are adequate;
+complexity may justify a recommendation, but never automatic plan creation. The
+Lead or ERB may request a bounded read-only `plan-consultant` consultation. An
+explicit human `/create-plan` request may create and persist a new plan, and it is
+plan-only; execution-only `/start-work` accepts an existing valid canonical plan
+or validated resume pointer with explicit human confirmation. Explicit plan-only
+updates and `/convert-tapestry-plan` are separate Plan Orchestrator requests. The
+Plan Orchestrator is the exclusive durable-plan and state writer; the
+Engineering Review Board remains separate, optional, and read-only advisory.
+Keep OpenCode's live configuration machine-local; repository files are reviewed
+definitions and templates, not
+credentials or a replacement for a user's `opencode.jsonc`. The Plan Orchestrator
+may construct a commit only for an explicit current human request or bounded
+planned TODO, while retaining its planned-work lock; the Worker remains forbidden
+to stage or commit. Agent-definition permission changes take effect only after a
+full OpenCode restart, never in the running session. Approval for `git add --` is
+an additional human check, not proof that a path is safe: the Plan Orchestrator
+must derive, separately enumerate, and literally quote each repository-relative
+path from fresh trusted worktree evidence, and stop on any expansion syntax or
+path it cannot represent literally.

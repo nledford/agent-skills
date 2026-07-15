@@ -78,6 +78,7 @@ ACTIVE_WORKFLOW_FIXED_FILES = (
     "AGENTS.md",
     "README.md",
     "docs/engineering-agent-governance.md",
+    "docs/cross-reference-map.md",
     "docs/implementation-plans/README.md",
     "docs/implementation-plans/TEMPLATE.md",
     "opencode/manifest.json",
@@ -96,6 +97,43 @@ RETIRED_LIFECYCLE_PHRASES = (
     "Not Ready",
     "Approve With Follow-ups",
     "Request Changes",
+)
+HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
+    "AGENTS.md": (
+        "explicit human `/create-plan` request may create and persist a new plan",
+        "execution-only `/start-work` accepts an existing valid canonical plan "
+        "or validated resume pointer with explicit human confirmation",
+    ),
+    "README.md": (
+        "Three human-controlled lifecycle paths",
+        "`/convert-tapestry-plan` remain plan-only",
+    ),
+    "docs/engineering-agent-governance.md": (
+        "Only the Engineering Lead and Engineering Review Board may request it.",
+        "An explicit top-level human plan-only update request",
+    ),
+    "docs/cross-reference-map.md": (
+        "## OpenCode Runtime Handoff Overlay",
+        "Only the Engineering Lead and ERB may Task `plan-consultant`",
+    ),
+    "docs/implementation-plans/README.md": (
+        "## Human-Controlled Lifecycle",
+        "Explicit plan-only updates are",
+    ),
+    "opencode/project-template/AGENTS-plan-workflow-snippet.md": (
+        "Only an explicit human `/create-plan` request creates and persists a plan",
+        "Execution-only `/start-work` accepts an existing valid canonical",
+    ),
+    "opencode/project-template/docs/implementation-plans/README.md": (
+        "## Human-Controlled Lifecycle",
+        "Explicit plan-only updates are",
+    ),
+}
+HUMAN_CONTROLLED_LIFECYCLE_FORBIDDEN_TOKENS = (
+    "automatically create a plan through `/start-work`",
+    "automatically creates a plan through `/start-work`",
+    "automatically invoke `/start-work` to create a plan",
+    "automatically invokes `/start-work` to create a plan",
 )
 CANONICAL_COMMAND_OWNERS = {
     "audit-technical-debt.md": "engineering-review-board",
@@ -703,6 +741,7 @@ class OpenCodeInstallService:
             errors.extend(self._validate_prompt_contracts(inventory))
         if self._has_canonical_active_workflow_inventory(inventory):
             errors.extend(self._validate_retired_lifecycle_tokens(inventory))
+            errors.extend(self._validate_human_controlled_lifecycle_docs())
 
         if errors:
             return OperationResult(errors=errors)
@@ -940,6 +979,28 @@ class OpenCodeInstallService:
                     errors.append(
                         f"active workflow inventory '{relative_path}' contains retired lifecycle token '{token}'"
                     )
+        return errors
+
+    def _validate_human_controlled_lifecycle_docs(self) -> list[str]:
+        """Require the checked-in human-controlled lifecycle documentation contract."""
+        errors: list[str] = []
+        for relative_path, required_tokens in HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS.items():
+            text = self._read_active_workflow_inventory_text(relative_path)
+            if text is None:
+                errors.append(
+                    f"human-controlled lifecycle document '{relative_path}' is missing or is not a regular UTF-8 file"
+                )
+                continue
+            normalized = " ".join(text.split())
+            if not all(token in normalized for token in required_tokens):
+                errors.append(
+                    f"human-controlled lifecycle document '{relative_path}' contract is incomplete"
+                )
+            normalized_lower = normalized.lower()
+            if any(token in normalized_lower for token in HUMAN_CONTROLLED_LIFECYCLE_FORBIDDEN_TOKENS):
+                errors.append(
+                    f"human-controlled lifecycle document '{relative_path}' contains forbidden automatic `/start-work` creation"
+                )
         return errors
 
     def _read_active_workflow_inventory_text(self, relative_path: str) -> str | None:

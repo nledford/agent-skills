@@ -158,6 +158,20 @@ state, while the ERB remains read-only advisory review. See the
 [legacy Weave cleanup checklist](opencode/cleanup/weave-cleanup-checklist.md)
 when migrating prior workflow material.
 
+### Human-Controlled Lifecycle
+
+Three human-controlled lifecycle paths keep delivery separate from durable
+planning: (1) the Engineering Lead may deliver directly when scope, safety, and
+validation are adequate; (2) an explicit `/create-plan` request creates and
+persists a plan only; and (3) `/start-work <existing-plan-path>` executes an
+existing canonical lean plan, while no arguments resume only from a validated
+pointer after explicit human confirmation. Complexity may justify recommending a
+plan, never automatic creation.
+The Lead or ERB may request read-only `plan-consultant` advice, which neither
+creates nor authorizes work. Explicit plan-only updates and
+`/convert-tapestry-plan` remain plan-only; conversion execution requires a later
+human `/start-work <destination>` choice.
+
 To bootstrap a repository that does not already have plan guidance, copy
 `opencode/project-template/docs/implementation-plans/` to the target repository's
 `docs/implementation-plans/`, then merge—not replace—the relevant text from
@@ -172,8 +186,8 @@ plugins, and machine-specific OpenCode settings in the machine-local config.
 On another computer, clone the repository, install the global skills with
 `just setup` when needed, and run the OpenCode setup commands above. The target
 machine must separately provide OpenCode, access to the models named by the
-agents, and any required plugins or tools. Quit and restart OpenCode after setup
-or definition changes because configuration is loaded at startup.
+agents, and any required plugins or tools. A full OpenCode restart is required
+after setup or definition changes because configuration is loaded at startup.
 
 `just uninstall-opencode-dry-run` previews removal. `just uninstall-opencode`
 removes all three links only when all still point to this checkout; it never removes

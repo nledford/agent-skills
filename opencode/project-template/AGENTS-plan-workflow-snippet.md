@@ -11,16 +11,28 @@ Existing lifecycle-style plans are immutable legacy evidence; create a new
 max-plus-one lean successor instead of modifying them.
 
 The Engineering Lead owns classification, integration, validation, and handoffs.
-It may complete narrow work directly or delegate bounded, non-overlapping
+It may complete work directly whenever scope, safety, and validation are
+adequate, including complex work; complexity may justify recommending a plan but
+never creates one automatically. It may delegate bounded, non-overlapping
 implementation units only to `implementation-worker`. The worker cannot edit
 durable plans, delegate, commit, push, deploy, or broaden its assigned scope.
 
-Route durable plan creation, updates, trusted state, planned execution, plan
-checkboxes, and planned-work TODOs through top-level `/start-work`. Its Plan
-Orchestrator is the only durable plan and trusted-state writer. The Engineering
-Review Board is a separate, optional read-only primary agent, never a Task child;
-invoke it directly for advisory review. Its critics and researchers do not
-implement changes or control plan or state work.
+The Engineering Lead and Engineering Review Board may request bounded read-only
+`plan-consultant` advice. The consultant cannot inspect `.start-work/**`,
+mutate, delegate, create or authorize a plan, invoke `/start-work`, or begin
+implementation. The ERB is a separate, optional read-only primary agent, never a
+Task child; its critics and researchers do not implement changes or control plan
+or state work.
+
+Only an explicit human `/create-plan` request creates and persists a plan, and it
+is plan-only. Execution-only `/start-work` accepts an existing valid canonical
+lean plan path or validated no-argument resume pointer with explicit human
+confirmation; it rejects free-form creation and plan-update requests. Explicit
+plan-only updates are top-level Plan Orchestrator requests, not `/create-plan`
+updates or `/start-work`.
+`/convert-tapestry-plan` is always plan-only; execution requires a separate
+human `/start-work <destination>` choice. The Plan Orchestrator is the only
+durable plan and trusted-state writer.
 
 Before first planned use, bootstrap must not overwrite the target repository's
 `.gitignore`. After provisional state acquisition, add these missing exact lines
