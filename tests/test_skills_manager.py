@@ -38,19 +38,20 @@ def write_taxonomy(
 ) -> Path:
     docs = repo / "docs"
     docs.mkdir()
-    taxonomy_section = ""
-    if categories is not None:
-        category_rows = []
-        for category, skill_names in categories.items():
-            listed_skills = ", ".join(f"`{name}`" for name in skill_names)
-            category_rows.append(f"| {category} | {listed_skills} | Test boundary. |")
-        category_rows_text = "\n".join(category_rows)
-        taxonomy_section = (
-            "## Taxonomy\n\n"
-            "| Category | Skills | Boundary |\n"
-            "| --- | --- | --- |\n"
-            f"{category_rows_text}\n\n"
-        )
+    category_rows = []
+    effective_categories = categories
+    if effective_categories is None:
+        effective_categories = {"Test category": names}
+    for category, skill_names in effective_categories.items():
+        listed_skills = ", ".join(f"`{name}`" for name in skill_names)
+        category_rows.append(f"| {category} | {listed_skills} | Test boundary. |")
+    category_rows_text = "\n".join(category_rows)
+    taxonomy_section = (
+        "## Taxonomy\n\n"
+        "| Category | Skills | Boundary |\n"
+        "| --- | --- | --- |\n"
+        f"{category_rows_text}\n\n"
+    )
     rows = "\n".join(
         f"| `{name}` | Test purpose. | Keep. |"
         for name in names
@@ -291,6 +292,98 @@ class SkillRegistryTests(unittest.TestCase):
             result = SkillRegistry.load(repo).validate_first_party()
 
             self.assertTrue(result.ok)
+
+    def test_first_party_validation_rejects_missing_taxonomy_category_table(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "alpha")
+            taxonomy = write_taxonomy(
+                repo,
+                ["alpha"],
+                categories={"Security review": ["alpha"]},
+            )
+            taxonomy.write_text(
+                taxonomy.read_text(encoding="utf-8").replace(
+                    "## Taxonomy",
+                    "## Categories",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "docs/skill-taxonomy.md: missing '## Taxonomy' table",
+                result.errors,
+            )
+
+    def test_first_party_validation_rejects_malformed_taxonomy_category_table(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "alpha")
+            taxonomy = write_taxonomy(
+                repo,
+                ["alpha"],
+                categories={"Security review": ["alpha"]},
+            )
+            taxonomy.write_text(
+                taxonomy.read_text(encoding="utf-8").replace(
+                    "| Category | Skills | Boundary |",
+                    "| Category | Boundary |",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "docs/skill-taxonomy.md: malformed '## Taxonomy' table",
+                result.errors,
+            )
+
+    def test_first_party_validation_rejects_taxonomy_row_without_skill_references(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "alpha")
+            taxonomy = write_taxonomy(
+                repo,
+                ["alpha"],
+                categories={"Security review": ["alpha"]},
+            )
+            taxonomy.write_text(
+                taxonomy.read_text(encoding="utf-8").replace(
+                    "`alpha`",
+                    "alpha",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "docs/skill-taxonomy.md: malformed '## Taxonomy' table",
+                result.errors,
+            )
+
+    def test_first_party_validation_rejects_empty_taxonomy_category_table(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = create_repo(Path(temp_dir))
+            write_skill(repo / "skills", "alpha")
+            write_taxonomy(repo, ["alpha"], categories={})
+
+            result = SkillRegistry.load(repo).validate_first_party()
+
+            self.assertFalse(result.ok)
+            self.assertIn(
+                "docs/skill-taxonomy.md: malformed '## Taxonomy' table",
+                result.errors,
+            )
 
     def test_validation_result_combines_errors_and_warnings(self) -> None:
         combined = ValidationResult.combine(

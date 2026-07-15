@@ -99,6 +99,9 @@ handoff.
   explicit and category-based where practical; do not infer requirements from
   arbitrary prose. Keep this taxonomy focused on inventory, boundaries, and
   coverage.
+- The validator consumes the three-column `Category`, `Skills`, and `Boundary`
+  table under `## Taxonomy`. Preserve that heading and table shape, and list
+  skill IDs as backticked references in the `Skills` column.
 - Keep vendor/tool-specific advice in the narrowest skill that needs it; use
   project-neutral wording elsewhere.
 - Retire stale skills instead of preserving compatibility for old names.

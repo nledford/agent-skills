@@ -24,6 +24,8 @@ TAXONOMY_CATEGORY_HEADING = "## Taxonomy"
 TAXONOMY_INVENTORY_HEADING = "## Current First-Party Inventory"
 TAXONOMY_INVENTORY_ROW_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|")
 TAXONOMY_SKILL_REFERENCE_RE = re.compile(r"`([^`]+)`")
+TAXONOMY_CATEGORY_TABLE_HEADER = ("Category", "Skills", "Boundary")
+TAXONOMY_CATEGORY_TABLE_DIVIDER = ("---", "---", "---")
 TAXONOMY_API_CONTRACT_CATEGORY = "API design and contracts"
 TAXONOMY_OBSERVABILITY_CATEGORY = "Observability and operations"
 SECURITY_LINK_REQUIRED_SKILLS = frozenset(
@@ -428,11 +430,13 @@ def validate_skill(skill: Skill, *, label: str) -> ValidationResult:
 def _validate_required_related_skill_links(
     skills: Sequence[Skill], *, taxonomy_path: Path
 ) -> ValidationResult:
-    taxonomy_category_skill_names = (
+    if not taxonomy_path.is_file():
+        return ValidationResult()
+    taxonomy_category_skill_names, taxonomy_error = (
         _read_taxonomy_category_skill_names(taxonomy_path)
-        if taxonomy_path.is_file()
-        else {}
     )
+    if taxonomy_error is not None:
+        return ValidationResult(errors=[taxonomy_error])
     warnings = []
     for skill in skills:
         required_links = _required_related_skill_links_for_skill(
@@ -643,26 +647,48 @@ def _read_skill_metadata(path: Path) -> tuple[dict[str, str], str | None]:
     return metadata, None
 
 
-def _read_taxonomy_category_skill_names(path: Path) -> dict[str, set[str]]:
-    lines = path.read_text(encoding="utf-8").splitlines()
+def _read_taxonomy_category_skill_names(
+    path: Path,
+) -> tuple[dict[str, set[str]], str | None]:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        return {}, f"{TAXONOMY_DOC}: taxonomy document is not readable UTF-8"
     try:
         start_index = lines.index(TAXONOMY_CATEGORY_HEADING)
     except ValueError:
-        return {}
+        return {}, f"{TAXONOMY_DOC}: missing {TAXONOMY_CATEGORY_HEADING!r} table"
 
-    categories: dict[str, set[str]] = {}
+    table_lines = []
     for line in lines[start_index + 1 :]:
         if line.startswith("## "):
             break
-        if not line.startswith("|"):
-            continue
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) < 2:
-            continue
+        if line.strip():
+            table_lines.append(line)
+
+    def table_cells(line: str) -> tuple[str, ...] | None:
+        if not line.startswith("|") or not line.endswith("|"):
+            return None
+        return tuple(cell.strip() for cell in line.strip("|").split("|"))
+
+    malformed_error = f"{TAXONOMY_DOC}: malformed {TAXONOMY_CATEGORY_HEADING!r} table"
+    if (
+        len(table_lines) < 3
+        or table_cells(table_lines[0]) != TAXONOMY_CATEGORY_TABLE_HEADER
+        or table_cells(table_lines[1]) != TAXONOMY_CATEGORY_TABLE_DIVIDER
+    ):
+        return {}, malformed_error
+
+    categories: dict[str, set[str]] = {}
+    for line in table_lines[2:]:
+        cells = table_cells(line)
+        if cells is None or len(cells) != 3 or not all(cells):
+            return {}, malformed_error
         skill_names = set(TAXONOMY_SKILL_REFERENCE_RE.findall(cells[1]))
-        if skill_names:
-            categories.setdefault(cells[0], set()).update(skill_names)
-    return categories
+        if not skill_names or cells[0] in categories:
+            return {}, malformed_error
+        categories[cells[0]] = skill_names
+    return categories, None
 
 
 def _read_taxonomy_inventory_names(path: Path) -> tuple[set[str], str | None]:
