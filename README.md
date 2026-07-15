@@ -83,12 +83,17 @@ just list-first-party
 just list-third-party
 just validate        # validate all skill metadata
 just doctor          # validate skills and verify global install
-just check           # run lint, tests, validation, and verify
+just check           # run source-only lint, tests, and validators
 just validate-opencode
 just setup-opencode-dry-run
 just setup-opencode
 just verify-opencode
+just doctor-opencode # validate definitions and verify global install
 ```
+
+`just check` does not inspect machine-global symlinks, so it can run from a
+clean checkout. Use `just doctor` and `just doctor-opencode` when validating the
+installed skills and OpenCode links on a configured machine.
 
 Mutating global install commands are intentionally conservative. `just setup`
 is idempotent when `~/.agents/skills` already points to this repository's

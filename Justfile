@@ -139,19 +139,19 @@ sync-third-party-lock-dry-run:
 test:
     @{{python}} -m unittest discover -s tests -v
 
-# Compile Python helpers and tests to catch syntax errors.
+# Compile Python helpers, workflow tools, and tests to catch syntax errors.
 [group('quality')]
 lint:
-    @{{python}} -m compileall -q tools tests
+    @{{python}} -m compileall -q tools opencode/workflow-tools tests
 
 # Report formatter status.
 [group('quality')]
 format:
     @echo "No formatter is configured; Python code uses the standard library only."
 
-# Run the full non-mutating quality gate.
+# Run the source quality gate without inspecting global installations.
 [group('quality')]
-check: lint test validate validate-opencode verify
+check: lint test validate validate-opencode
 
 # Remove Python cache files.
 [group('quality')]
