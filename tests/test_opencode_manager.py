@@ -1,6 +1,8 @@
 import io
 import json
 import os
+import re
+import shutil
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -8,7 +10,7 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.opencode_manager import OpenCodeInstallService, main
+from tools.opencode_manager import COMMAND_PROMPT_CONTRACTS, OpenCodeInstallService, main
 
 
 SUPPORT_FILES = (
@@ -2483,6 +2485,167 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                         any("canonical workflow-helper permissions" in error for error in result.errors),
                         result.errors,
                     )
+
+    def test_checked_in_command_inventory_owners_and_static_contracts(self) -> None:
+        """Validate checked-in text; this does not assert runtime OpenCode behavior."""
+        project_root = Path(__file__).parents[1]
+        manifest = json.loads((project_root / "opencode/manifest.json").read_text(encoding="utf-8"))
+        expected_commands = (
+            "audit-technical-debt.md",
+            "convert-tapestry-plan.md",
+            "investigate-regression.md",
+            "review-implementation.md",
+            "review-plan.md",
+            "start-work.md",
+        )
+        expected_owners = {
+            "audit-technical-debt.md": "engineering-review-board",
+            "convert-tapestry-plan.md": "plan-orchestrator",
+            "investigate-regression.md": "engineering-review-board",
+            "review-implementation.md": "engineering-review-board",
+            "review-plan.md": "engineering-review-board",
+            "start-work.md": "plan-orchestrator",
+        }
+
+        self.assertEqual(len(manifest["agents"]), 23)
+        self.assertEqual(tuple(manifest["commands"]), expected_commands)
+        self.assertEqual(tuple(manifest["runtime_helpers"]), RUNTIME_HELPERS)
+        command_root = project_root / "opencode/commands"
+        self.assertEqual(tuple(sorted(path.name for path in command_root.iterdir())), expected_commands)
+        for name, owner in expected_owners.items():
+            parsed, errors = OpenCodeInstallService._parse_frontmatter(
+                "commands", name, (command_root / name).read_text(encoding="utf-8")
+            )
+            self.assertEqual(errors, [])
+            assert parsed is not None
+            self.assertEqual(parsed.fields["agent"], owner)
+            self.assertEqual(parsed.fields["subtask"], "false")
+
+    def test_checked_in_command_contract_validator_rejects_route_drift(self) -> None:
+        """Exercise only checked-in prompt contracts, not agent execution or UI behavior."""
+        project_root = Path(__file__).parents[1]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = root / "repo"
+            shutil.copytree(project_root / "opencode", repo / "opencode")
+            shutil.copytree(
+                project_root / "docs/implementation-plans",
+                repo / "docs/implementation-plans",
+            )
+
+            self.assertTrue(OpenCodeInstallService(repo, root / "config").validate().ok)
+
+            def remove_token(text: str, token: str) -> str:
+                pattern = re.escape(token).replace(r"\ ", r"\s+")
+                changed, count = re.subn(pattern, "contract removed", text, count=1)
+                self.assertEqual(count, 1, token)
+                return changed
+
+            for name, tokens in COMMAND_PROMPT_CONTRACTS.items():
+                command = repo / "opencode/commands" / name
+                original = command.read_text(encoding="utf-8")
+                for token in tokens:
+                    with self.subTest(command=name, token=token):
+                        command.write_text(remove_token(original, token), encoding="utf-8")
+                        result = OpenCodeInstallService(repo, root / "config").validate()
+                        self.assertTrue(
+                            any(f"{name}' prompt contract is incomplete" in error for error in result.errors),
+                            result.errors,
+                        )
+                command.write_text(original, encoding="utf-8")
+
+            agent_tokens = {
+                "engineering-lead.md": (
+                    "even when the request does not use plan vocabulary.",
+                    "route all durable-contract classification to `/start-work`.",
+                ),
+                "plan-orchestrator.md": (
+                    "Only a read-only explanation with no mutation is exempt from acquisition.",
+                    "Parse locators and read pointer, source, allocation, plan, worktree, and execution evidence only after complete provisional child-lock ownership.",
+                    "On uncertain outcomes or any mutation retain the lock;",
+                    "Before pointer persistence, require the repository-owned helper to verify a regular non-symlinked `.gitignore`",
+                    "For plan-only work, persist a pointer when needed, then release only after all mutation outcomes are known and no child can mutate;",
+                    "Default execution reconciles the pointer, worktree, plan checkboxes, and TODO state before each at-least-once step.",
+                    "Before every mutable phase, freshly reload the pointer, plan, and worktree evidence while holding the lock; never rely on stale evidence.",
+                    "or equivalent ordinary conversation",
+                ),
+            }
+            for name, tokens in agent_tokens.items():
+                agent = repo / "opencode/agents" / name
+                original = agent.read_text(encoding="utf-8")
+                for token in tokens:
+                    with self.subTest(agent=name, token=token):
+                        agent.write_text(remove_token(original, token), encoding="utf-8")
+                        result = OpenCodeInstallService(repo, root / "config").validate()
+                        self.assertTrue(
+                            any(f"agents: '{name}' prompt contract is incomplete" in error for error in result.errors),
+                            result.errors,
+                        )
+                agent.write_text(original, encoding="utf-8")
+
+            retained_routes = {
+                "commands/audit-technical-debt.md": {
+                    "required": ("Recommend top-level `/start-work`",),
+                    "forbidden": ("/prepare-work",),
+                    "sentinel": "Treat the argument as either repository-wide scope",
+                },
+                "commands/investigate-regression.md": {
+                    "required": ("return it to top-level `/start-work`.",),
+                    "forbidden": ("/revise-plan", "Planning Coordinator"),
+                    "sentinel": "Establish expected behavior, observed behavior",
+                },
+                "cleanup/weave-cleanup-checklist.md": {
+                    "required": (
+                        "top-level Plan Orchestrator for durable plan writes.",
+                        "treats advisory review as an execution gate.",
+                    ),
+                    "forbidden": ("/normalize-plan", "Planning Coordinator"),
+                    "sentinel": "Use this after native OpenCode agents and commands are installed. Keep legacy",
+                },
+            }
+            for relative_path, contract in retained_routes.items():
+                route = repo / "opencode" / relative_path
+                original = route.read_text(encoding="utf-8")
+                sentinel = contract["sentinel"]
+                self.assertIn(sentinel, original)
+                sentinel_paragraph = next(
+                    paragraph
+                    for paragraph in original.split("\n\n")
+                    if sentinel in paragraph
+                )
+                for forbidden in contract["forbidden"]:
+                    with self.subTest(route=relative_path, forbidden=forbidden):
+                        route.write_text(original + f"\n{forbidden}\n", encoding="utf-8")
+                        result = OpenCodeInstallService(repo, root / "config").validate()
+                        self.assertTrue(
+                            any("contains obsolete lifecycle routing" in error for error in result.errors),
+                            result.errors,
+                        )
+                        self.assertIn(sentinel_paragraph, route.read_text(encoding="utf-8"))
+                for required in contract["required"]:
+                    with self.subTest(route=relative_path, required=required):
+                        route.write_text(remove_token(original, required), encoding="utf-8")
+                        result = OpenCodeInstallService(repo, root / "config").validate()
+                        self.assertTrue(
+                            any("retained route" in error and "contract is incomplete" in error for error in result.errors),
+                            result.errors,
+                        )
+                        self.assertIn(sentinel_paragraph, route.read_text(encoding="utf-8"))
+                route.write_text(original, encoding="utf-8")
+
+            review = repo / "opencode/commands/review-plan.md"
+            review.write_text(
+                review.read_text(encoding="utf-8").replace(
+                    "agent: engineering-review-board",
+                    "agent: plan-orchestrator",
+                ),
+                encoding="utf-8",
+            )
+            result = OpenCodeInstallService(repo, root / "config").validate()
+            self.assertTrue(
+                any("review-plan.md' must use canonical primary owner" in error for error in result.errors),
+                result.errors,
+            )
 
 
 if __name__ == "__main__":

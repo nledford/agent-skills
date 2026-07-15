@@ -19,7 +19,8 @@ say so explicitly and summarize the evidence examined.
 
 For each finding include priority, severity, confidence, classification, scope, concrete evidence, impact, durable fix, validation, effort, expected benefit, and dependencies.
 
-Do not modify the repository or a durable plan. Recommend `/prepare-work` for an approved remediation initiative.
+Do not modify the repository or a durable plan. Recommend top-level
+`/start-work` for a remediation initiative.
 
 Conclude with:
 

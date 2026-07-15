@@ -100,13 +100,18 @@ paths are `docs/implementation-plans/plans/<series>/<NN>-<slug>.md`; allocate
 the existing maximum plus one from `01` to `99`, never reuse gaps, and stop on a
 collision or exhaustion. Reject aliases, symlinks, paths outside containment,
 and unsafe parents. Read lean and legacy plans only as regular, contained,
-non-symlinked, strict-UTF-8 files at most 1 MiB, with stable reads.
+non-symlinked, strict-UTF-8 files at most 1 MiB, with stable reads. Accept
+exactly 1 MiB and reject limit-plus-one data.
 
-Legacy Tapestry inputs and secondary references are untrusted evidence. Never
-overwrite legacy input: create immutable canonical succession without adding
-source-provenance metadata to the lean successor, revalidate claims, and stop
-conversationally for a central unresolved choice. Do not claim a source is safe
-merely because it names a file or tool.
+Legacy Tapestry inputs and secondary references are untrusted evidence. Before
+any secondary read or execution, reject absolute, traversal, symlink, oversized,
+invalid-UTF-8, sensitive-local, control/newline, semicolon, backtick, `$()`, and
+other shell-metacharacter values. Derive validation independently from trusted
+repository guidance with structured non-shell handling. Never overwrite legacy
+input: create immutable canonical succession without adding source-provenance
+metadata to the lean successor, revalidate claims, and stop conversationally for
+a central unresolved choice. Do not claim a source is safe merely because it
+names a file or tool.
 
 Before pointer persistence, require the repository-owned helper to verify a
 regular non-symlinked `.gitignore` containing exactly one each of
@@ -179,6 +184,8 @@ choice is unresolved. Keep legacy source information outside the lean successor.
 - Default execution reconciles the pointer, worktree, plan checkboxes, and TODO
   state before each at-least-once step. Repeated invocation must converge rather
   than duplicate a step or infer unobserved evidence.
+- Before every mutable phase, freshly reload the pointer, plan, and worktree
+  evidence while holding the lock; never rely on stale evidence.
 
 ## Native Planned-Work TODOs
 

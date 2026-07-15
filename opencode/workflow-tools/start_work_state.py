@@ -17,6 +17,7 @@ from typing import Callable, NoReturn, Sequence
 
 MAX_BYTES = 1_048_576
 MAX_POINTER_BYTES = 4_096
+MAX_UNTRUSTED_LOCATOR_BYTES = 4_096
 OWNER_NAME = "owner.json"
 LOCK_NAME = "lock"
 RESUME_NAME = "resume.json"
@@ -28,6 +29,18 @@ PLAN_PATH_RE = re.compile(
     r"(?P<series>[a-z][a-z0-9-]{1,19})/"
     r"(?P<sequence>0[1-9]|[1-9][0-9])-"
     r"(?P<slug>[a-z0-9]+(?:-[a-z0-9]+)*)\.md\Z"
+)
+UNTRUSTED_RELATIVE_PATH_RE = re.compile(
+    r"[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*\Z"
+)
+TAPESTRY_SOURCE_PATH_RE = re.compile(
+    r"\.weave/plans/(?:[A-Za-z0-9][A-Za-z0-9._-]*/)*"
+    r"[A-Za-z0-9][A-Za-z0-9._-]*\.md\Z"
+)
+SENSITIVE_LOCAL_SEGMENT_RE = re.compile(
+    r"(?:^|/)(?:\.git|\.start-work|\.env(?:\..*)?|\.ssh|\.aws|"
+    r"secret(?:s)?|credential(?:s)?|id_[A-Za-z0-9._-]+)(?:/|\Z)",
+    re.IGNORECASE,
 )
 
 
@@ -178,6 +191,60 @@ def _read_regular_bytes(path: Path, *, limit: int = MAX_BYTES) -> bytes:
     return data
 
 
+def _untrusted_relative_locator(locator: str | bytes, *, tapestry_source: bool = False) -> str:
+    """Normalize only a safe, contained relative locator without touching disk."""
+    if isinstance(locator, bytes):
+        if len(locator) > MAX_UNTRUSTED_LOCATOR_BYTES:
+            raise _error("untrusted locator exceeds the size limit")
+        try:
+            value = locator.decode("utf-8", "strict")
+        except UnicodeDecodeError as exc:
+            raise _error("untrusted locator is not strict UTF-8") from exc
+    elif isinstance(locator, str):
+        try:
+            encoded = locator.encode("utf-8", "strict")
+        except UnicodeEncodeError as exc:
+            raise _error("untrusted locator is not strict UTF-8") from exc
+        if len(encoded) > MAX_UNTRUSTED_LOCATOR_BYTES:
+            raise _error("untrusted locator exceeds the size limit")
+        value = locator
+    else:
+        raise _error("untrusted locator is invalid")
+    if (
+        not value
+        or value.startswith("/")
+        or "//" in value
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+        or not (TAPESTRY_SOURCE_PATH_RE if tapestry_source else UNTRUSTED_RELATIVE_PATH_RE).fullmatch(value)
+        or SENSITIVE_LOCAL_SEGMENT_RE.search(value)
+    ):
+        raise _error("untrusted locator is unsafe")
+    parts = PurePosixPath(value).parts
+    if any(part in {".", ".."} for part in parts):
+        raise _error("untrusted locator is unsafe")
+    return value
+
+
+def _untrusted_regular_bytes(
+    root: Path,
+    locator: str | bytes,
+    *,
+    tapestry_source: bool = False,
+) -> bytes:
+    relative = _untrusted_relative_locator(locator, tapestry_source=tapestry_source)
+    parts = PurePosixPath(relative).parts
+    parent = root
+    for part in parts[:-1]:
+        parent = parent / part
+        _directory(parent)
+    data = _read_regular_bytes(parent / parts[-1])
+    parent = root
+    for part in parts[:-1]:
+        parent = parent / part
+        _directory(parent)
+    return data
+
+
 def _canonical_plan_path(plan_path: str) -> str:
     if not isinstance(plan_path, str) or not PLAN_PATH_RE.fullmatch(plan_path):
         raise _error("plan path is outside the canonical plan namespace")
@@ -281,6 +348,35 @@ def _matching_owner(root: Path, token: str) -> tuple[Path, OwnerMetadata]:
     if not secrets.compare_digest(owner.owner_token, token):
         raise _error("owner token does not match the held lock")
     return lock, owner
+
+
+def _owned_workspace(repo_root: Path, owner_token: str) -> Path:
+    """Bind untrusted reads to an already-acquired matching owner first."""
+    root = _repo_root(repo_root)
+    _matching_owner(root, owner_token)
+    return root
+
+
+def read_tapestry_source(repo_root: Path, owner_token: str, locator: str) -> str:
+    """Read a preserved legacy source only after matching lock ownership exists."""
+    raw = _untrusted_regular_bytes(
+        _owned_workspace(repo_root, owner_token),
+        locator,
+        tapestry_source=True,
+    )
+    try:
+        return raw.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise _error("untrusted source is not strict UTF-8") from exc
+
+
+def read_secondary_reference(repo_root: Path, owner_token: str, reference: str | bytes) -> str:
+    """Read a validated secondary reference without a shell or execution path."""
+    raw = _untrusted_regular_bytes(_owned_workspace(repo_root, owner_token), reference)
+    try:
+        return raw.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise _error("secondary reference is not strict UTF-8") from exc
 
 
 def finalize_owner(repo_root: Path, owner_token: str, plan_path: str) -> OwnerMetadata:

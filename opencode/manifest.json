@@ -25,17 +25,12 @@
     "testing-critic.md"
   ],
   "commands": [
-    "approve-plan.md",
     "audit-technical-debt.md",
     "convert-tapestry-plan.md",
-    "execute-plan.md",
     "investigate-regression.md",
-    "normalize-plan.md",
-    "prepare-work.md",
-    "record-plan-review.md",
     "review-implementation.md",
     "review-plan.md",
-    "revise-plan.md"
+    "start-work.md"
   ],
   "support_files": [
     "cleanup/weave-cleanup-checklist.md",

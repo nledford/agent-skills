@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 
 MODULE_PATH = Path(__file__).parents[1] / "opencode/workflow-tools/start_work_state.py"
@@ -100,6 +101,173 @@ class StartWorkStateTests(unittest.TestCase):
             self.assertFalse(process.is_alive())
             self.assertEqual(process.exitcode, 0)
         self.assertEqual(sorted(observed), ["lost", "won"])
+
+    def test_acquire_does_not_read_pointer_or_plan_before_returning_complete_lock(self) -> None:
+        state_dir = self.root / ".start-work"
+        state_dir.mkdir()
+        (state_dir / "resume.json").write_bytes(b"synthetic-sensitive-looking-data")
+        reads: list[Path] = []
+        original_read = state._read_regular_bytes
+
+        def observe_read(path: Path, *, limit: int = state.MAX_BYTES) -> bytes:
+            reads.append(path)
+            return original_read(path, limit=limit)
+
+        with patch.object(state, "_read_regular_bytes", observe_read):
+            owner = self.acquire()
+
+        self.assertEqual(reads, [])
+        self.assertEqual(state._read_owner(state_dir / "lock"), owner)
+        self.assertEqual(owner.plan_path, None)
+
+    def test_tapestry_source_requires_matching_owner_before_any_source_read(self) -> None:
+        source = self.root / ".weave/plans/source.md"
+        source.parent.mkdir(parents=True)
+        original = b"# legacy\nsynthetic-sensitive-looking-data\n"
+        source.write_bytes(original)
+        source_reads: list[Path] = []
+        original_read = state._read_regular_bytes
+
+        def observe_read(path: Path, *, limit: int = state.MAX_BYTES) -> bytes:
+            if path == source:
+                source_reads.append(path)
+            return original_read(path, limit=limit)
+
+        with patch.object(state, "_read_regular_bytes", observe_read):
+            with self.assertRaises(state.StateError):
+                state.read_tapestry_source(self.root, TOKEN, ".weave/plans/source.md")
+        self.assertEqual(source_reads, [])
+
+        self.acquire()
+        self.assertEqual(
+            state.read_tapestry_source(self.root, TOKEN, ".weave/plans/source.md"),
+            original.decode("utf-8"),
+        )
+        self.assertEqual(source.read_bytes(), original)
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        self.assertEqual(
+            state.read_tapestry_source(self.root, TOKEN, ".weave/plans/source.md"),
+            original.decode("utf-8"),
+        )
+        with self.assertRaises(state.StateError):
+            state.read_tapestry_source(self.root, OTHER_TOKEN, ".weave/plans/source.md")
+
+    def test_tapestry_source_rejects_unsafe_paths_and_content(self) -> None:
+        source_root = self.root / ".weave/plans"
+        source_root.mkdir(parents=True)
+        exact = source_root / "exact.md"
+        exact.write_bytes(b"a" * state.MAX_BYTES)
+        too_large = source_root / "too-large.md"
+        too_large.write_bytes(b"a" * (state.MAX_BYTES + 1))
+        invalid = source_root / "invalid.md"
+        invalid.write_bytes(b"\xff")
+        directory = source_root / "directory.md"
+        directory.mkdir()
+        special = source_root / "special.md"
+        os.mkfifo(special)
+        outside = self.root.parent / "outside-source.md"
+        outside.write_text("outside", encoding="utf-8")
+        link = source_root / "link.md"
+        link.symlink_to(outside)
+        repository_local = self.root / "repository-local.md"
+        repository_local.write_text("local", encoding="utf-8")
+        non_markdown = source_root / "not-markdown.txt"
+        non_markdown.write_text("not markdown", encoding="utf-8")
+        self.acquire()
+
+        self.assertEqual(
+            len(state.read_tapestry_source(self.root, TOKEN, ".weave/plans/exact.md")),
+            state.MAX_BYTES,
+        )
+        source_reads: list[Path] = []
+        original_read = state._read_regular_bytes
+
+        def observe_read(path: Path, *, limit: int = state.MAX_BYTES) -> bytes:
+            if path in {repository_local, non_markdown}:
+                source_reads.append(path)
+            return original_read(path, limit=limit)
+
+        with patch.object(state, "_read_regular_bytes", observe_read):
+            for locator in ("repository-local.md", ".weave/plans/not-markdown.txt"):
+                with self.subTest(locator=locator):
+                    with self.assertRaises(state.StateError):
+                        state.read_tapestry_source(self.root, TOKEN, locator)
+        self.assertEqual(source_reads, [])
+        for locator in (
+            "/outside-source.md",
+            "../outside-source.md",
+            ".weave/plans/too-large.md",
+            ".weave/plans/invalid.md",
+            ".weave/plans/directory.md",
+            ".weave/plans/special.md",
+            ".weave/plans/link.md",
+        ):
+            with self.subTest(locator=locator):
+                with self.assertRaises(state.StateError):
+                    state.read_tapestry_source(self.root, TOKEN, locator)
+
+    def test_secondary_references_reject_unsafe_values_without_reads_or_execution(self) -> None:
+        references = self.root / "references"
+        references.mkdir()
+        valid = references / "valid.txt"
+        valid.write_text("valid", encoding="utf-8")
+        large = references / "large.txt"
+        large.write_bytes(b"x" * (state.MAX_BYTES + 1))
+        invalid_content = references / "invalid-content.txt"
+        invalid_content.write_bytes(b"\xff")
+        outside = self.root.parent / "outside-reference.txt"
+        outside.write_text("outside", encoding="utf-8")
+        link = references / "link.txt"
+        link.symlink_to(outside)
+        self.acquire()
+        lock, owner = state._matching_owner(state._repo_root(self.root), TOKEN)
+        secondary_reads: list[bytes] = []
+        executions: list[str] = []
+        original_os_read = state.os.read
+
+        def observe_os_read(descriptor: int, size: int) -> bytes:
+            secondary_reads.append(original_os_read(descriptor, size))
+            return secondary_reads[-1]
+
+        def fail_execution(command: str) -> int:
+            executions.append(command)
+            raise AssertionError("secondary references must not execute commands")
+
+        rejected: tuple[str | bytes, ...] = (
+            "/references/valid.txt",
+            "../outside-reference.txt",
+            "references/link.txt",
+            "references/large.txt",
+            b"references/\xff.txt",
+            ".env",
+            ".ssh/id_fake",
+            "references/control\n.txt",
+            "references/semicolon;.txt",
+            "references/backtick`.txt",
+            "references/$(substitution).txt",
+            "references/pipe|.txt",
+        )
+        with (
+            patch.object(state, "_matching_owner", return_value=(lock, owner)) as matching_owner,
+            patch.object(state.os, "read", side_effect=observe_os_read),
+            patch.object(state.os, "system", side_effect=fail_execution),
+        ):
+            for reference in rejected:
+                with self.subTest(reference=repr(reference)):
+                    secondary_reads.clear()
+                    with self.assertRaises(state.StateError):
+                        state.read_secondary_reference(self.root, TOKEN, reference)
+                    self.assertEqual(secondary_reads, [])
+            secondary_reads.clear()
+            with self.assertRaises(state.StateError):
+                state.read_secondary_reference(self.root, TOKEN, "references/invalid-content.txt")
+            self.assertTrue(secondary_reads)
+            self.assertEqual(
+                state.read_secondary_reference(self.root, TOKEN, "references/valid.txt"),
+                "valid",
+            )
+            self.assertTrue(matching_owner.called)
+        self.assertEqual(executions, [])
 
     def test_crash_residue_and_malformed_owner_remain_held(self) -> None:
         state_dir = self.root / ".start-work"

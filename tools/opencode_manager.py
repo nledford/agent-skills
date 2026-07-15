@@ -47,6 +47,69 @@ PLAN_REDIRECTION_DENY_RULE = "*docs/implementation-plans*"
 STATE_PATH_EDIT_RULE = ".start-work/**"
 STATE_REDIRECTION_DENY_RULE = "*.start-work*"
 RUNTIME_HELPERS = ("workflow-tools/start_work_state.py",)
+CANONICAL_COMMAND_OWNERS = {
+    "audit-technical-debt.md": "engineering-review-board",
+    "convert-tapestry-plan.md": "plan-orchestrator",
+    "investigate-regression.md": "engineering-review-board",
+    "review-implementation.md": "engineering-review-board",
+    "review-plan.md": "engineering-review-board",
+    "start-work.md": "plan-orchestrator",
+}
+CANONICAL_COMMANDS = tuple(sorted(CANONICAL_COMMAND_OWNERS))
+COMMAND_PROMPT_CONTRACTS = {
+    "start-work.md": (
+        "Handle `/start-work [<request-or-plan-path>] [instructions]`",
+        "obtain normal runtime approval and acquire complete provisional child-lock ownership first",
+        'python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" acquire --repo-root .',
+        "The acquisition operation and `--repo-root .` are allowlisted literals.",
+        "Do not read a locator, pointer, source, plan, allocation, or repository execution state before that ownership is complete.",
+        "Never put human input into a helper-launch shell string",
+        "Do not use concatenation, redirection, pipes, substitution, or an extra shell operation.",
+        "Display the resolved canonical path and its checked and unchecked numbered TODOs",
+        "explicit human confirmation before any plan, sidebar, delegation, or implementation mutation.",
+        "For a new request, allocate a closed lean plan",
+        "execute by default. Plan-only behavior requires an explicit human request.",
+        "For an explicit lean path, validate and reconcile the plan",
+        "For an immutable legacy canonical plan, preserve the source, allocate a max-plus-one lean successor",
+        "For conversational updates to an identified lean plan",
+        "accept exactly 1 MiB and reject limit-plus-one data.",
+    ),
+    "convert-tapestry-plan.md": (
+        "This command is plan-only by default. Execute only when the human explicitly asks to execute.",
+        "Acquire complete provisional child-lock ownership before reading the human source locator",
+        "Obtain normal runtime approval and use only this exact isolated allowlisted acquisition literal:",
+        'python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" acquire --repo-root .',
+        "The operation and `--repo-root .` are literals;",
+        "no human locator, request, instruction, repository string, or alternate target may enter its shell string or argv.",
+        "Do not use concatenation, redirection, pipes, substitution, or an extra shell operation.",
+        "Preserve the source unchanged",
+        "create only a metadata-free lean destination",
+        "route any follow-up to `/start-work <destination>`.",
+    ),
+    "review-plan.md": (
+        "optional, read-only advice only",
+        "no readiness, approval, sign-off, persistence, or execution gate.",
+        "Route any follow-up to top-level `/start-work <path>`.",
+    ),
+    "review-implementation.md": (
+        "optional, read-only advice only",
+        "no readiness, approval, sign-off, persistence, or execution gate.",
+        "Route any follow-up to top-level `/start-work <path>`.",
+    ),
+}
+RETAINED_ROUTE_CONTRACTS = {
+    "commands/audit-technical-debt.md": ("Recommend top-level `/start-work`",),
+    "commands/investigate-regression.md": ("return it to top-level `/start-work`.",),
+    "cleanup/weave-cleanup-checklist.md": (
+        "top-level Plan Orchestrator for durable plan writes.",
+        "treats advisory review as an execution gate.",
+    ),
+}
+RETAINED_ROUTE_FORBIDDEN_TOKENS = {
+    "commands/audit-technical-debt.md": ("/prepare-work",),
+    "commands/investigate-regression.md": ("/revise-plan", "Planning Coordinator"),
+    "cleanup/weave-cleanup-checklist.md": ("/normalize-plan", "Planning Coordinator"),
+}
 _PLAN_ORCHESTRATOR_BASH_RULES = (
     ("*", "deny"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" acquire --repo-root .', "ask"),
@@ -1199,6 +1262,11 @@ class OpenCodeInstallService:
         }
         all_agents = set(agent_metadata)
         errors: list[str] = []
+        uses_canonical_command_namespace = bool(
+            set(inventory.commands) & set(CANONICAL_COMMANDS)
+        )
+        if uses_canonical_command_namespace and inventory.commands != CANONICAL_COMMANDS:
+            errors.append("OpenCode manifest command inventory is not canonical")
         for name in inventory.commands:
             try:
                 text = (self.sources["commands"] / name).read_text(encoding="utf-8")
@@ -1216,6 +1284,9 @@ class OpenCodeInstallService:
                 errors.append(
                     f"commands: '{name}' must reference a manifested primary agent"
                 )
+            expected_owner = CANONICAL_COMMAND_OWNERS.get(name)
+            if expected_owner is not None and agent_id != expected_owner:
+                errors.append(f"commands: '{name}' must use canonical primary owner")
         return errors
 
     def _validate_prompt_contracts(self, inventory: DefinitionInventory) -> list[str]:
@@ -1228,6 +1299,8 @@ class OpenCodeInstallService:
             "engineering-lead.md": (
                 "Never write durable plans or `.start-work/**` state",
                 "top-level `/start-work`",
+                "even when the request does not use plan vocabulary.",
+                "route all durable-contract classification to `/start-work`.",
                 "unplanned-session TODOs",
             ),
             "engineering-review-board.md": (
@@ -1252,11 +1325,40 @@ class OpenCodeInstallService:
             except (OSError, UnicodeError):
                 errors.append(f"agents: '{name}' prompt contract is unreadable")
                 continue
-            if not all(token in prompt for token in required):
+            if not all(token in " ".join(prompt.split()) for token in required):
                 errors.append(f"agents: '{name}' prompt contract is incomplete")
                 continue
             if name == "plan-orchestrator.md":
                 errors.extend(self._validate_plan_orchestrator_prompt_contract(name, prompt))
+        errors.extend(self._validate_command_prompt_contracts(inventory))
+        return errors
+
+    def _validate_command_prompt_contracts(self, inventory: DefinitionInventory) -> list[str]:
+        """Check checked-in command text only; runtime behavior is not inferred."""
+        if not (set(inventory.commands) & set(CANONICAL_COMMANDS)):
+            return []
+        errors: list[str] = []
+        for name, required in COMMAND_PROMPT_CONTRACTS.items():
+            try:
+                prompt = (self.sources["commands"] / name).read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                errors.append(f"commands: '{name}' prompt contract is unreadable")
+                continue
+            normalized = " ".join(prompt.split())
+            if not all(token in normalized for token in required):
+                errors.append(f"commands: '{name}' prompt contract is incomplete")
+        for relative_path, required in RETAINED_ROUTE_CONTRACTS.items():
+            try:
+                prompt = (self.definition_root / relative_path).read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                errors.append(f"OpenCode retained route '{relative_path}' is unreadable")
+                continue
+            normalized = " ".join(prompt.split())
+            if not all(token in normalized for token in required):
+                errors.append(f"OpenCode retained route '{relative_path}' contract is incomplete")
+            forbidden = RETAINED_ROUTE_FORBIDDEN_TOKENS.get(relative_path, ())
+            if any(token in prompt for token in forbidden):
+                errors.append(f"OpenCode retained route '{relative_path}' contains obsolete lifecycle routing")
         return errors
 
     @staticmethod
@@ -1278,6 +1380,14 @@ class OpenCodeInstallService:
             "Do not clear TODOs on failure, uncertainty, or partial reconciliation.",
             "Your self-check is not independent review, ERB evidence, approval, readiness, or sign-off.",
             "ERB output is optional independent advisory evidence, not a prerequisite or lifecycle authority.",
+            "or equivalent ordinary conversation",
+            "Only a read-only explanation with no mutation is exempt from acquisition.",
+            "Parse locators and read pointer, source, allocation, plan, worktree, and execution evidence only after complete provisional child-lock ownership.",
+            "On uncertain outcomes or any mutation retain the lock;",
+            "Before pointer persistence, require the repository-owned helper to verify a regular non-symlinked `.gitignore`",
+            "For plan-only work, persist a pointer when needed, then release only after all mutation outcomes are known and no child can mutate;",
+            "Default execution reconciles the pointer, worktree, plan checkboxes, and TODO state before each at-least-once step.",
+            "Before every mutable phase, freshly reload the pointer, plan, and worktree evidence while holding the lock; never rely on stale evidence.",
         )
         normalized = " ".join(prompt.split())
         if LEAN_PLAN_TEMPLATE not in prompt or not all(token in normalized for token in required):

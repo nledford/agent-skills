@@ -12,7 +12,8 @@ Establish expected behavior, observed behavior, reproduction evidence, last-know
 
 Prioritize whether the behavior is a genuine regression, introducing change, root cause, blast radius, smallest durable repair, required regression coverage, and remaining uncertainty. Distinguish confirmed root cause, probable root cause, and competing hypotheses; do not treat correlation as causation.
 
-Do not modify the repository or a durable plan. If the remedy needs a material plan change, return it for `/revise-plan` through the Engineering Lead and Planning Coordinator.
+Do not modify the repository or a durable plan. If the remedy needs durable
+planned work, return it to top-level `/start-work`.
 
 Return:
 

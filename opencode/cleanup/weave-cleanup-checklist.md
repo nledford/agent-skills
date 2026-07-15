@@ -15,8 +15,8 @@ Tapestry references that preserve provenance, conversion, or cleanup history.
 
 ## Remove Only Confirmed Stale Material
 
-- Do not remove source Tapestry plans before `/convert-tapestry-plan` or
-  `/normalize-plan` has preserved provenance and the destination is verified.
+- Do not remove source Tapestry plans before `/convert-tapestry-plan` has
+  preserved the source and the lean destination is verified.
 - Do not remove historical logs, snapshots, or records solely for terminology.
 - Remove a reference only when it incorrectly states that Weave is installed or
   required by the current workflow.
@@ -25,8 +25,10 @@ Tapestry references that preserve provenance, conversion, or cleanup history.
 
 ## Verify
 
-- Confirm no command bypasses the Planning Coordinator for durable plan writes.
-- Confirm no command asks the ERB to edit or executes an unapproved plan.
+- Confirm no command bypasses the top-level Plan Orchestrator for durable plan
+  writes.
+- Confirm no command asks the ERB to edit or treats advisory review as an
+  execution gate.
 - Confirm native agents use valid IDs and no prompt claims delegation or
   persistence without an observed Task or artifact.
 - Report remaining migration/provenance references, skipped checks, and residual
