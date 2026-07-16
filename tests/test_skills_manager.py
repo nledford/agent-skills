@@ -30,6 +30,17 @@ def create_repo(root: Path) -> Path:
     return repo
 
 
+def create_configured_global_install(
+    root: Path,
+) -> tuple[Path, Path, GlobalInstallService]:
+    repo = create_repo(root)
+    write_skill(repo / "skills", "first-party")
+    global_link = root / ".agents" / "skills"
+    global_link.parent.mkdir()
+    os.symlink(repo / "skills", global_link)
+    return repo, global_link, GlobalInstallService(repo, global_link)
+
+
 def write_taxonomy(
     repo: Path,
     names: list[str],
@@ -692,6 +703,143 @@ class GlobalInstallServiceTests(unittest.TestCase):
 
             self.assertTrue(result.ok)
             self.assertIn("Global skills symlink is configured", result.messages[0])
+
+    def test_uninstall_removes_only_owned_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, global_link, service = create_configured_global_install(Path(temp_dir))
+
+            result = service.uninstall()
+
+            self.assertTrue(result.ok)
+            self.assertFalse(global_link.exists())
+            self.assertFalse(global_link.is_symlink())
+
+    def test_uninstall_dry_run_preserves_owned_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, global_link, service = create_configured_global_install(Path(temp_dir))
+
+            result = service.uninstall(dry_run=True)
+
+            self.assertTrue(result.ok)
+            self.assertTrue(global_link.is_symlink())
+            self.assertIn("Would remove symlink", result.messages[0])
+
+    def test_uninstall_is_idempotent_when_global_path_is_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_repo(root)
+            service = GlobalInstallService(repo, root / ".agents" / "skills")
+
+            result = service.uninstall()
+
+            self.assertTrue(result.ok)
+            self.assertIn("No global skills path found", result.messages[0])
+
+    def test_uninstall_refuses_foreign_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_repo(root)
+            foreign = root / "foreign-skills"
+            foreign.mkdir()
+            global_link = root / ".agents" / "skills"
+            global_link.parent.mkdir()
+            os.symlink(foreign, global_link)
+
+            result = GlobalInstallService(repo, global_link).uninstall()
+
+            self.assertFalse(result.ok)
+            self.assertTrue(global_link.is_symlink())
+            self.assertIn("refusing to remove", result.errors[0])
+
+    def test_uninstall_refuses_non_symlink_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_repo(root)
+            global_link = root / ".agents" / "skills"
+            global_link.mkdir(parents=True)
+
+            result = GlobalInstallService(repo, global_link).uninstall()
+
+            self.assertFalse(result.ok)
+            self.assertTrue(global_link.is_dir())
+            self.assertIn("is not a symlink", result.errors[0])
+
+    def test_sync_lockfile_copies_repository_lockfile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo, global_link, service = create_configured_global_install(
+                Path(temp_dir)
+            )
+            repository_lockfile = repo / ".skill-lock.json"
+            repository_lockfile.write_text(
+                json.dumps({"version": 3, "skills": {}}) + "\n",
+                encoding="utf-8",
+            )
+            global_lockfile = global_link.parent / ".skill-lock.json"
+
+            result = service.sync_lockfile()
+
+            self.assertTrue(result.ok)
+            self.assertEqual(
+                repository_lockfile.read_bytes(),
+                global_lockfile.read_bytes(),
+            )
+
+    def test_sync_lockfile_dry_run_does_not_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo, global_link, service = create_configured_global_install(
+                Path(temp_dir)
+            )
+            (repo / ".skill-lock.json").write_text(
+                json.dumps({"version": 3, "skills": {}}) + "\n",
+                encoding="utf-8",
+            )
+            global_lockfile = global_link.parent / ".skill-lock.json"
+
+            result = service.sync_lockfile(dry_run=True)
+
+            self.assertTrue(result.ok)
+            self.assertFalse(global_lockfile.exists())
+            self.assertIn("Would copy", result.messages[0])
+
+    def test_sync_lockfile_is_idempotent_when_copy_matches(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo, global_link, service = create_configured_global_install(
+                Path(temp_dir)
+            )
+            content = json.dumps({"version": 3, "skills": {}}) + "\n"
+            (repo / ".skill-lock.json").write_text(content, encoding="utf-8")
+            global_lockfile = global_link.parent / ".skill-lock.json"
+            global_lockfile.write_text(content, encoding="utf-8")
+
+            result = service.sync_lockfile()
+
+            self.assertTrue(result.ok)
+            self.assertIn("already matches", result.messages[0])
+
+    def test_sync_lockfile_requires_repository_lockfile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, _, service = create_configured_global_install(Path(temp_dir))
+
+            result = service.sync_lockfile()
+
+            self.assertFalse(result.ok)
+            self.assertIn("Missing repository lockfile", result.errors[0])
+
+    def test_sync_lockfile_requires_verified_global_install(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_repo(root)
+            (repo / ".skill-lock.json").write_text(
+                json.dumps({"version": 3, "skills": {}}) + "\n",
+                encoding="utf-8",
+            )
+            global_link = root / ".agents" / "skills"
+
+            result = GlobalInstallService(repo, global_link).sync_lockfile()
+
+            self.assertFalse(result.ok)
+            self.assertFalse((global_link.parent / ".skill-lock.json").exists())
+            self.assertIn("does not exist", result.errors[0])
 
 
 if __name__ == "__main__":
