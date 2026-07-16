@@ -390,7 +390,7 @@ class StartWorkStateTests(unittest.TestCase):
                 child_can_mutate=False,
             )
         state.register_plan_contracts(self.root, TOKEN)
-        pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
+        state.write_resume_pointer(self.root, TOKEN, PLAN)
         path = self.root / PLAN
         path.write_text(plan_text(todo_marks=("x",)), encoding="utf-8")
         pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
@@ -512,6 +512,229 @@ class StartWorkStateTests(unittest.TestCase):
         state.finalize_owner(self.root, TOKEN, third)
         registered = state.register_plan_contracts(self.root, TOKEN)
         self.assertEqual(tuple(item.plan_path for item in registered), (third,))
+
+    def test_plan_replacement_registers_two_successors_without_deleting_source(self) -> None:
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        source_contract = state.register_plan_contracts(self.root, TOKEN)[0]
+        state.release_final(
+            self.root,
+            TOKEN,
+            completed_execution=False,
+            completed_plan_only=True,
+            outcomes_known=True,
+            child_can_mutate=False,
+        )
+        successors = (
+            ".erb/plans/state/01-foundation.md",
+            ".erb/plans/state/02-delivery.md",
+        )
+        for plan_path, title in zip(successors, ("Foundation", "Delivery")):
+            path = self.root / plan_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(plan_text(title=title), encoding="utf-8")
+
+        self.acquire()
+        for plan_path in successors:
+            state.finalize_owner(self.root, TOKEN, plan_path)
+
+        registered = state.register_plan_replacement(self.root, TOKEN, PLAN)
+        retried = state.register_plan_replacement(self.root, TOKEN, PLAN)
+
+        self.assertEqual(
+            tuple(contract.plan_path for contract in registered), successors
+        )
+        self.assertEqual(retried, registered)
+        self.assertTrue((self.root / PLAN).is_file())
+        resume_state = state._read_resume_state(state._repo_root(self.root))
+        self.assertEqual(
+            tuple(contract.plan_path for contract in resume_state.plans),
+            (source_contract.plan_path, *successors),
+        )
+        code, output, errors = self.invoke_cli(
+            "register-replacement",
+            "--repo-root",
+            ".",
+            "--owner-token",
+            TOKEN,
+            "--source-plan-path",
+            PLAN,
+        )
+        self.assertEqual((code, errors), (0, ""))
+        self.assertEqual(
+            tuple(plan["plan_path"] for plan in json.loads(output)["plans"]),
+            successors,
+        )
+
+        (self.root / PLAN).unlink()
+        state.release_final(
+            self.root,
+            TOKEN,
+            completed_execution=False,
+            completed_plan_only=True,
+            outcomes_known=True,
+            child_can_mutate=False,
+        )
+        self.assertFalse((self.root / ".start-work/lock").exists())
+
+    def test_plan_replacement_requires_two_successors_and_registered_source(self) -> None:
+        successor = ".erb/plans/successor.md"
+        (self.root / successor).write_text(plan_text(title="Successor"), encoding="utf-8")
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, successor)
+
+        with self.assertRaisesRegex(state.StateError, "two successor"):
+            state.register_plan_replacement(self.root, TOKEN, PLAN)
+
+        state.recover_stale_lock(self.root, prior_human_confirmation=True)
+        successors = (
+            ".erb/plans/state/01-foundation.md",
+            ".erb/plans/state/02-delivery.md",
+        )
+        for plan_path in successors:
+            path = self.root / plan_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(plan_text(), encoding="utf-8")
+        self.acquire()
+        for plan_path in successors:
+            state.finalize_owner(self.root, TOKEN, plan_path)
+
+        with self.assertRaisesRegex(state.StateError, "not registered") as raised:
+            state.register_plan_replacement(self.root, TOKEN, PLAN)
+        self.assertEqual(raised.exception.code, state.ErrorCode.PLAN_UNREGISTERED)
+        self.assertTrue((self.root / PLAN).is_file())
+
+    def test_plan_replacement_rejects_source_as_successor(self) -> None:
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        state.register_plan_contracts(self.root, TOKEN)
+        state.release_final(
+            self.root,
+            TOKEN,
+            completed_execution=False,
+            completed_plan_only=True,
+            outcomes_known=True,
+            child_can_mutate=False,
+        )
+        other = ".erb/plans/other.md"
+        (self.root / other).write_text(plan_text(title="Other"), encoding="utf-8")
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        state.finalize_owner(self.root, TOKEN, other)
+
+        with self.assertRaisesRegex(state.StateError, "distinct"):
+            state.register_plan_replacement(self.root, TOKEN, PLAN)
+
+        self.assertTrue((self.root / PLAN).is_file())
+
+    def test_plan_replacement_rejects_changed_or_executed_source(self) -> None:
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        state.register_plan_contracts(self.root, TOKEN)
+        state.release_final(
+            self.root,
+            TOKEN,
+            completed_execution=False,
+            completed_plan_only=True,
+            outcomes_known=True,
+            child_can_mutate=False,
+        )
+        successors = (
+            ".erb/plans/state/01-foundation.md",
+            ".erb/plans/state/02-delivery.md",
+        )
+        for plan_path in successors:
+            path = self.root / plan_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(plan_text(), encoding="utf-8")
+        self.acquire()
+        for plan_path in successors:
+            state.finalize_owner(self.root, TOKEN, plan_path)
+
+        for changed_source in (
+            plan_text(title="Changed"),
+            plan_text(todo_marks=("x",)),
+        ):
+            with self.subTest(source=changed_source.splitlines()[0]):
+                (self.root / PLAN).write_text(changed_source, encoding="utf-8")
+                with self.assertRaises(state.StateError) as raised:
+                    state.register_plan_replacement(self.root, TOKEN, PLAN)
+                self.assertEqual(
+                    raised.exception.code, state.ErrorCode.PLAN_CONTRACT_DRIFT
+                )
+                self.assertTrue((self.root / PLAN).is_file())
+
+    def test_plan_replacement_rejects_active_execution(self) -> None:
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        state.register_plan_contracts(self.root, TOKEN)
+        state.write_resume_pointer(self.root, TOKEN, PLAN)
+        state.recover_stale_lock(self.root, prior_human_confirmation=True)
+        successors = (
+            ".erb/plans/state/01-foundation.md",
+            ".erb/plans/state/02-delivery.md",
+        )
+        for plan_path in successors:
+            path = self.root / plan_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(plan_text(), encoding="utf-8")
+        self.acquire()
+        for plan_path in successors:
+            state.finalize_owner(self.root, TOKEN, plan_path)
+
+        with self.assertRaises(state.StateError) as raised:
+            state.register_plan_replacement(self.root, TOKEN, PLAN)
+
+        self.assertEqual(raised.exception.code, state.ErrorCode.ACTIVE_PLAN_CONFLICT)
+        self.assertTrue((self.root / PLAN).is_file())
+
+    def test_plan_replacement_rejects_completed_source(self) -> None:
+        self.acquire()
+        state.finalize_owner(self.root, TOKEN, PLAN)
+        state.register_plan_contracts(self.root, TOKEN)
+        state.write_resume_pointer(self.root, TOKEN, PLAN)
+        (self.root / PLAN).write_text(
+            plan_text(todo_marks=("x",)),
+            encoding="utf-8",
+        )
+        state.write_resume_pointer(self.root, TOKEN, PLAN)
+        (self.root / PLAN).write_text(
+            plan_text(todo_marks=("x",), verification_marks=("x",)),
+            encoding="utf-8",
+        )
+        pointer = state.write_resume_pointer(self.root, TOKEN, PLAN)
+        state.clear_resume_pointer(
+            self.root,
+            TOKEN,
+            PLAN,
+            pointer.contract_sha256,
+            completed=True,
+        )
+        state.release_final(
+            self.root,
+            TOKEN,
+            completed_execution=True,
+            completed_plan_only=False,
+            outcomes_known=True,
+            child_can_mutate=False,
+        )
+        successors = (
+            ".erb/plans/state/01-foundation.md",
+            ".erb/plans/state/02-delivery.md",
+        )
+        for plan_path in successors:
+            path = self.root / plan_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(plan_text(), encoding="utf-8")
+        self.acquire()
+        for plan_path in successors:
+            state.finalize_owner(self.root, TOKEN, plan_path)
+
+        with self.assertRaises(state.StateError) as raised:
+            state.register_plan_replacement(self.root, TOKEN, PLAN)
+
+        self.assertEqual(raised.exception.code, state.ErrorCode.PLAN_CONTRACT_DRIFT)
+        self.assertTrue((self.root / PLAN).is_file())
 
     def test_resume_round_trip_clear_and_owner_requirement(self) -> None:
         self.acquire()
@@ -752,6 +975,27 @@ class StartWorkStateTests(unittest.TestCase):
         self.assertEqual(json.loads(errors), {"error": "lock-held"})
         self.assertNotIn(TOKEN, errors)
         self.assertNotIn(str(self.root), errors)
+
+    def test_register_replacement_cli_rejects_hostile_source_without_reflection(self) -> None:
+        code, output, errors = self.invoke_cli("acquire", "--repo-root", ".")
+        self.assertEqual((code, errors), (0, ""))
+        token = json.loads(output)["owner_token"]
+        hostile_path = "../../private/secret;$(id).md"
+
+        code, output, errors = self.invoke_cli(
+            "register-replacement",
+            "--repo-root",
+            ".",
+            "--owner-token",
+            token,
+            "--source-plan-path",
+            hostile_path,
+        )
+
+        self.assertEqual((code, output), (1, ""))
+        self.assertEqual(json.loads(errors), {"error": "operation-invalid"})
+        self.assertNotIn(hostile_path, errors)
+        self.assertNotIn(token, errors)
 
     def test_begin_execution_releases_its_lock_after_unregistered_plan_failure(self) -> None:
         code, output, errors = self.invoke_cli("acquire", "--repo-root", ".")

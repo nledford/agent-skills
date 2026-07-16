@@ -859,6 +859,78 @@ def register_plan_contracts(
     return contracts
 
 
+def register_plan_replacement(
+    repo_root: Path, owner_token: str, source_plan_path: str
+) -> tuple[PlanContract, ...]:
+    """Register at least two successors for one unchanged unexecuted plan."""
+    root = _repo_root(repo_root)
+    canonical_source = _canonical_plan_path(source_plan_path)
+    _, owner = _matching_owner(root, owner_token)
+    if len(owner.plan_paths) < 2:
+        raise _error("plan replacement requires at least two successor plans")
+    if canonical_source in owner.plan_paths:
+        raise _error("replacement source must be distinct from every successor")
+    _verify_ignore(root)
+    state_root = _state_root(root, create=False)
+    entries = _state_entries(state_root)
+    if RESUME_NAME not in entries:
+        raise _error(
+            "replacement source is not registered",
+            ErrorCode.PLAN_UNREGISTERED,
+        )
+    resume_state = _read_resume_state(root)
+    if resume_state.active_plan_path is not None:
+        raise _error(
+            "plan replacement cannot overlap active execution",
+            ErrorCode.ACTIVE_PLAN_CONFLICT,
+        )
+    registered = {contract.plan_path: contract for contract in resume_state.plans}
+    source_contract = registered.get(canonical_source)
+    if source_contract is None:
+        raise _error(
+            "replacement source is not registered",
+            ErrorCode.PLAN_UNREGISTERED,
+        )
+    try:
+        current_source = _plan_contract(root, canonical_source)
+    except StateError as exc:
+        raise _error(
+            "replacement source changed after contract registration",
+            ErrorCode.PLAN_CONTRACT_DRIFT,
+        ) from exc
+    if source_contract != current_source or any(
+        "1" in progress
+        for progress in (
+            source_contract.todo_progress,
+            source_contract.verification_progress,
+        )
+    ):
+        raise _error(
+            "replacement source changed or execution already began",
+            ErrorCode.PLAN_CONTRACT_DRIFT,
+        )
+
+    _validate_registration_layout(root, owner.plan_paths, resume_state.plans)
+    successors = tuple(_plan_contract(root, path) for path in owner.plan_paths)
+    if any(
+        "1" in contract.todo_progress or "1" in contract.verification_progress
+        for contract in successors
+    ):
+        raise _error("successor plan contracts must begin with unchecked checklists")
+    merged = list(resume_state.plans)
+    for contract in successors:
+        existing = registered.get(contract.plan_path)
+        if existing is not None and existing != contract:
+            raise _error("plan replacement collides with an existing contract")
+        if existing is None:
+            merged.append(contract)
+    _write_resume_state(
+        root,
+        ResumeState(version=2, active_plan_path=None, plans=tuple(merged)),
+    )
+    return successors
+
+
 def _validate_progress_transition(
     previous: PlanContract, current: PlanContract
 ) -> None:
@@ -1075,6 +1147,7 @@ OPERATIONS = (
     "begin-execution",
     "finalize",
     "register-plans",
+    "register-replacement",
     "read-pointer",
     "write-pointer",
     "clear-pointer",
@@ -1123,6 +1196,7 @@ def _cli_parser() -> argparse.ArgumentParser:
     parser.add_argument("--repo-root", required=True)
     parser.add_argument("--owner-token")
     parser.add_argument("--plan-path")
+    parser.add_argument("--source-plan-path")
     parser.add_argument("--contract-sha256")
     parser.add_argument("--known-clean")
     parser.add_argument("--no-mutation")
@@ -1201,6 +1275,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             _only_fields(arguments, "owner_token")
             contracts = register_plan_contracts(
                 cwd, _require_token(arguments.owner_token)
+            )
+            _json_output({"plans": [contract.__dict__ for contract in contracts]})
+        elif operation == "register-replacement":
+            _only_fields(arguments, "owner_token", "source_plan_path")
+            contracts = register_plan_replacement(
+                cwd,
+                _require_token(arguments.owner_token),
+                _require_plan(arguments.source_plan_path),
             )
             _json_output({"plans": [contract.__dict__ for contract in contracts]})
         elif operation == "read-pointer":
