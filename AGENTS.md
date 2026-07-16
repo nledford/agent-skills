@@ -52,6 +52,11 @@ evidenced checkbox advancement. `/convert-tapestry-plan` is a separate plan-only
 Plan Orchestrator request. The
 Plan Orchestrator is the exclusive durable-plan and state writer; the
 Engineering Review Board remains separate, optional, and read-only advisory.
+After exact literal acquisition, `/start-work` uses the helper's internal
+`begin-execution` preflight; known pre-execution validation failures release
+only their newly acquired matching lock and return sanitized error codes.
+`lock-held` recovery always requires explicit human confirmation that no planned
+mutator remains and is never automatic.
 Keep OpenCode's live configuration machine-local; repository files are reviewed
 definitions and templates, not
 credentials or a replacement for a user's `opencode.jsonc`. The Plan Orchestrator

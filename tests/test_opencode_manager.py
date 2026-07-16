@@ -15,8 +15,8 @@ from tools.opencode_manager import (
     CANONICAL_PROMPT_SECTION_CONTRACTS,
     COMMAND_PROMPT_CONTRACTS,
     HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS,
+    PLAN_ORCHESTRATOR_BASH_RULES,
     PLAN_ORCHESTRATOR_COMMIT_PROMPT_REQUIREMENTS,
-    PLAN_ORCHESTRATOR_GIT_BASH_RULES,
     PRIMARY_AGENT_TURN_PROMPT_CONTRACTS,
     SANITIZED_EVIDENCE_INVARIANT,
     STANDARD_CRITIC_AGENT_IDS,
@@ -1052,7 +1052,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             with self.subTest(value=value, pattern=pattern):
                 self.assertEqual(expected, opencode_wildcard_match(value, pattern))
 
-    def test_plan_orchestrator_git_rules_resolve_to_commit_safety_actions(self) -> None:
+    def test_plan_orchestrator_bash_rules_resolve_to_commit_safety_actions(self) -> None:
         cases = {
             "git status": "allow",
             "git status --short": "allow",
@@ -1120,37 +1120,51 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertEqual(
                     expected,
-                    resolve_opencode_action(PLAN_ORCHESTRATOR_GIT_BASH_RULES, command, baseline="deny"),
+                    resolve_opencode_action(PLAN_ORCHESTRATOR_BASH_RULES, command, baseline="deny"),
                 )
 
     def test_validate_requires_exact_plan_orchestrator_git_rule_matrix(self) -> None:
         source = plan_orchestrator_source()
         mutations = {
-            "missing inspection": source.replace('    "git status": allow\n', "", 1),
-            "downgraded inspection": source.replace(
-                '    "git diff --cached": allow\n',
-                '    "git diff --cached": ask\n',
-                1,
+            "missing inspection": (
+                source.replace('    "git status": allow\n', "", 1),
+                "canonical Git permissions",
             ),
-            "broad git allow": source.replace(
-                '    "*.erb/plans*": deny\n',
-                '    "git *": allow\n    "*.erb/plans*": deny\n',
-                1,
+            "downgraded inspection": (
+                source.replace(
+                    '    "git diff --cached": allow\n',
+                    '    "git diff --cached": ask\n',
+                    1,
+                ),
+                "canonical Git permissions",
             ),
-            "reordered plan exception": source.replace(
-                '    "*.erb/plans*": deny\n'
-                '    "git add -- .erb/plans/*.md": ask\n',
-                '    "git add -- .erb/plans/*.md": ask\n'
-                '    "*.erb/plans*": deny\n',
-                1,
+            "broad git allow": (
+                source.replace(
+                    '    "*.erb/plans*": deny\n',
+                    '    "git *": allow\n    "*.erb/plans*": deny\n',
+                    1,
+                ),
+                "canonical workflow-helper permissions",
             ),
-            "later weakening": source.replace(
-                '    "git *`*": deny\n',
-                '    "git *`*": deny\n    "git *": ask\n',
-                1,
+            "reordered plan exception": (
+                source.replace('    "*.erb/plans*": deny\n', "", 1).replace(
+                    '    "git add -- .erb/plans/*.md": ask\n',
+                    '    "*.erb/plans*": deny\n'
+                    '    "git add -- .erb/plans/*.md": ask\n',
+                    1,
+                ),
+                "canonical workflow-helper permissions",
+            ),
+            "later weakening": (
+                source.replace(
+                    '    "git *`*": deny\n',
+                    '    "git *`*": deny\n    "git *": ask\n',
+                    1,
+                ),
+                "canonical Git permissions",
             ),
         }
-        for label, mutation in mutations.items():
+        for label, (mutation, expected_error) in mutations.items():
             with self.subTest(case=label), tempfile.TemporaryDirectory() as temp_dir:
                 root = Path(temp_dir)
                 repo, definition = create_plan_orchestrator_repo(root)
@@ -1159,7 +1173,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 result = OpenCodeInstallService(repo, root / "config").validate()
 
                 self.assertTrue(
-                    any("canonical Git permissions" in error for error in result.errors),
+                    any(expected_error in error for error in result.errors),
                     result.errors,
                 )
 
@@ -3077,6 +3091,75 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             with self.subTest(obsolete=obsolete):
                 self.assertNotIn(obsolete, lead + governance)
 
+    def test_checked_in_start_work_uses_atomic_preflight_and_sanitized_recovery(self) -> None:
+        project_root = Path(__file__).parents[1]
+        agent_path = project_root / "opencode/agents/plan-orchestrator.md"
+        command_path = project_root / "opencode/commands/start-work.md"
+        parsed, errors = OpenCodeInstallService._parse_frontmatter(
+            "agents",
+            "plan-orchestrator.md",
+            agent_path.read_text(encoding="utf-8"),
+        )
+        self.assertEqual(errors, [])
+        assert parsed is not None
+        bash = parsed.permissions["bash"]
+        self.assertIsInstance(bash, tuple)
+        assert isinstance(bash, tuple)
+        runtime_bash = tuple(
+            (pattern.replace(r'\"', '"'), action) for pattern, action in bash
+        )
+        helper_prefix = (
+            'python3 -I "$HOME/.config/opencode/workflow-tools/'
+            'start_work_state.py" begin-execution --repo-root . --owner-token '
+        )
+        for command in (
+            helper_prefix + "0" * 64,
+            helper_prefix + "0" * 64 + " --plan-path .erb/plans/work.md",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(resolve_opencode_action(runtime_bash, command), "ask")
+        self.assertEqual(
+            resolve_opencode_action(
+                runtime_bash,
+                helper_prefix + "0" * 64 + " --plan-path .erb/plans/work.md; id",
+            ),
+            "deny",
+        )
+
+        agent = " ".join(agent_path.read_text(encoding="utf-8").split())
+        command = " ".join(command_path.read_text(encoding="utf-8").split())
+        for required in (
+            "After acquisition, run `begin-execution` before any execution mutation.",
+            "Known pre-execution validation failures release only the matching newly acquired lock.",
+            "Helper failures use a fixed JSON error envelope",
+            "Never recover a lock automatically.",
+            "request explicit human confirmation that no planned mutator remains",
+            "retry the exact acquisition once",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, agent + " " + command)
+        for error_code in (
+            "lock-held",
+            "plan-unregistered",
+            "state-version-unsupported",
+            "ignore-rules-invalid",
+            "plan-contract-drift",
+            "active-plan-conflict",
+        ):
+            with self.subTest(error_code=error_code):
+                self.assertIn(error_code, agent + " " + command)
+
+        root_guide = (
+            project_root / "docs/implementation-plans/README.md"
+        ).read_text(encoding="utf-8")
+        template_guide = (
+            project_root
+            / "opencode/project-template/docs/implementation-plans/README.md"
+        ).read_text(encoding="utf-8")
+        self.assertEqual(root_guide, template_guide)
+        self.assertIn("`begin-execution`", root_guide)
+        self.assertIn("sanitized error code", root_guide)
+
     def test_checked_in_plan_creation_and_execution_routes_are_human_controlled(self) -> None:
         """Keep durable planning explicit and planned execution separate from creation."""
         project_root = Path(__file__).parents[1]
@@ -3356,6 +3439,13 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     "Only a read-only explanation with no mutation is exempt from acquisition.",
                     "Parse locators and read pointer, source, allocation, plan, worktree, and execution evidence only after complete provisional child-lock ownership.",
                     "On uncertain outcomes or any mutation retain the lock;",
+                    "After acquisition, run `begin-execution` before any execution mutation.",
+                    "Known pre-execution validation failures release only the matching newly acquired lock.",
+                    "Helper failures use a fixed JSON error envelope",
+                    "Never recover a lock automatically.",
+                    "request explicit human confirmation that no planned mutator remains",
+                    "retry the exact acquisition once",
+                    "`lock-held`, `plan-unregistered`, `state-version-unsupported`, `ignore-rules-invalid`, `plan-contract-drift`, `active-plan-conflict`",
                     "Before trusted-state persistence, require the repository-owned helper to verify a regular non-symlinked `.gitignore`",
                     "register every newly created plan contract before releasing plan-only ownership",
                     "Execution reconciles the pointer, worktree, plan checkboxes, and TODO state before each at-least-once step.",

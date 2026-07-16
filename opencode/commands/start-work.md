@@ -22,6 +22,28 @@ before that ownership is complete. Never put human input into a helper-launch
 shell string or add a helper argument for it. Do not use concatenation,
 redirection, pipes, substitution, or an extra shell operation.
 
+After acquisition, run `begin-execution` before any execution mutation. Pass
+the validated acquired token as one argv element. With an explicit plan path,
+pass the independently validated canonical path as one additional argv element;
+the helper validates registration and contract state, finalizes ownership, and
+activates the pointer as one pre-execution phase. With no path, omit the plan
+argument; the helper returns the active pointer while ownership remains
+provisional. Display that pointer and checklist state, then obtain explicit
+human confirmation. On refusal, use known-clean provisional release. On
+confirmation, finalize ownership and write the same validated pointer before
+execution.
+
+Known pre-execution validation failures release only the matching newly
+acquired lock. Helper failures use a fixed JSON error envelope containing one
+sanitized code and no raw exception, token, path, state value, or caller text.
+Handle `lock-held`, `plan-unregistered`, `state-version-unsupported`,
+`ignore-rules-invalid`, `plan-contract-drift`, `active-plan-conflict`,
+`plan-invalid`, `operation-invalid`, and `state-invalid` according to the Plan
+Orchestrator contract. Never recover a lock automatically. For `lock-held`,
+request explicit human confirmation that no planned mutator remains; only after
+confirmation run exact stale recovery and retry the exact acquisition once.
+Never recover or retry speculatively for another code.
+
 `/start-work` accepts only an explicit existing canonical lean plan path or
 validated no-argument resume pointer. It rejects free-form new requests and
 immutable legacy inputs. It does not create, succeed, convert, or

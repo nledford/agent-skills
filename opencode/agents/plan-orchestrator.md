@@ -13,7 +13,12 @@ permission:
     ".start-work/**": deny
   bash:
     "*": deny
+    "*docs/implementation-plans/plans*": deny
+    "*.erb/plans*": deny
+    "*.start-work*": deny
     "python3 -I \"$HOME/.config/opencode/workflow-tools/start_work_state.py\" acquire --repo-root .": ask
+    "python3 -I \"$HOME/.config/opencode/workflow-tools/start_work_state.py\" begin-execution --repo-root . --owner-token *": ask
+    "python3 -I \"$HOME/.config/opencode/workflow-tools/start_work_state.py\" begin-execution --repo-root . --owner-token * --plan-path *": ask
     "python3 -I \"$HOME/.config/opencode/workflow-tools/start_work_state.py\" finalize --repo-root . --owner-token * --plan-path *": ask
     "python3 -I \"$HOME/.config/opencode/workflow-tools/start_work_state.py\" register-plans --repo-root . --owner-token *": ask
     "python3 -I \"$HOME/.config/opencode/workflow-tools/start_work_state.py\" read-pointer --repo-root . --owner-token *": ask
@@ -51,6 +56,8 @@ permission:
     "git add -- */../*": deny
     "git add -- *..*": deny
     "git add -- ~*": deny
+    "git add -- docs/implementation-plans/plans*": deny
+    "git add -- .start-work*": deny
     "git commit *": ask
     "git commit": allow
     "git commit *--amend*": deny
@@ -77,14 +84,11 @@ permission:
     "git commit *--pathspec-from-file*": deny
     "git commit *--pathspec-file-nul*": deny
     "git commit *--no-post-rewrite*": deny
-    "*docs/implementation-plans/plans*": deny
-    "*.erb/plans*": deny
     "git add -- .erb/plans/*.md": ask
     "git add -- .erb/plans/*/*.md": ask
     "git add -- .erb/plans/*/*/*": deny
     "git add -- *[*": deny
     "git add -- *{*": deny
-    "*.start-work*": deny
     "git *>*": deny
     "git *<*": deny
     "git *|*": deny
@@ -93,6 +97,13 @@ permission:
     "git *$(*": deny
     "git *$*": deny
     "git *`*": deny
+    "*start_work_state.py*>*": deny
+    "*start_work_state.py*<*": deny
+    "*start_work_state.py*|*": deny
+    "*start_work_state.py*&*": deny
+    "*start_work_state.py*;*": deny
+    "*start_work_state.py*$(*": deny
+    "*start_work_state.py*`*": deny
   task:
     "*": deny
     "implementation-worker": allow
@@ -167,10 +178,22 @@ implementation mutation and while no child can mutate. Stale recovery requires
 prior explicit human confirmation that no Plan Orchestrator, Worker, child, or
 planned mutator remains.
 
+`/start-work` has one additional trusted preflight. After acquisition, run
+`begin-execution` before any execution mutation. With an explicit validated plan
+path, pass the acquired token and that path as separate argv elements; the
+helper validates registration and contract state, finalizes ownership, and
+activates the pointer atomically. With no path, omit `--plan-path`; the helper
+returns the active pointer under provisional ownership for display and explicit
+human confirmation. If confirmation is declined, use known-clean provisional
+release. If it is granted, finalize and write the validated pointer before
+execution. Known pre-execution validation failures release only the matching
+newly acquired lock. They never release an earlier lock or any lock after
+execution mutation or child delegation.
+
 For workflow-helper invocations after acquisition, use only these checked-in
-operation literals: `finalize`, `register-plans`, `read-pointer`, `write-pointer`,
-`clear-pointer`, `release-provisional`, `release-final`, and `recover-stale`.
-Keep the installed helper path exactly
+operation literals: `begin-execution`, `finalize`, `register-plans`,
+`read-pointer`, `write-pointer`, `clear-pointer`, `release-provisional`,
+`release-final`, and `recover-stale`. Keep the installed helper path exactly
 quoted and `--repo-root .` literal. Validate every owner token, plan path, and
 contract hash against the helper grammar before placing each as exactly one argv
 element. Boolean assertions are fixed literals. Never interpolate human or
@@ -178,6 +201,25 @@ repository text; never use pipes, redirects, concatenation, substitutions, or
 an extra shell operation. `read-pointer` always requires matching provisional or
 final ownership. A no-path resume reads its pointer under provisional ownership,
 then finalizes only to that validated pointer path.
+
+## Sanitized State Outcomes
+
+Helper failures use a fixed JSON error envelope with one allowlisted code and no
+raw exception, token, path, state value, or caller text. Handle `lock-held`,
+`plan-unregistered`, `state-version-unsupported`, `ignore-rules-invalid`,
+`plan-contract-drift`, `active-plan-conflict`, `plan-invalid`,
+`operation-invalid`, and `state-invalid` only by their documented category.
+Never infer or report hidden state details from a code.
+
+Never recover a lock automatically. On `lock-held`, request explicit human
+confirmation that no planned mutator remains. Only after confirmation may you
+invoke the exact `recover-stale` operation and retry the exact acquisition once;
+stop if confirmation is declined or uncertain. `plan-unregistered` and
+`state-version-unsupported` require a human-controlled creation, conversion, or
+migration decision and never automatic registration. `ignore-rules-invalid`
+stops execution until a human-controlled correction restores the exact narrow
+ignore contract. `plan-contract-drift` and `active-plan-conflict` stop execution
+for reconciliation. Every other code stops without speculative cleanup.
 
 ## Plan Safety
 

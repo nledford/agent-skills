@@ -45,6 +45,15 @@ decline, or override planning advice controls the route. When the Lead delegates
 top-level Plan Orchestrator command, never a Task child. The ERB and its
 specialists stay on the advisory side of that boundary.
 
+For `/start-work`, the Plan Orchestrator keeps the exact literal acquisition
+boundary, then invokes the trusted helper's internal `begin-execution` preflight.
+Known validation failures before execution mutation release only that
+preflight's matching newly acquired lock and return a fixed sanitized error
+code. A `lock-held` result never authorizes automatic recovery: the Plan
+Orchestrator must obtain explicit human confirmation that no planned mutator
+remains before exact stale recovery and a single acquisition retry.
+Post-mutation failures keep the lock.
+
 ### Maintainer-authorized Lead tools
 
 The human maintainer explicitly authorizes the Engineering Lead to use

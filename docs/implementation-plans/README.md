@@ -113,12 +113,23 @@ once:
 /.start-work/lock/
 ```
 
+After that exact literal acquisition, `/start-work` uses the helper's internal
+`begin-execution` operation. An explicit-path preflight validates the registered
+contract, finalizes ownership, and activates the pointer as one phase. A no-path
+preflight returns the active pointer under provisional ownership so the human
+can confirm or decline execution. Known pre-execution validation failures
+release only the matching newly acquired lock; failures after pointer,
+implementation, or child mutation retain the lock.
+
 `resume.json` schema version 2 registers immutable plan contracts and records at
 most one active execution pointer. Version-1 pointers and former-root paths are
 rejected fail-closed; there is no automatic migration. Unexpected `.start-work`
 entries, malformed state, unregistered plans, body mutations, checkbox reversal,
-or Verification progress before persisted TODO completion retain the lock and
-require explicit recovery or a human decision.
+or Verification progress before persisted TODO completion stop execution and
+return a sanitized error code. `lock-held` requires explicit human confirmation
+that no planned mutator remains before exact stale recovery; it is never
+recovered automatically. Incompatible or unregistered state requires a human
+creation, conversion, or migration decision rather than automatic registration.
 
 Use the installed helper only through its allowlisted isolated operations. Never
 put human, plan, locator, repository, or instruction text into helper-launch shell

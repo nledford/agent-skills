@@ -58,7 +58,11 @@ broader, duplicate, ambiguous, or conflicting `.start-work` rules:
 The trusted state uses schema version 2; version-1 pointers and former-root paths
 are rejected without automatic migration. The Plan Orchestrator acquires trusted
 provisional ownership before every mutating lifecycle route and uses only the
-installed linked helper for state transitions.
+installed linked helper for state transitions. After exact acquisition,
+`/start-work` invokes the internal `begin-execution` preflight. Known
+pre-execution validation failures release only their matching newly acquired
+lock and return sanitized error codes. `lock-held` recovery requires explicit
+human confirmation that no planned mutator remains and is never automatic.
 
 A planned-work commit is permitted only for an explicit current human request.
 The Plan Orchestrator may then commit an appropriately complete, validated,

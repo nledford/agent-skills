@@ -179,7 +179,10 @@ non-mutating Plan Orchestrator advice and neither creates nor authorizes work.
 The human controls whether to require, decline, or override that recommendation.
 Existing plan bodies are immutable except for evidenced checkbox advancement.
 `/convert-tapestry-plan` remains plan-only; conversion execution requires a
-later human `/start-work <destination>` choice.
+later human `/start-work <destination>` choice. After exact trusted acquisition,
+`/start-work` uses an internal atomic preflight that returns sanitized error
+codes and releases only a newly acquired lock on known pre-execution validation
+failure. Existing-lock recovery remains explicitly human-confirmed.
 
 To bootstrap a repository that does not already have plan guidance, copy
 `opencode/project-template/docs/implementation-plans/` to the target repository's
