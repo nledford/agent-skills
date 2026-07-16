@@ -3160,6 +3160,71 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         self.assertIn("`begin-execution`", root_guide)
         self.assertIn("sanitized error code", root_guide)
 
+    def test_checked_in_conversational_plan_replacement_is_guarded(self) -> None:
+        project_root = Path(__file__).parents[1]
+        agent_path = project_root / "opencode/agents/plan-orchestrator.md"
+        command_path = project_root / "opencode/commands/create-plan.md"
+        parsed, errors = OpenCodeInstallService._parse_frontmatter(
+            "agents",
+            "plan-orchestrator.md",
+            agent_path.read_text(encoding="utf-8"),
+        )
+        self.assertEqual(errors, [])
+        assert parsed is not None
+        bash = parsed.permissions["bash"]
+        self.assertIsInstance(bash, tuple)
+        assert isinstance(bash, tuple)
+        runtime_bash = tuple(
+            (pattern.replace(r'\"', '"'), action) for pattern, action in bash
+        )
+        helper_command = (
+            'python3 -I "$HOME/.config/opencode/workflow-tools/'
+            'start_work_state.py" register-replacement --repo-root . --owner-token '
+            + "0" * 64
+            + " --source-plan-path .erb/plans/work.md"
+        )
+        self.assertEqual(resolve_opencode_action(runtime_bash, helper_command), "ask")
+        self.assertEqual(
+            resolve_opencode_action(runtime_bash, helper_command + "; id"), "deny"
+        )
+
+        agent = " ".join(agent_path.read_text(encoding="utf-8").split())
+        command = " ".join(command_path.read_text(encoding="utf-8").split())
+        for required in (
+            "A current top-level human request to split or replace one specific plan",
+            "explicit authority to retire that source after safe successor registration",
+            "Review or consultation advice alone is not mutation authority.",
+            "registered, unchanged, unchecked, and inactive",
+            "at least two separately managed successor plans",
+            "`register-replacement`",
+            "If successor registration fails, do not delete the source.",
+            "Immediately re-read the source and successors after successful registration",
+            "exact-content edit patch",
+            "delete only the exact source plan",
+            "retains the source contract in registered history",
+            "No additional deletion confirmation is required",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, agent + " " + command)
+
+        root_guide = (
+            project_root / "docs/implementation-plans/README.md"
+        ).read_text(encoding="utf-8")
+        template_guide = (
+            project_root
+            / "opencode/project-template/docs/implementation-plans/README.md"
+        ).read_text(encoding="utf-8")
+        self.assertEqual(root_guide, template_guide)
+        normalized_guide = " ".join(root_guide.split())
+        for required in (
+            "conversational plan replacement",
+            "register-replacement",
+            "original plan file is retired",
+            "registered history retains its immutable contract",
+        ):
+            with self.subTest(guide=required):
+                self.assertIn(required, normalized_guide)
+
     def test_checked_in_plan_creation_and_execution_routes_are_human_controlled(self) -> None:
         """Keep durable planning explicit and planned execution separate from creation."""
         project_root = Path(__file__).parents[1]
@@ -3277,6 +3342,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 "Advisory corrections cannot create or execute a plan.",
                 "Advisory corrections cannot mutate an existing plan;",
                 "a human may separately authorize a new plan through `/create-plan`.",
+                "A separate current human request to the top-level Plan Orchestrator may instead authorize guarded conversational replacement",
+                "the review itself never supplies that authority.",
                 "`/start-work <path>` is only a separate human-chosen execution choice.",
             ),
             "review-implementation.md": (
@@ -3450,7 +3517,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     "register every newly created plan contract before releasing plan-only ownership",
                     "Execution reconciles the pointer, worktree, plan checkboxes, and TODO state before each at-least-once step.",
                     "Before every mutable phase, freshly reload the pointer, plan, and worktree evidence while holding the lock; never rely on stale evidence.",
-                    "or equally explicit current top-level human plan-creation request",
+                    "or equally explicit current top-level human plan-creation or plan-replacement request",
                     "must complete every planned TODO before beginning any dedicated Verification step",
                     "must not add, remove, rewrite, reorder, or renumber plan content",
                 ),

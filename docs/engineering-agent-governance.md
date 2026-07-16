@@ -45,6 +45,18 @@ decline, or override planning advice controls the route. When the Lead delegates
 top-level Plan Orchestrator command, never a Task child. The ERB and its
 specialists stay on the advisory side of that boundary.
 
+A current conversational split-or-replace request to the top-level Plan
+Orchestrator is explicit plan-only authority to create at least two successors
+and retire one unambiguous source after guarded registration. Earlier review or
+consultation advice alone is not authority. The source must be registered,
+unchanged, unchecked, and inactive. The Plan Orchestrator finalizes every
+successor and invokes `register-replacement` before deleting only the exact
+source. After registration it immediately re-reads the source and successors for
+drift, then uses an exact-content edit patch for retirement. Trusted state
+retains the source contract in history; failure or uncertainty before or after
+deletion retains the lock. This guarded file retirement does not permit an
+in-place plan rewrite or execution.
+
 For `/start-work`, the Plan Orchestrator keeps the exact literal acquisition
 boundary, then invokes the trusted helper's internal `begin-execution` preflight.
 Known validation failures before execution mutation release only that
@@ -162,7 +174,9 @@ documented in [`implementation-plans/README.md`](implementation-plans/README.md)
    non-mutating, and cannot persist, authorize, or begin work.
 3. On explicit human authorization, top-level
    [`/create-plan`](../opencode/commands/create-plan.md) acquires trusted state
-   and creates and persists a closed lean plan only.
+   and creates and persists a closed lean plan only. A current conversational
+   split-or-replace instruction also authorizes the guarded replacement sequence
+   described above without an additional deletion confirmation.
 4. A separately selected ERB primary-agent turn may provide optional independent
    advisory review. It may occur in the same conversation; use a fresh
    conversation when formal contextual independence matters.
@@ -173,8 +187,10 @@ documented in [`implementation-plans/README.md`](implementation-plans/README.md)
    Worker units and records only observed plan checkbox and state evidence.
 
 Existing plan content cannot be updated after creation except for evidenced
-existing checkbox advancement during execution. Material discoveries require a
-new human decision and, when authorized, a new `/create-plan` request. Legacy
+existing checkbox advancement during execution. Guarded replacement retires one
+source file after successor registration but never updates its content. Material
+discoveries require a new human decision and, when authorized, a new
+`/create-plan` request or guarded conversational replacement. Legacy
 conversion is plan-only and requires a separate later
 `/start-work <destination>` choice to execute.
 
@@ -189,7 +205,7 @@ are authoritative for primary ownership.
 | Command | Primary agent | Job |
 | --- | --- | --- |
 | [`/consult-plan`](../opencode/commands/consult-plan.md) | Plan Orchestrator | Provide top-level read-only planning advice without acquiring state, creating a plan, or authorizing work. |
-| [`/create-plan`](../opencode/commands/create-plan.md) | Plan Orchestrator | On explicit human authorization, create and persist a closed lean plan only; never execute TODOs. |
+| [`/create-plan`](../opencode/commands/create-plan.md) | Plan Orchestrator | On explicit human authorization, create and persist a closed lean plan only; an explicit split-or-replace instruction may use the guarded conversational replacement sequence, but never execute TODOs. |
 | [`/start-work`](../opencode/commands/start-work.md) | Plan Orchestrator | Execute or resume only an existing valid canonical lean plan; reject free-form creation and plan-update requests. |
 | [`/convert-tapestry-plan`](../opencode/commands/convert-tapestry-plan.md) | Plan Orchestrator | Revalidate a legacy Tapestry source and create the smallest safe lean destination layout; always plan-only, with execution requiring separate `/start-work <destination>`. |
 | [`/review-plan`](../opencode/commands/review-plan.md) | Engineering Review Board | Review canonical plans without editing them. |

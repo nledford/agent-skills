@@ -19,5 +19,8 @@ read-only advice only: it creates no readiness, approval, sign-off, persistence,
 or execution gate. Advisory corrections cannot create or execute a plan. A human
 cannot apply corrections by mutating an existing closed plan. Advisory
 corrections cannot mutate an existing plan; a human may separately authorize a
-new plan through `/create-plan`. `/start-work <path>` is only a separate
-human-chosen execution choice.
+new plan through `/create-plan`. A separate current human request to the
+top-level Plan Orchestrator may instead authorize guarded conversational
+replacement of one unambiguous registered, unchanged, unchecked, inactive plan
+with at least two successors; the review itself never supplies that authority.
+`/start-work <path>` is only a separate human-chosen execution choice.

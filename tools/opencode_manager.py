@@ -328,6 +328,7 @@ RETIRED_LIFECYCLE_PHRASES = (
 HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
     "AGENTS.md": (
         "explicit human `/create-plan` request may create and persist a new plan",
+        "A current conversational split-or-replace request also authorizes retirement of one unambiguous source only after guarded successor registration",
         "execution-only `/start-work` accepts an existing valid registered canonical plan "
         "or validated resume pointer with explicit human confirmation",
         "top-level `/consult-plan`",
@@ -336,6 +337,7 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
     ),
     "README.md": (
         "Three human-controlled lifecycle paths",
+        "conversational plan replacement",
         "`/convert-tapestry-plan` remains plan-only",
         "top-level `/consult-plan`",
         "internal atomic preflight that returns sanitized error codes",
@@ -347,6 +349,8 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "Use a fresh conversation when formal contextual independence matters.",
         "internal `begin-execution` preflight",
         "A `lock-held` result never authorizes automatic recovery",
+        "current conversational split-or-replace request",
+        "register-replacement",
     ),
     "docs/cross-reference-map.md": (
         "## OpenCode Runtime Handoff Overlay",
@@ -354,6 +358,8 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "Primary-agent handoff",
         "Earlier turns remain context but do not transfer permissions.",
         "internal `begin-execution` performs the preflight",
+        "Conversational plan replacement",
+        "register-replacement",
     ),
     "docs/implementation-plans/README.md": (
         "## Human-Controlled Lifecycle",
@@ -361,12 +367,16 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         ".erb/plans/<subject>/<NN>-<slug>.md",
         "internal `begin-execution` operation",
         "return a sanitized error code",
+        "conversational plan replacement authority; no new slash command",
+        "registered history retains its immutable contract",
     ),
     "opencode/project-template/AGENTS-plan-workflow-snippet.md": (
         "Only an explicit human `/create-plan` request creates and persists a plan",
         "Execution-only `/start-work` accepts an existing valid registered canonical",
         "top-level `/consult-plan`",
         "internal `begin-execution` preflight",
+        "current conversational split-or-replace request",
+        "register-replacement",
     ),
     "opencode/project-template/docs/implementation-plans/README.md": (
         "## Human-Controlled Lifecycle",
@@ -374,6 +384,8 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         ".erb/plans/<subject>/<NN>-<slug>.md",
         "internal `begin-execution` operation",
         "return a sanitized error code",
+        "conversational plan replacement authority; no new slash command",
+        "registered history retains its immutable contract",
     ),
 }
 HUMAN_CONTROLLED_LIFECYCLE_FORBIDDEN_TOKENS = (
@@ -400,6 +412,9 @@ COMMAND_PROMPT_CONTRACTS = {
         ".erb/plans/<subject>/<NN>-<slug>.md",
         "registered history",
         "register-plans",
+        "register-replacement",
+        "No additional deletion confirmation is required",
+        "If successor registration fails, do not delete the source.",
         "release with a known plan-only outcome",
     ),
     "start-work.md": (
@@ -447,6 +462,8 @@ COMMAND_PROMPT_CONTRACTS = {
         "Advisory corrections cannot create or execute a plan.",
         "Advisory corrections cannot mutate an existing plan;",
         "a human may separately authorize a new plan through `/create-plan`.",
+        "A separate current human request to the top-level Plan Orchestrator may instead authorize guarded conversational replacement",
+        "the review itself never supplies that authority.",
         "`/start-work <path>` is only a separate human-chosen execution choice.",
     ),
     "review-implementation.md": (
@@ -519,6 +536,7 @@ _PLAN_ORCHESTRATOR_WORKFLOW_HELPER_BASH_RULES = (
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" begin-execution --repo-root . --owner-token * --plan-path *', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" finalize --repo-root . --owner-token * --plan-path *', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" register-plans --repo-root . --owner-token *', "ask"),
+    ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" register-replacement --repo-root . --owner-token * --source-plan-path *', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" read-pointer --repo-root . --owner-token *', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" write-pointer --repo-root . --owner-token * --plan-path *', "ask"),
     ('python3 -I "$HOME/.config/opencode/workflow-tools/start_work_state.py" clear-pointer --repo-root . --owner-token * --plan-path * --contract-sha256 * --completed true', "ask"),
@@ -2587,6 +2605,15 @@ class OpenCodeInstallService:
             "It performs no acquisition, trusted-state read, mutation, delegation, implementation, staging, or commit and cannot authorize later work.",
             "`/create-plan` or an equally explicit current top-level human creation request may create a plan only after trusted acquisition.",
             "Conversational plan creation requires equally explicit current human authorization, remains plan-only, and never triggers automatic execution.",
+            "A current top-level human request to split or replace one specific plan is explicit authority to retire that source after safe successor registration.",
+            "Review or consultation advice alone is not mutation authority.",
+            "The source must be registered, unchanged, unchecked, and inactive, and the requested split must produce at least two separately managed successor plans.",
+            "If successor registration fails, do not delete the source.",
+            "Immediately re-read the source and successors after successful registration",
+            "exact-content edit patch",
+            "delete only the exact source plan",
+            "No additional deletion confirmation is required",
+            "Trusted state retains the source contract in registered history",
             "`/start-work` accepts only an explicit existing valid canonical lean plan path or a validated no-argument resume pointer.",
             "`/start-work` rejects free-form requests and immutable legacy inputs rather than creating a plan or successor.",
             "Legacy conversion remains at `/convert-tapestry-plan`.",
@@ -2603,7 +2630,7 @@ class OpenCodeInstallService:
             "Do not clear TODOs on failure, uncertainty, or partial reconciliation.",
             "Your self-check is not independent review, ERB evidence, approval, readiness, or sign-off.",
             "ERB output is optional independent advisory evidence, not a prerequisite or lifecycle authority.",
-            "or equally explicit current top-level human plan-creation request",
+            "or equally explicit current top-level human plan-creation or plan-replacement request",
             "Only a read-only explanation with no mutation is exempt from acquisition.",
             "Parse locators and read pointer, source, allocation, plan, worktree, and execution evidence only after complete provisional child-lock ownership.",
             "On uncertain outcomes or any mutation retain the lock;",
@@ -2622,7 +2649,7 @@ class OpenCodeInstallService:
             "multiple separately managed plans may use `.erb/plans/<subject>/<NN>-<slug>.md`",
             "multiple TODOs in one bounded plan are not sufficient.",
             "registered history",
-            "After creation and `register-plans`, the plan body is immutable.",
+            "After registration through `register-plans` or `register-replacement`, every plan body is immutable.",
             "must not add, remove, rewrite, reorder, or renumber plan content",
             "must never stage or commit and must never be instructed or delegated to create a commit.",
             *PLAN_ORCHESTRATOR_COMMIT_PROMPT_REQUIREMENTS,

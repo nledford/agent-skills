@@ -48,6 +48,11 @@ requires material new work, validation, or a design decision outside the closed
 plan stops execution for the normal human-decision and durable-plan routing
 rules; it never changes the plan in place.
 
+The narrow conversational plan replacement lifecycle below may retire one exact
+source plan file after its successors are safely registered. It never authorizes
+rewriting the source or successors, and trusted state retains the source's
+immutable contract as history.
+
 ## Human-Controlled Lifecycle
 
 Prefer direct implementation without a durable plan whenever normal
@@ -69,10 +74,27 @@ Three human-controlled lifecycle paths remain distinct:
    active pointer and requires explicit human confirmation after displaying the
    resolved path and checklist state.
 
+A current explicit request to split or replace one specific canonical plan is
+conversational plan replacement authority; no new slash command or additional
+deletion confirmation is required. An exact path or the current conversation
+must identify one unambiguous source. Review advice alone does not authorize
+mutation. The source must be registered, unchanged, unchecked, and inactive, and
+the result must contain at least two separately managed successor plans. The Plan
+Orchestrator creates, re-reads, and finalizes every successor, then invokes the
+trusted helper's `register-replacement` operation. If registration fails, the
+source is not deleted and the lock is retained. After registration succeeds,
+the source and successors are immediately re-read and checked for drift. After
+those checks, the original plan file is retired with an exact-content edit patch
+and the plan inventory is re-read, and registered history retains its immutable
+contract,
+preventing path or sequence reuse. Deletion or verification uncertainty retains
+the lock.
+
 Explicit `/convert-tapestry-plan` remains plan-only and preserves its source.
 Optional `/review-plan` and completed-work ERB review are read-only advisory
 routes, never approval, persistence, or execution gates. Existing plans cannot be
-updated to apply review advice; a human may authorize a new plan instead.
+updated to apply review advice; a human may authorize a new plan or guarded
+replacement instead.
 
 ## Execution And Evidence
 

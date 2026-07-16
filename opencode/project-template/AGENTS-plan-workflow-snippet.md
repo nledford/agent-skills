@@ -36,11 +36,19 @@ the route.
 
 Only an explicit human `/create-plan` request creates and persists a plan, and it
 is plan-only. It registers each new immutable contract with all checkboxes
-unchecked. Execution-only `/start-work` accepts an existing valid registered
-canonical plan or a validated no-argument active pointer with explicit human
-confirmation. `/convert-tapestry-plan` remains plan-only and preserves its
-source. Existing plans cannot be updated in place; a human may authorize a new
-plan. The Plan Orchestrator is the only durable plan and trusted-state writer.
+unchecked. A current conversational split-or-replace request authorizes the Plan
+Orchestrator to create at least two successors and retire one unambiguous
+registered, unchanged, unchecked, inactive source without another deletion
+confirmation. It must finalize all successors, run `register-replacement`, and
+then immediately re-read the source and successors for drift before retiring the
+exact source with an exact-content edit patch. Trusted history retains the source
+contract, and any failure or uncertainty retains the lock. Review advice alone
+is not mutation authority. Execution-only `/start-work` accepts an
+existing valid registered canonical plan or a validated no-argument active
+pointer with explicit human confirmation. `/convert-tapestry-plan` remains
+plan-only and preserves its source. Existing plans cannot be updated in place; a
+human may authorize a new plan. The Plan Orchestrator is the only durable plan
+and trusted-state writer.
 The Implementation Worker cannot edit durable plans, read or mutate
 `.start-work/**`, invoke its trusted helper, stage, commit, delegate, deploy, or
 broaden its assigned unit.

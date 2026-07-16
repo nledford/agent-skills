@@ -177,7 +177,15 @@ plan, never automatic creation. The Lead or ERB may recommend top-level
 `/consult-plan` with a reason, trade-off, and proposed scope; it provides
 non-mutating Plan Orchestrator advice and neither creates nor authorizes work.
 The human controls whether to require, decline, or override that recommendation.
-Existing plan bodies are immutable except for evidenced checkbox advancement.
+An explicit current conversational plan replacement request may split one
+unambiguous registered, unchanged, unchecked, inactive plan into at least two
+successors. The Plan Orchestrator registers all successors through
+`register-replacement`, re-reads them and the source for drift, and only then
+retires the original with an exact-content edit patch. No separate deletion
+confirmation is required, review advice alone is insufficient, and trusted
+history retains the source contract. Existing plan bodies remain immutable
+except for evidenced checkbox advancement; guarded file retirement does not
+authorize a rewrite.
 `/convert-tapestry-plan` remains plan-only; conversion execution requires a
 later human `/start-work <destination>` choice. After exact trusted acquisition,
 `/start-work` uses an internal atomic preflight that returns sanitized error

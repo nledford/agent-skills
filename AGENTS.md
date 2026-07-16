@@ -45,11 +45,16 @@ complexity may justify a recommendation, but never automatic plan creation. The
 Lead or ERB may recommend top-level `/consult-plan` for bounded read-only Plan
 Orchestrator advice, stating the reason, trade-off, and proposed scope; the human
 controls the route. An explicit human `/create-plan` request may create and
-persist a new plan, and it is plan-only; execution-only `/start-work` accepts an
+persist a new plan, and it is plan-only. A current conversational
+split-or-replace request also authorizes retirement of one unambiguous source
+only after guarded successor registration through `register-replacement`; the
+operation remains plan-only, requires at least two successors, and retains the
+source contract in trusted history. The execution-only `/start-work` accepts an
 existing valid registered canonical plan or validated resume pointer with
 explicit human confirmation. Existing plan bodies are immutable except for
-evidenced checkbox advancement. `/convert-tapestry-plan` is a separate plan-only
-Plan Orchestrator request. The
+evidenced checkbox advancement; guarded source-file retirement is not permission
+to rewrite a plan. `/convert-tapestry-plan` is a separate plan-only Plan
+Orchestrator request. The
 Plan Orchestrator is the exclusive durable-plan and state writer; the
 Engineering Review Board remains separate, optional, and read-only advisory.
 After exact literal acquisition, `/start-work` uses the helper's internal
