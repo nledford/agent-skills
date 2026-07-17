@@ -30,6 +30,13 @@ command does not widen Lead authority: it requires fresh repository evidence
 and re-evaluation, and routes durable plan creation or existing-plan execution
 through the human-controlled Plan Orchestrator commands.
 
+`/brainstorm` selects the Engineering Lead for the current command turn and
+makes that turn read-only solution exploration. It loads `brainstorming`, may
+use bounded read-only research or critic Tasks, and does not authorize
+repository edits, implementation delegation, durable plans or state, staging,
+commits, or execution. A later human request must choose direct Lead
+implementation or a Plan Orchestrator route.
+
 `/consult-plan`, `/create-plan`, and `/start-plan` re-anchor the current command
 turn to the Plan Orchestrator. Each command identifies earlier Board or Lead
 output as context from a different primary agent, prevents that output from
@@ -202,23 +209,28 @@ prompt behavior can be observed.
 
 ## Handoffs
 
-For ordinary work, start with the Engineering Lead. The canonical sequence is
-documented in [`implementation-plans/README.md`](implementation-plans/README.md):
+For ordinary work, start with the Engineering Lead. The available handoffs are
+listed below; [`implementation-plans/README.md`](implementation-plans/README.md)
+remains authoritative for durable-plan details:
 
-1. Deliver directly when scope, safety, and validation are adequate. Complexity
+1. When multiple credible solution paths need comparison, an explicit
+   [`/brainstorm`](../opencode/commands/brainstorm.md) request provides read-only
+   Lead-owned option analysis and a recommendation. It cannot authorize or begin
+   implementation.
+2. Deliver directly when scope, safety, and validation are adequate. Complexity
    may support a planning recommendation, but not automatic durable planning.
-2. The Lead or ERB may recommend top-level
+3. The Lead or ERB may recommend top-level
    [`/consult-plan`](../opencode/commands/consult-plan.md); it remains advisory,
    non-mutating, and cannot persist, authorize, or begin work.
-3. On explicit human authorization, top-level
+4. On explicit human authorization, top-level
    [`/create-plan`](../opencode/commands/create-plan.md) creates and persists a
    closed lean plan only, then selects it in `.erb/plan-state.json`. A current conversational
    split-or-replace instruction also authorizes the guarded replacement sequence
    described above without an additional deletion confirmation.
-4. A separately selected ERB primary-agent turn may provide optional independent
+5. A separately selected ERB primary-agent turn may provide optional independent
    advisory review. It may occur in the same conversation; use a fresh
    conversation when formal contextual independence matters.
-5. A separate human choice of top-level
+6. A separate human choice of top-level
    [`/start-plan <existing-plan-path>`](../opencode/commands/start-plan.md), or a
    valid no-argument state pointer,
    executes existing planned work. The Plan Orchestrator then executes bounded
@@ -241,6 +253,7 @@ are authoritative for primary ownership.
 | Command | Primary agent | Job |
 | --- | --- | --- |
 | [`/address-review`](../opencode/commands/address-review.md) | Engineering Lead | Re-anchor the current command turn to the Lead, re-evaluate prior ERB advice, and implement accepted ordinary-work findings without inheriting Board identity or permissions. |
+| [`/brainstorm`](../opencode/commands/brainstorm.md) | Engineering Lead | Compare credible solution paths and recommend a direction without editing, implementing, creating plans, or beginning the selected route. |
 | [`/consult-plan`](../opencode/commands/consult-plan.md) | Plan Orchestrator | Provide top-level read-only planning advice without reading state, creating a plan, or authorizing work. |
 | [`/create-plan`](../opencode/commands/create-plan.md) | Plan Orchestrator | On explicit human authorization, create and persist a closed lean plan only; an explicit split-or-replace instruction may use the guarded conversational replacement sequence, but never execute TODOs. |
 | [`/start-plan`](../opencode/commands/start-plan.md) | Plan Orchestrator | Execute or resume an existing valid canonical lean plan; derive active/completed status and current work from its checkboxes. |

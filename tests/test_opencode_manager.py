@@ -3026,6 +3026,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         expected_commands = (
             "address-review.md",
             "audit-technical-debt.md",
+            "brainstorm.md",
             "consult-plan.md",
             "create-plan.md",
             "investigate-regression.md",
@@ -3036,6 +3037,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         expected_owners = {
             "address-review.md": "engineering-lead",
             "audit-technical-debt.md": "engineering-review-board",
+            "brainstorm.md": "engineering-lead",
             "consult-plan.md": "plan-orchestrator",
             "create-plan.md": "plan-orchestrator",
             "investigate-regression.md": "engineering-review-board",
@@ -4271,6 +4273,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             [
                 "address-review.md",
                 "audit-technical-debt.md",
+                "brainstorm.md",
                 "consult-plan.md",
                 "create-plan.md",
                 "investigate-regression.md",

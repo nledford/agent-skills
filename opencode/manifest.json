@@ -27,6 +27,7 @@
   "commands": [
     "address-review.md",
     "audit-technical-debt.md",
+    "brainstorm.md",
     "consult-plan.md",
     "create-plan.md",
     "investigate-regression.md",
