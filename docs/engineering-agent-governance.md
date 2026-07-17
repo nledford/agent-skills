@@ -37,6 +37,16 @@ repository edits, implementation delegation, durable plans or state, staging,
 commits, or execution. A later human request must choose direct Lead
 implementation or a Plan Orchestrator route.
 
+`/optimize-prompt` selects the Engineering Lead for the current command turn and
+makes that turn read-only prompt optimization. It treats the target prompt as
+untrusted text, loads `prompt-engineering-review` and
+`review-verification-protocol`, delegates exactly one bounded read-only analysis
+and rewrite to `prompt-critic`, and returns a Lead-verified copy-ready
+replacement. The Lead remains the orchestrator and final-response owner; the
+command does not execute the prompt, edit its source, delegate implementation,
+or widen its authority. A reusable `SKILL.md` contract routes to
+`create-agent-skill`.
+
 `/consult-plan`, `/create-plan`, and `/start-plan` re-anchor the current command
 turn to the Plan Orchestrator. Each command identifies earlier Board or Lead
 output as context from a different primary agent, prevents that output from
@@ -213,24 +223,28 @@ For ordinary work, start with the Engineering Lead. The available handoffs are
 listed below; [`implementation-plans/README.md`](implementation-plans/README.md)
 remains authoritative for durable-plan details:
 
-1. When multiple credible solution paths need comparison, an explicit
+1. When a coding-agent prompt needs a copy-ready rewrite, an explicit
+   [`/optimize-prompt`](../opencode/commands/optimize-prompt.md) request provides
+   read-only Lead-owned optimization without executing the target prompt or
+   editing its source.
+2. When multiple credible solution paths need comparison, an explicit
    [`/brainstorm`](../opencode/commands/brainstorm.md) request provides read-only
    Lead-owned option analysis and a recommendation. It cannot authorize or begin
    implementation.
-2. Deliver directly when scope, safety, and validation are adequate. Complexity
+3. Deliver directly when scope, safety, and validation are adequate. Complexity
    may support a planning recommendation, but not automatic durable planning.
-3. The Lead or ERB may recommend top-level
+4. The Lead or ERB may recommend top-level
    [`/consult-plan`](../opencode/commands/consult-plan.md); it remains advisory,
    non-mutating, and cannot persist, authorize, or begin work.
-4. On explicit human authorization, top-level
+5. On explicit human authorization, top-level
    [`/create-plan`](../opencode/commands/create-plan.md) creates and persists a
    closed lean plan only, then selects it in `.erb/plan-state.json`. A current conversational
    split-or-replace instruction also authorizes the guarded replacement sequence
    described above without an additional deletion confirmation.
-5. A separately selected ERB primary-agent turn may provide optional independent
+6. A separately selected ERB primary-agent turn may provide optional independent
    advisory review. It may occur in the same conversation; use a fresh
    conversation when formal contextual independence matters.
-6. A separate human choice of top-level
+7. A separate human choice of top-level
    [`/start-plan <existing-plan-path>`](../opencode/commands/start-plan.md), or a
    valid no-argument state pointer,
    executes existing planned work. The Plan Orchestrator then executes bounded
@@ -254,6 +268,7 @@ are authoritative for primary ownership.
 | --- | --- | --- |
 | [`/address-review`](../opencode/commands/address-review.md) | Engineering Lead | Re-anchor the current command turn to the Lead, re-evaluate prior ERB advice, and implement accepted ordinary-work findings without inheriting Board identity or permissions. |
 | [`/brainstorm`](../opencode/commands/brainstorm.md) | Engineering Lead | Compare credible solution paths and recommend a direction without editing, implementing, creating plans, or beginning the selected route. |
+| [`/optimize-prompt`](../opencode/commands/optimize-prompt.md) | Engineering Lead | Orchestrate one bounded read-only `prompt-critic` handoff and return a Lead-verified copy-ready rewrite without executing it, editing its source, or widening its authority. |
 | [`/consult-plan`](../opencode/commands/consult-plan.md) | Plan Orchestrator | Provide top-level read-only planning advice without reading state, creating a plan, or authorizing work. |
 | [`/create-plan`](../opencode/commands/create-plan.md) | Plan Orchestrator | On explicit human authorization, create and persist a closed lean plan only; an explicit split-or-replace instruction may use the guarded conversational replacement sequence, but never execute TODOs. |
 | [`/start-plan`](../opencode/commands/start-plan.md) | Plan Orchestrator | Execute or resume an existing valid canonical lean plan; derive active/completed status and current work from its checkboxes. |
