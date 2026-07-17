@@ -60,15 +60,20 @@ A current conversational split-or-replace request may create at least two
 successors and retire one unambiguous source after every successor is re-read;
 no registry or retained contract history is required. The Plan Orchestrator is
 the exclusive durable-plan and state writer; the Engineering Review Board
-remains separate, optional, and read-only advisory.
+remains separate, optional, and read-only advisory. After the Plan Orchestrator
+creates and validates a plan, an explicit current human commit request may
+authorize the Engineering Lead to stage and commit that canonical plan Markdown.
+This exception does not authorize plan edits or execution and never includes
+`.erb/plan-state.json`.
 
 Keep OpenCode's live configuration machine-local; repository files are reviewed
 definitions and templates, not
 credentials or a replacement for a user's `opencode.jsonc`. The Plan Orchestrator
 may construct a commit only for an explicit current human request; the Worker
-remains forbidden to stage or commit. Agent-definition permission changes take effect only after a
-full OpenCode restart, never in the running session. Approval for `git add --` is
-an additional human check, not proof that a path is safe: the Plan Orchestrator
-must derive, separately enumerate, and literally quote each repository-relative
-path from fresh trusted worktree evidence, and stop on any expansion syntax or
-path it cannot represent literally.
+remains forbidden to stage or commit. Agent-definition permission changes take
+effect only after a full OpenCode restart, never in the running session.
+Approval for `git add --` is an additional human check, not proof that a path is
+safe: the Plan Orchestrator and the Lead's canonical-plan staging exception must
+derive, separately enumerate, and literally quote each repository-relative path
+from fresh trusted worktree evidence, and stop on any expansion syntax or path
+they cannot represent literally.

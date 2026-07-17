@@ -95,6 +95,21 @@ the exact source, and only then delete the source with an exact-content edit
 patch. If successor creation or verification fails, keep the source. No registry,
 retained contract history, or additional deletion confirmation is required.
 
+## Plan Artifact Commits
+
+After the Plan Orchestrator creates and validates a plan, an explicit current
+human commit request may authorize the selected Engineering Lead to stage and
+commit only the canonical plan Markdown. This exception does not authorize the
+Lead to create, edit, advance, or execute a plan. It excludes
+`.erb/plan-state.json`.
+
+The Lead re-reads the exact contained regular non-symlink plan, derives its
+repository-relative path from fresh trusted worktree evidence, and stages one
+literal path with `git add -- <path>`. Runtime approval is an additional human
+check, not proof that a path is safe. Wildcards, question marks, bracket
+expressions, braces, pathspec magic, `.` shorthand, traversal, substitution,
+shell composition, and redirection remain forbidden.
+
 ## Execution And Resume
 
 Validate the selected path and canonical plan format before mutation. Resume the

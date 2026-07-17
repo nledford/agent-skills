@@ -31,4 +31,11 @@ The Plan Orchestrator is the exclusive durable-plan and state writer. The
 Engineering Review Board remains separate, optional, and read-only advisory. The
 Worker cannot edit plans or `.erb/plan-state.json`, stage, or commit.
 
+After the Plan Orchestrator creates and validates a plan, an explicit current
+human commit request may authorize the Engineering Lead to stage and commit only
+the canonical plan Markdown. This exception grants no plan edit, state, or
+execution authority and excludes `.erb/plan-state.json`. Use one freshly derived
+literal canonical path per approval-gated `git add --` command; never use
+expansion syntax, shell composition, or redirection.
+
 OpenCode agent-definition changes take effect only after a full restart.

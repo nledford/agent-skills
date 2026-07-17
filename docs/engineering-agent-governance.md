@@ -99,6 +99,26 @@ Evidence-backed concerns may be reported for a human decision, but only a new
 explicit human instruction may change the authorization. Reconcile the MCP
 prefix list and validator when the configured server set changes.
 
+### Engineering Lead plan artifact commit boundary
+
+After the top-level Plan Orchestrator creates and validates a plan, the
+Engineering Lead may stage and commit the canonical plan Markdown only for an
+explicit current human commit request. The Lead remains unable to edit plan
+content, advance checkboxes, execute planned work, or read, edit, or stage
+`.erb/plan-state.json`. The exception accepts only a contained regular
+non-symlink path matching `.erb/plans/<slug>.md` or
+`.erb/plans/<subject>/<NN>-<slug>.md` with strict UTF-8 content no larger than
+1 MiB.
+
+The Lead derives the exact repository-relative path from fresh trusted
+worktree evidence, re-reads and validates that plan, and quotes the path as one
+literal shell word in one `git add -- <path>` command. Runtime approval is an
+additional human check, not path validation. Wildcards, question marks, bracket
+expressions, braces, pathspec magic, `.` shorthand, traversal, substitution,
+shell composition, and redirection remain forbidden. The ordinary Lead commit
+policy still requires staged-diff, hook/signing, commit, and resulting-worktree
+inspection. Permission changes require a full OpenCode restart.
+
 ### Maintainer-authorized Worker MCP tools
 
 The human maintainer explicitly authorizes the Implementation Worker to use

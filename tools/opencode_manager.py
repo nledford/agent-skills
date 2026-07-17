@@ -361,6 +361,7 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "`.erb/plan-state.json`",
         "first unchecked checkbox",
         "top-level `/consult-plan`",
+        "canonical plan Markdown",
     ),
     "README.md": (
         "Three human-controlled lifecycle paths",
@@ -368,6 +369,7 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "`.erb/plan-state.json`",
         "first unchecked checkbox",
         "top-level `/consult-plan`",
+        "canonical plan Markdown",
     ),
     "docs/engineering-agent-governance.md": (
         "top-level `/consult-plan`",
@@ -378,6 +380,7 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "`.erb/plan-state.json`",
         "first unchecked checkbox",
         "This plan has already been implemented.",
+        "canonical plan Markdown",
     ),
     "docs/cross-reference-map.md": (
         "## OpenCode Runtime Handoff Overlay",
@@ -388,6 +391,7 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "Plan selection and resume",
         "`.erb/plan-state.json`",
         "first unchecked checkbox",
+        "canonical plan Markdown",
     ),
     "docs/implementation-plans/README.md": (
         "## Human-Controlled Lifecycle",
@@ -396,6 +400,7 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "`.erb/plan-state.json`",
         "first unchecked checkbox",
         "This plan has already been implemented.",
+        "canonical plan Markdown",
     ),
     "opencode/project-template/AGENTS-plan-workflow-snippet.md": (
         "Only an explicit human `/create-plan` request creates and persists a plan",
@@ -403,6 +408,7 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "top-level `/consult-plan`",
         "`.erb/plan-state.json`",
         "first unchecked checkbox",
+        "canonical plan Markdown",
     ),
     "opencode/project-template/docs/implementation-plans/README.md": (
         "## Human-Controlled Lifecycle",
@@ -411,6 +417,7 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "`.erb/plan-state.json`",
         "first unchecked checkbox",
         "This plan has already been implemented.",
+        "canonical plan Markdown",
     ),
 }
 HUMAN_CONTROLLED_LIFECYCLE_FORBIDDEN_TOKENS = (

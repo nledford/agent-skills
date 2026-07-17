@@ -187,6 +187,13 @@ source with an exact-content edit patch. No registry, retained history, or
 separate deletion confirmation is required. Existing plan bodies remain
 immutable except for evidenced checkbox advancement.
 
+After the Plan Orchestrator creates and validates a plan, an explicit current
+human commit request may authorize the Engineering Lead to stage and commit the
+canonical plan Markdown. This narrow exception does not authorize the Lead to
+create, edit, or execute a plan and excludes `.erb/plan-state.json`. Staging is
+approval-gated and uses only exact literal canonical paths from fresh worktree
+evidence.
+
 To bootstrap a repository that does not already have plan guidance, copy
 `opencode/project-template/docs/implementation-plans/` to the target repository's
 `docs/implementation-plans/`, then merge—not replace—the relevant text from
