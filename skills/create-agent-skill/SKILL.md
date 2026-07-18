@@ -145,6 +145,9 @@ Before finishing a new or updated skill, verify:
 - The skill name, folder name, and frontmatter `name` match.
 - The frontmatter `description` contains activation guidance.
 - The body is concise, procedural, and free of one-off context.
+- Project names, modules, paths, recipes, frameworks, and validation commands
+  come from target-repository evidence; examples use portable placeholders and
+  do not encode source-project or machine-local assumptions.
 - Optional resources are referenced from `SKILL.md` and are actually needed.
 - Examples are realistic and transferable.
 - Constraints and non-goals are explicit where they prevent misuse.

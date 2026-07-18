@@ -29,6 +29,11 @@ tables or skill bodies here.
   [engineering agent governance guide](engineering-agent-governance.md).
 - [ ] **Examples:** examples and counterexamples are short, transferable,
   sanitized, and maintained by tests or easy manual validation where practical.
+- [ ] **Project neutrality:** instructions derive repository names, paths,
+  modules, recipes, frameworks, and validation commands from target-repository
+  evidence. They contain no source-project identifiers, personal or
+  machine-specific paths, or application-specific assumptions presented as
+  universal defaults.
 - [ ] **Security evidence:** trust-boundary, secret, dependency, command, file
   path, or credential-adjacent work routes to `security-review` and
   `security-review-evidence`; report only sanitized, verified evidence.

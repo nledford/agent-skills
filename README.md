@@ -257,8 +257,12 @@ Validation checks the repository's actual skill format:
 - first-party local Markdown links resolve to existing files
 - first-party resource files are reachable from `SKILL.md`
 - first-party skills are listed in `docs/skill-taxonomy.md`
+- first-party skill text does not contain source-project identifiers or
+  machine-specific home paths
 - when `.skill-lock.json` exists, every lockfile-listed third-party skill is
   present locally
+- OpenCode agents and commands do not contain machine-specific home paths, and
+  agent permission maps do not name concrete target-repository Just recipes
 
 Installer and definition behavior is covered by
 `python3 -m unittest discover -s tests -v`.

@@ -104,6 +104,10 @@ handoff.
   skill IDs as backticked references in the `Skills` column.
 - Keep vendor/tool-specific advice in the narrowest skill that needs it; use
   project-neutral wording elsewhere.
+- Keep every first-party skill transferable across target repositories. Derive
+  project names, modules, paths, workflow recipes, frameworks, and validation
+  commands from local evidence; use placeholders for machine paths and keep
+  ecosystem-specific examples conditional rather than universal.
 - Retire stale skills instead of preserving compatibility for old names.
 
 ### Maintenance Burden
@@ -529,6 +533,15 @@ Scenario: First-party resources are reachable
   When repository validation runs
   Then every resource file is reachable from SKILL.md through local Markdown links
   And every local Markdown link resolves to an existing file
+```
+
+```gherkin
+Scenario: First-party skills remain project-neutral
+  Given a first-party skill is reusable across target repositories
+  When repository validation runs
+  Then skill instructions and reachable text resources contain no source-project identifiers
+  And machine-specific home paths use placeholders or repository-relative examples
+  And repository-specific modules, recipes, frameworks, and commands are derived from target-repository evidence
 ```
 
 ```gherkin

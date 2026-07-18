@@ -300,6 +300,12 @@ Before changing role or command guidance:
 
 - Start from the manifest, definition frontmatter, permission maps, and current
   runtime-visible Task IDs. Repository prose cannot widen those controls.
+- Keep every agent and command project-neutral: derive application modules,
+  repository paths, workflow recipe names, frameworks, and validation lanes
+  from the active target repository. Use placeholders instead of personal or
+  machine-specific home paths. Permission maps may name generic ecosystem
+  commands and wildcard project runners such as `just *`, but must not encode a
+  concrete target repository's Just recipe names.
 - Preserve one-level delegation. Critics and researchers do not delegate; the
   ERB never becomes a child of the Lead.
 - Keep delegated Task prompts scannable: use Markdown sections separated by
