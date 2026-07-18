@@ -47,6 +47,17 @@ command does not execute the prompt, edit its source, delegate implementation,
 or widen its authority. A reusable `SKILL.md` contract routes to
 `create-agent-skill`.
 
+`/root-cause-analysis` selects the Engineering Review Board for the current
+command turn and makes that turn read-only causal analysis and repair-proposal
+review. It loads `root-cause-analysis`, `brainstorming`, and
+`review-verification-protocol`, delegates bounded questions to every
+decision-relevant specialist, and sends the synthesized smallest safe repair to
+`adversarial-reviewer` only after the root cause is confirmed. The Board may
+return **Recommended for human consideration** only when no material objection
+remains. That result is advisory evidence, not approval, sign-off, readiness, or
+implementation authority; a separate explicit human request must select the
+Engineering Lead before direct implementation.
+
 `/consult-plan`, `/create-plan`, and `/start-plan` re-anchor the current command
 turn to the Plan Orchestrator. Each command identifies earlier Board or Lead
 output as context from a different primary agent, prevents that output from
@@ -231,20 +242,25 @@ remains authoritative for durable-plan details:
    [`/brainstorm`](../opencode/commands/brainstorm.md) request provides read-only
    Lead-owned option analysis and a recommendation. It cannot authorize or begin
    implementation.
-3. Deliver directly when scope, safety, and validation are adequate. Complexity
+3. When an evidenced failure needs causal analysis plus an independently
+   challenged repair proposal, an explicit
+   [`/root-cause-analysis`](../opencode/commands/root-cause-analysis.md) request
+   provides ERB-owned read-only analysis. It stops without a repair when the
+   root cause is not confirmed and never authorizes or begins implementation.
+4. Deliver directly when scope, safety, and validation are adequate. Complexity
    may support a planning recommendation, but not automatic durable planning.
-4. The Lead or ERB may recommend top-level
+5. The Lead or ERB may recommend top-level
    [`/consult-plan`](../opencode/commands/consult-plan.md); it remains advisory,
    non-mutating, and cannot persist, authorize, or begin work.
-5. On explicit human authorization, top-level
+6. On explicit human authorization, top-level
    [`/create-plan`](../opencode/commands/create-plan.md) creates and persists a
    closed lean plan only, then selects it in `.erb/plan-state.json`. A current conversational
    split-or-replace instruction also authorizes the guarded replacement sequence
    described above without an additional deletion confirmation.
-6. A separately selected ERB primary-agent turn may provide optional independent
+7. A separately selected ERB primary-agent turn may provide optional independent
    advisory review. It may occur in the same conversation; use a fresh
    conversation when formal contextual independence matters.
-7. A separate human choice of top-level
+8. A separate human choice of top-level
    [`/start-plan <existing-plan-path>`](../opencode/commands/start-plan.md), or a
    valid no-argument state pointer,
    executes existing planned work. The Plan Orchestrator then executes bounded
@@ -275,6 +291,7 @@ are authoritative for primary ownership.
 | [`/review-plan`](../opencode/commands/review-plan.md) | Engineering Review Board | Review canonical plans without editing them. |
 | [`/review-implementation`](../opencode/commands/review-implementation.md) | Engineering Review Board | Review completed implementation against the relevant plan and evidence without editing either. |
 | [`/investigate-regression`](../opencode/commands/investigate-regression.md) | Engineering Review Board | Investigate a suspected regression without modifying the repository. |
+| [`/root-cause-analysis`](../opencode/commands/root-cause-analysis.md) | Engineering Review Board | Confirm the causal chain, synthesize the smallest safe repair with decision-relevant specialists, require adversarial proposal review, and stop at a human implementation gate without making changes. |
 | [`/audit-technical-debt`](../opencode/commands/audit-technical-debt.md) | Engineering Review Board | Run a read-only general or focused technical-debt audit. |
 
 ## Audit or Refactor Governance

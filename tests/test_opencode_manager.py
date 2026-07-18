@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tools.opencode_manager import (
+    ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS,
     CANONICAL_AGENT_TOPOLOGY,
     CANONICAL_PERMISSION_PROFILES,
     CANONICAL_PROMPT_SECTION_CONTRACTS,
@@ -3033,6 +3034,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "optimize-prompt.md",
             "review-implementation.md",
             "review-plan.md",
+            "root-cause-analysis.md",
             "start-plan.md",
         )
         expected_owners = {
@@ -3045,6 +3047,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "optimize-prompt.md": "engineering-lead",
             "review-implementation.md": "engineering-review-board",
             "review-plan.md": "engineering-review-board",
+            "root-cause-analysis.md": "engineering-review-board",
             "start-plan.md": "plan-orchestrator",
         }
 
@@ -3061,6 +3064,54 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             assert parsed is not None
             self.assertEqual(parsed.fields["agent"], owner)
             self.assertEqual(parsed.fields["subtask"], "false")
+
+    def test_checked_in_root_cause_analysis_is_read_only_and_human_gated(self) -> None:
+        """Pin RCA, specialist, adversarial, and human-gate sequencing."""
+        project_root = Path(__file__).parents[1]
+        command_path = project_root / "opencode/commands/root-cause-analysis.md"
+        command_text = command_path.read_text(encoding="utf-8")
+        parsed, errors = OpenCodeInstallService._parse_frontmatter(
+            "commands", "root-cause-analysis.md", command_text
+        )
+        self.assertEqual(errors, [])
+        assert parsed is not None
+        self.assertEqual(parsed.fields["agent"], "engineering-review-board")
+        self.assertEqual(parsed.fields["subtask"], "false")
+
+        stages = (
+            "## 1. Establish the root cause",
+            "## 2. Brainstorm the smallest safe repair",
+            "## 3. Require adversarial proposal review",
+            "## 4. Return the proposal to the human and stop",
+        )
+        positions = tuple(command_text.index(stage) for stage in stages)
+        self.assertEqual(positions, tuple(sorted(positions)))
+
+        normalized = " ".join(command_text.split())
+        for required in COMMAND_PROMPT_CONTRACTS["root-cause-analysis.md"]:
+            with self.subTest(required=required):
+                self.assertIn(required, normalized)
+
+        reviewer = (
+            project_root / "opencode/agents/adversarial-reviewer.md"
+        ).read_text(encoding="utf-8")
+        self.assertLess(
+            reviewer.index("## Pre-Implementation Repair Proposal Review"),
+            reviewer.index("## Completed-Change Review Method"),
+        )
+        self.assertIn(
+            "**No Material Adversarial Objection Found** means only that no evidence-backed",
+            reviewer,
+        )
+        self.assertIn(
+            "For the completed-change stage, review the actual diff or commit, relevant\n"
+            "tests, and supplied validation output.",
+            reviewer,
+        )
+        self.assertIn(
+            "Return one recommendation: **Do Not Merge / Merge Only After Fixes / Merge With Explicit Follow-ups / Merge**.",
+            reviewer,
+        )
 
     def test_checked_in_address_review_reanchors_engineering_lead(self) -> None:
         """Pin the explicit ERB-to-Lead handoff contract in the current command turn."""
@@ -3481,6 +3532,48 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
 
 
 class CanonicalPromptSectionTests(unittest.TestCase):
+    def test_validate_rejects_adversarial_stage_prompt_contract_drift(self) -> None:
+        for name, stage_contracts in ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS.items():
+            for heading, semantics in stage_contracts:
+                for semantic in semantics:
+                    with self.subTest(
+                        agent=name, heading=heading, semantic=semantic
+                    ), tempfile.TemporaryDirectory() as temp_dir:
+                        root = Path(temp_dir)
+                        repo = create_canonical_active_workflow_repo(root)
+                        definition = repo / "opencode" / "agents" / name
+                        original = definition.read_text(encoding="utf-8")
+                        self.assertEqual(
+                            1,
+                            sum(
+                                line.strip() == heading
+                                for line in original.splitlines()
+                            ),
+                        )
+                        pattern = re.escape(semantic).replace(r"\ ", r"\s+")
+                        mutated, count = re.subn(
+                            pattern,
+                            "SYNTHETIC_ADVERSARIAL_STAGE_CONTRACT_MARKER",
+                            original,
+                            count=1,
+                        )
+                        self.assertEqual(1, count, semantic)
+                        definition.write_text(mutated, encoding="utf-8")
+
+                        result = OpenCodeInstallService(
+                            repo, root / "config"
+                        ).validate()
+
+                        self.assertFalse(result.ok)
+                        self.assertTrue(
+                            any(
+                                f"agents: '{name}' adversarial stage prompt contract is incomplete"
+                                in error
+                                for error in result.errors
+                            ),
+                            result.errors,
+                        )
+
     def test_validate_rejects_code_documentation_prompt_contract_drift(self) -> None:
         for name, (heading, semantics) in CODE_DOCUMENTATION_PROMPT_CONTRACTS.items():
             for semantic in semantics:
@@ -4282,6 +4375,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                 "optimize-prompt.md",
                 "review-implementation.md",
                 "review-plan.md",
+                "root-cause-analysis.md",
                 "start-plan.md",
             ],
         )

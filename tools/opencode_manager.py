@@ -176,6 +176,7 @@ CANONICAL_AGENT_TOPOLOGY = CanonicalAgentTopology(
         CanonicalCommandPolicy("optimize-prompt.md", "engineering-lead"),
         CanonicalCommandPolicy("review-implementation.md", "engineering-review-board"),
         CanonicalCommandPolicy("review-plan.md", "engineering-review-board"),
+        CanonicalCommandPolicy("root-cause-analysis.md", "engineering-review-board"),
         CanonicalCommandPolicy("start-plan.md", "plan-orchestrator"),
     ),
 )
@@ -253,6 +254,34 @@ CANONICAL_PROMPT_SECTION_CONTRACTS = {
             "The human's decision to require, decline, or override planning advice controls the route.",
             "mutation-capable Plan Orchestrator remains a separate primary owner and is never a Task child of the Board.",
             "Board advice is advisory evidence only and non-gating.",
+        ),
+    ),
+}
+ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS = {
+    "adversarial-reviewer.md": (
+        (
+            "## Pre-Implementation Repair Proposal Review",
+            (
+                "Require an evidence-backed root-cause analysis and focused specialist analysis before reviewing a proposal.",
+                "whether it closes the root cause and evidenced control gap rather than only suppressing the symptom",
+                "whether a smaller equally safe repair exists",
+                "Do not require a diff, commit, passing test result, or other implementation-only proof for this stage",
+                "Proposal Review Blocked by Missing Evidence / Material Objection / Revision Needed / No Material Adversarial Objection Found",
+                "It is not approval, sign-off, implementation authorization, merge readiness, release readiness, or proof that an unimplemented fix works.",
+            ),
+        ),
+        (
+            "## Completed-Change Review Method",
+            (
+                "For the completed-change stage, review the actual diff or commit, relevant tests, and supplied validation output.",
+                "do not issue a merge recommendation based only on summaries or prior claims.",
+            ),
+        ),
+        (
+            "## Completed-Change Output",
+            (
+                "Do Not Merge / Merge Only After Fixes / Merge With Explicit Follow-ups / Merge",
+            ),
         ),
     ),
 }
@@ -387,8 +416,11 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "`/address-review` selects the Engineering Lead for the current command turn",
         "`/brainstorm` selects the Engineering Lead for the current command turn",
         "`/optimize-prompt` selects the Engineering Lead for the current command turn",
+        "`/root-cause-analysis` selects the Engineering Review Board for the current command turn",
         "delegates exactly one bounded read-only analysis",
         "The Lead remains the orchestrator and final-response owner",
+        "Recommended for human consideration",
+        "a separate explicit human request must select the Engineering Lead before direct implementation.",
         "`/consult-plan`, `/create-plan`, and `/start-plan` re-anchor the current command turn to the Plan Orchestrator.",
         "The human's decision to require, decline, or override planning advice controls the route.",
         "Primary-agent authority is turn-scoped, not conversation-scoped.",
@@ -405,10 +437,14 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "`/address-review` re-anchors the current command turn to the Engineering Lead",
         "`/brainstorm` re-anchors the current command turn to the Engineering Lead for read-only solution exploration",
         "`/optimize-prompt` re-anchors the current command turn to the Engineering Lead for read-only prompt optimization",
+        "`/root-cause-analysis` re-anchors the current command turn to the read-only Engineering Review Board",
         "Read-only solution exploration",
         "Read-only prompt optimization",
+        "Read-only root-cause repair proposal",
         "delegates exactly one bounded read-only analysis and rewrite to `prompt-critic`",
         "then verifies and owns the final response",
+        "An unconfirmed root cause, missing evidence, or unresolved material objection stops clearance.",
+        "direct implementation requires a separate explicit human request selecting the Engineering Lead.",
         "`/consult-plan`, `/create-plan`, and `/start-plan` re-anchor the current command turn to the Plan Orchestrator",
         "Earlier turns remain context but do not transfer permissions.",
         "Plan selection and resume",
@@ -487,6 +523,27 @@ COMMAND_PROMPT_CONTRACTS = {
         "Keep unresolved material choices explicit rather than choosing for the human.",
         "a copy-ready fenced Markdown block using a fence that safely contains any nested fences in the prompt.",
         "If the target is a reusable `SKILL.md` contract, stop and recommend the `create-agent-skill` workflow",
+    ),
+    "root-cause-analysis.md": (
+        "You are handling this current command turn as the Engineering Review Board.",
+        "This invocation is the human's current request for a read-only root-cause analysis and repair proposal.",
+        "It does not authorize implementation, repository changes, durable-plan or state changes, staging, commits, deployment, or any other side effect.",
+        "Load `root-cause-analysis`, `brainstorming`, and `review-verification-protocol`.",
+        "Do not edit, create, delete, rename, or format files.",
+        "Do not implement, delegate implementation, or invoke `implementation-worker`.",
+        "Do not create or mutate a durable plan, `.erb/plan-state.json`, or implementation TODOs.",
+        "Do not stage, commit, push, deploy, migrate, or execute the proposed repair.",
+        "Proceed to a fix recommendation only for **Root Cause Confirmed**.",
+        "select every specialist whose independent perspective could materially change the repair, and no irrelevant specialists.",
+        "delegate the full proposed repair to `adversarial-reviewer` with review stage",
+        "If the reviewer returns **Proposal Review Blocked by Missing Evidence**, stop",
+        "Any material revision invalidates the prior adversarial result",
+        "Recommended for human consideration",
+        "Not recommended: unresolved objections",
+        "the final adversarial outcome is **No Material Adversarial Objection Found**",
+        "a separate, explicit human request must select the Engineering Lead before any direct implementation.",
+        "Do not invoke either route as part of this command.",
+        "They do not create an approval, sign-off, implementation, plan, readiness, or lifecycle gate",
     ),
     "consult-plan.md": (
         *PLAN_ORCHESTRATOR_COMMAND_TURN_REQUIREMENTS,
@@ -2441,6 +2498,25 @@ class OpenCodeInstallService:
                 section = self._single_markdown_section(prompt, heading)
                 if section is None or not all(token in section for token in required):
                     errors.append(f"agents: '{name}' prompt contract is incomplete")
+        if set(ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS).issubset(
+            inventory.agents
+        ):
+            for name, stage_contracts in (
+                ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS.items()
+            ):
+                try:
+                    prompt = (self.sources["agents"] / name).read_text(encoding="utf-8")
+                except (OSError, UnicodeError):
+                    errors.append(
+                        f"agents: '{name}' adversarial stage prompt contract is unreadable"
+                    )
+                    continue
+                for heading, required in stage_contracts:
+                    section = self._single_markdown_section(prompt, heading)
+                    if section is None or not all(token in section for token in required):
+                        errors.append(
+                            f"agents: '{name}' adversarial stage prompt contract is incomplete"
+                        )
         if set(CODE_DOCUMENTATION_PROMPT_CONTRACTS).issubset(inventory.agents):
             for name, (heading, required) in CODE_DOCUMENTATION_PROMPT_CONTRACTS.items():
                 try:
