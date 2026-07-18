@@ -1,6 +1,6 @@
 ---
 name: release-readiness
-description: Assess merge and release readiness across tests, docs, migrations, rollout, rollback, operations, and cross-functional risk. Use for a final ship or hold decision; do not use as the primary implementation, code-review, or deployment workflow.
+description: Assess merge and release readiness across tests, docs, migrations, rollout, rollback, operations, and cross-functional risk. Use for a final ship or hold decision; do not use to choose a semantic patch, minor, or major version, or as the primary implementation, code-review, or deployment workflow.
 ---
 
 # Release Readiness Skill
@@ -16,6 +16,9 @@ every blocker, risk finding, and ship-or-hold rationale.
 
 Do not use it to replace implementation, a first code review, or a repository's
 deployment runbook. Use
+[`semantic-versioning`](../semantic-versioning/SKILL.md) to classify the release
+delta and choose or apply a patch, minor, major, or prerelease version;
+use
 [`ci-release-engineering`](../ci-release-engineering/SKILL.md) to create or
 change checked-in CI and release automation, and
 [`container-engineering`](../container-engineering/SKILL.md) for Docker/OCI or

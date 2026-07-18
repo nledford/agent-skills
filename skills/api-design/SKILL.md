@@ -13,6 +13,8 @@ description: >-
   instrumentation, or documentation-only API references after the contract is
   set; load those existing skills instead or alongside it when their trigger is
   primary.
+  Use semantic-versioning when the primary question is choosing or applying a
+  patch, minor, or major release bump after contract impact is understood.
 ---
 
 # API Design
@@ -47,6 +49,10 @@ contract is already settled.
 
 ## Routing and Handoffs
 
+- Use [`semantic-versioning`](../semantic-versioning/SKILL.md) to aggregate
+  compatibility impacts across a release and recommend or apply its patch,
+  minor, major, or prerelease version. Keep API contract design and consumer
+  compatibility analysis in this skill.
 - Load [`security-review`](../security-review/SKILL.md) when API work touches
   authentication, authorization, object permissions, tenant isolation, scopes,
   sessions/cookies, CORS/CSRF/CSP, redirects/callbacks, webhook signatures,

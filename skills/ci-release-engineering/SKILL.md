@@ -1,6 +1,6 @@
 ---
 name: ci-release-engineering
-description: Implement, change, review, or test checked-in CI and release provider configuration, including workflow triggers, job graphs, matrices, caches, artifacts, permissions, concurrency, environments, versioning, tags, releases, and package or binary publication. Do not use for underlying language/test commands, Justfile wrappers, manual Git operations, final ship/hold decisions, unexplained CI failures, supply-chain-only or security-review-only audits, or production deployment infrastructure implementation.
+description: Implement, change, review, or test checked-in CI and release provider configuration, including workflow triggers, job graphs, matrices, caches, artifacts, permissions, concurrency, environments, automated versioning, tags, releases, and package or binary publication. Do not use to choose a semantic patch, minor, or major bump from application changes; use semantic-versioning. Do not use for underlying language/test commands, Justfile wrappers, manual Git operations, final ship/hold decisions, unexplained CI failures, supply-chain-only or security-review-only audits, or production deployment infrastructure implementation.
 ---
 
 # CI and Release Engineering
@@ -56,6 +56,9 @@ and provider documentation before assuming syntax or behavior.
 
 ## Routing
 
+- [`semantic-versioning`](../semantic-versioning/SKILL.md) owns classifying the
+  release delta and choosing a patch, minor, major, or prerelease version; this
+  skill consumes that policy in checked-in automation.
 - Language and test skills own the commands run by jobs and their application
   behavior; this skill owns the hosted workflow that selects and connects them.
 - [`justfiles`](../justfiles/SKILL.md) owns local command wrappers and recipe

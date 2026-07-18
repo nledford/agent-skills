@@ -129,7 +129,7 @@ handoff.
 | Internationalization and localization | `internationalization-localization` | User-facing text localization, Project Fluent, `.ftl` authoring, locale fallback, multilingual catalogs, and localized output validation across language stacks. |
 | API design and contracts | `api-design` | Public/service interface contracts, compatibility, versioning, idempotency, request/response/error envelopes, schema artifacts, and consumer/provider obligations. |
 | Observability and operations | `observability-engineering` | Durable logs, metrics, traces, correlation, dashboards, alerts, SLO/SLI signals, runbooks, incident visibility, and telemetry safety. |
-| CI, release, and container engineering | `ci-release-engineering`, `container-engineering` | Checked-in CI/release provider workflows, automated publication, Docker/OCI image construction, and Docker Compose implementation; language commands, security review, supply-chain trust, and final readiness remain with their owning skills. |
+| CI, release, and container engineering | `semantic-versioning`, `ci-release-engineering`, `container-engineering` | Semantic release classification and version metadata, checked-in CI/release provider workflows, automated publication, Docker/OCI image construction, and Docker Compose implementation; API contract design, language commands, Git operations, security review, supply-chain trust, and final readiness remain with their owning skills. |
 | Design methods and architecture | `brainstorming`, `behavior-driven-development`, `clean-architecture`, `domain-driven-design`, `hexagonal-architecture`, `onion-architecture`, `test-driven-development`, `gherkin` | Use the direct method or architecture skill that matches the work; do not load a meta-selection skill for simple changes. |
 | Debugging and prevention | `systematic-debugging`, `root-cause-analysis` | Active symptom diagnosis first; postmortem and recurrence prevention after the direct cause is understood. |
 | Data, identifiers, and SQL | `random-data-identifiers`, `sql-engineering`, `postgresql-sql-engineering`, `sqlite-sql-engineering` | Randomness/IDs, database-neutral SQL, and engine-specific PostgreSQL/SQLite schema, migration, query, transaction, performance, security, and review guidance. |
@@ -215,6 +215,8 @@ primary compatibility risk, then add only the companion skill needed for evidenc
 
 - **API compatibility:** use `api-design` for public contract semantics,
   versioning, deprecation, compatibility, and client/provider obligations. Add
+  `semantic-versioning` when the release delta needs a patch, minor, major, or
+  prerelease recommendation or metadata bump. Add
   language skills for implementation and
   `documentation-engineering` for migration notes after the contract is settled.
 - **Database migration safety:** use `sql-engineering` plus the PostgreSQL or
@@ -440,6 +442,7 @@ reading the code, making a small change, and running the relevant check is enoug
 | `rust-testing-quality` | Rust tests, doctests, nextest, Clippy, formatting, Cargo checks, Bacon feedback loops, TDD/BDD loops, and CI evidence. | Keeps iterative and final Cargo test and quality gates in one coherent workflow. |
 | `security-review` | Security audit workflow for auth, crypto, secrets, sessions, input validation, trust boundaries, web controls, dependency trust, and sanitized reporting. | Owns implemented-control review and routes evidence and supply-chain concerns explicitly. |
 | `security-review-evidence` | Sanitized evidence checklist for security-sensitive changes and reviews. | Provides hidden support for trust-boundary and secret-adjacent evidence. |
+| `semantic-versioning` | Semantic Versioning policy, release-delta classification, patch/minor/major and prerelease recommendations, next-version calculation, and requested version-metadata bumps. | Owns release-version selection while API design owns contract semantics, language skills own ecosystem metadata mechanics, CI/release engineering owns automation and publication, Git owns tags and pushes, and release readiness owns ship decisions. |
 | `sql-engineering` | Database-neutral SQL reading, writing, refactoring, migrations, constraints, indexes, transactions, advanced queries, performance, and review. | Owns database-neutral SQL before engine-specific escalation. |
 | `sqlite-sql-engineering` | SQLite schema, migrations, PRAGMAs, WAL/locking, transactions, temporary DB tests, limitations, and query review. | Owns SQLite-native behavior without duplicating PostgreSQL or Rust adapter guidance. |
 | `suggest-lucide-icons` | Verified Lucide icon name selection for UI concepts and placements. | Provides a small, independently routable icon-verification workflow. |
@@ -465,6 +468,7 @@ existing skill.
 | Threat modeling and security design | `threat-modeling`, `security-review`, `security-review-evidence`, architecture/method/language skills | Baseline complete | Actors, assets, entry points, data flows, trust boundaries, abuse cases, mitigations, security acceptance criteria, residual risk, and handoff to verified review are covered. |
 | Dependency and supply-chain review | `dependency-supply-chain-review`, `security-review`, `security-review-evidence`, language/workflow skills | Baseline complete | Manifests, lockfiles, SBOM/SCA/CVE/GHSA advisories, provenance, registries, install scripts, CI bootstrap, containers, binaries, vendored/generated code, and sanitized evidence are covered. |
 | CI and release automation | `ci-release-engineering`, language/test skills, `justfiles`, `git-workflows`, `dependency-supply-chain-review`, `security-review`, `release-readiness` | Baseline complete | Checked-in provider workflows, triggers, ref selection, job graphs, matrices, services, caches, artifacts, permissions, concurrency, environments, automated versioning, publication, rerun safety, and handoffs are covered. |
+| Semantic release version selection | `semantic-versioning`, `api-design`, language/package skills, `ci-release-engineering`, `git-workflows`, `release-readiness` | Baseline complete | Public-contract discovery, complete release-delta classification, patch/minor/major precedence, 0.x and prerelease handling, version calculation, requested metadata synchronization, and side-effect handoffs are covered. |
 | Docker/OCI and Compose implementation | `container-engineering`, language skills, `justfiles`, `dependency-supply-chain-review`, `security-review`, `ci-release-engineering` | Baseline complete | Build contexts/stages, artifact transfer, runtime users and entrypoints, health, ports, networks, volumes, secrets/config, lifecycle, resource/privilege controls, image validation, and hosted pipeline handoff are covered. |
 | BDD | `behavior-driven-development`, `gherkin`, `playwright-e2e` | Baseline complete | BDD principles and misuse are separate from formal `.feature` syntax. |
 | DDD | `domain-driven-design`, `domain-modeling`, language/data skills | Baseline complete | Strategic and tactical modeling guidance plus a focused tactical review lens with anti-ceremony boundaries. |
@@ -608,6 +612,18 @@ Scenario: CI and release implementation stays separate from readiness review
   And language and test skills own the commands run by jobs
   And security-review and security-review-evidence handle permissions, secrets, OIDC, untrusted events, and command injection
   And release-readiness remains the final ship or hold decision
+```
+
+```gherkin
+Scenario: Semantic version selection follows the released public contract
+  Given a release unit has a current released version and a complete change delta
+  When an agent recommends or applies the next Semantic Version
+  Then it loads semantic-versioning
+  And identifies the declared public contract and supported consumers
+  And classifies every material change by compatibility impact
+  And lets the highest required patch, minor, or major bump win
+  And treats 0.x, prerelease, dependency, and ambiguous de facto behavior according to explicit project policy
+  And does not tag, push, publish, deploy, or make the final ship decision without the owning workflow and authorization
 ```
 
 ```gherkin
