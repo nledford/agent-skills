@@ -30,12 +30,15 @@ command does not widen Lead authority: it requires fresh repository evidence
 and re-evaluation, and routes durable plan creation or existing-plan execution
 through the human-controlled Plan Orchestrator commands.
 
-`/brainstorm` selects the Engineering Lead for the current command turn and
-makes that turn read-only solution exploration. It loads `brainstorming`, may
-use bounded read-only research or critic Tasks, and does not authorize
-repository edits, implementation delegation, durable plans or state, staging,
-commits, or execution. A later human request must choose direct Lead
-implementation or a Plan Orchestrator route.
+`/brainstorm` selects the Engineering Review Board for the current command turn
+and makes that turn read-only solution exploration. It loads `brainstorming`,
+uses direct Board analysis by default, and delegates to the minimum sufficient
+specialist panel only when a distinct answer could materially change the
+recommendation. It does not authorize repository edits, implementation
+delegation, durable plans or state, staging, commits, or execution. Board output
+is advisory evidence only; a later explicit human request must select the
+Engineering Lead for direct implementation, optionally through
+`/address-review`, or choose a Plan Orchestrator route.
 
 `/semver` selects the Engineering Lead for the current command turn and accepts
 exactly one explicit `audit`, `apply`, or `tag` mode. Audit is read-only; apply
@@ -283,8 +286,8 @@ remains authoritative for durable-plan details:
    editing its source.
 2. When multiple credible solution paths need comparison, an explicit
    [`/brainstorm`](../opencode/commands/brainstorm.md) request provides read-only
-   Lead-owned option analysis and a recommendation. It cannot authorize or begin
-   implementation.
+   ERB-owned option analysis and an advisory recommendation. It uses direct
+   Board analysis by default and cannot authorize or begin implementation.
 3. When a release delta needs a SemVer audit, metadata update, or guarded local
    tag, an explicit [`/semver`](../opencode/commands/semver.md) request selects
    exactly one Lead-owned mode. Applying does not commit or tag, and tagging
@@ -330,7 +333,7 @@ are authoritative for primary ownership.
 | Command | Primary agent | Job |
 | --- | --- | --- |
 | [`/address-review`](../opencode/commands/address-review.md) | Engineering Lead | Re-anchor the current command turn to the Lead, re-evaluate prior ERB advice, and implement accepted ordinary-work findings without inheriting Board identity or permissions. |
-| [`/brainstorm`](../opencode/commands/brainstorm.md) | Engineering Lead | Compare credible solution paths and recommend a direction without editing, implementing, creating plans, or beginning the selected route. |
+| [`/brainstorm`](../opencode/commands/brainstorm.md) | Engineering Review Board | Compare credible solution paths and recommend an advisory direction without editing, implementing, creating plans, or beginning the selected route. |
 | [`/semver`](../opencode/commands/semver.md) | Engineering Lead | Audit a release delta, apply version metadata, or create one guarded local release tag through exactly one explicitly selected mode. |
 | [`/optimize-prompt`](../opencode/commands/optimize-prompt.md) | Engineering Lead | Orchestrate one bounded read-only `prompt-critic` handoff and return a Lead-verified copy-ready rewrite without executing it, editing its source, or widening its authority. |
 | [`/consult-plan`](../opencode/commands/consult-plan.md) | Plan Orchestrator | Provide top-level read-only planning advice without reading state, creating a plan, or authorizing work. |

@@ -3178,7 +3178,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         expected_owners = {
             "address-review.md": "engineering-lead",
             "audit-technical-debt.md": "engineering-review-board",
-            "brainstorm.md": "engineering-lead",
+            "brainstorm.md": "engineering-review-board",
             "consult-plan.md": "plan-orchestrator",
             "create-plan.md": "plan-orchestrator",
             "investigate-regression.md": "engineering-review-board",
