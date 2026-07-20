@@ -227,8 +227,7 @@ permission:
   "playwright_*": allow
   "chrome-devtools_*": allow
   "serena_*": allow
-  "context7_*": allow
-  "gh_grep_*": allow
+  "hound_*": allow
   "github_*": allow
   task:
     "*": deny

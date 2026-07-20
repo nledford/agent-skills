@@ -1082,8 +1082,7 @@ CONFIGURED_MCP_TOOL_PATTERNS = (
     "playwright_*",
     "chrome-devtools_*",
     "serena_*",
-    "context7_*",
-    "gh_grep_*",
+    "hound_*",
     "github_*",
 )
 NAVIGATION_RULES = (("*", "allow"), (STATE_PATH_EDIT_RULE, "deny"))

@@ -88,7 +88,7 @@ regression coverage without removing, narrowing, or reinterpreting that access.
   `rm`, `sudo`, and plan-path shell access with a deterministic OpenCode
   v1.18-compatible last-match oracle.
 - Preserve the Lead's human-authorized `pbcopy *`, `playwright_*`,
-  `chrome-devtools_*`, `serena_*`, `context7_*`, `gh_grep_*`, and `github_*`
+  `chrome-devtools_*`, `serena_*`, `hound_*`, and `github_*`
   rules and reject removal or action downgrade of every rule.
 - Add a pure read-only lifecycle/dependency API and CLI that validates structured
   records, exact transitions, commit identity, dependency state, and the only
@@ -149,7 +149,7 @@ regression coverage without removing, narrowing, or reinterpreting that access.
   `tests/test_opencode_manager.py`. Treat those changes as pre-existing baseline
   work, not execution output for this plan.
 - The current Lead permission map allows `pbcopy *`, `playwright_*`,
-  `chrome-devtools_*`, `serena_*`, `context7_*`, `gh_grep_*`, and `github_*`.
+  `chrome-devtools_*`, `serena_*`, `hound_*`, and `github_*`.
   Governance names that access as explicit human authorization.
   `tools/opencode_manager.py` has dedicated Lead clipboard and MCP constants and
   rejects a missing configured MCP prefix. Existing tests prove the valid set and
@@ -558,11 +558,11 @@ test.
 
 ### Protected permission contracts
 
-Treat the Lead's `pbcopy *` Bash allow and all six configured MCP-prefix allows
+Treat the Lead's `pbcopy *` Bash allow and all five configured MCP-prefix allows
 as human-authorized invariants. Table-driven tests must remove each rule and
 change each action to `ask` and `deny`; every case fails. Preserve exactly
-`pbcopy *`, `playwright_*`, `chrome-devtools_*`, `serena_*`, `context7_*`,
-`gh_grep_*`, and `github_*`. Do not remove, narrow, reorder into ineffectiveness,
+`pbcopy *`, `playwright_*`, `chrome-devtools_*`, `serena_*`, `hound_*`, and
+`github_*`. Do not remove, narrow, reorder into ineffectiveness,
 or reinterpret this authorization.
 
 Treat the Worker's current seven Bash denies as a final canonical suffix because
@@ -955,7 +955,7 @@ step 4.
 **Acceptance criteria:**
 
 - `pbcopy *` and each of `playwright_*`, `chrome-devtools_*`, `serena_*`,
-  `context7_*`, `gh_grep_*`, and `github_*` remain `allow`; removal or mutation
+  `hound_*`, and `github_*` remain `allow`; removal or mutation
   to `ask`/`deny` fails for every pattern.
 - The current commit, push, hard-reset, clean, `rm`, `sudo`, and plan-path shell
   denies validate as the required final suffix.
@@ -1300,8 +1300,8 @@ No implementation reviews recorded.
   `9bd28e3a15c237e1fb4cf6e1996da36b687db5e8`; classified
   `9bd28e3 feat(opencode): authorize lead tool access` and its four changed files
   as pre-existing baseline work; preserved the human-authorized `pbcopy *`,
-  `playwright_*`, `chrome-devtools_*`, `serena_*`, `context7_*`, `gh_grep_*`,
-  and `github_*` allows; and required table-driven removal and `ask`/`deny`
+  `playwright_*`, `chrome-devtools_*`, `serena_*`, `hound_*`, and `github_*`
+  allows; and required table-driven removal and `ask`/`deny`
   downgrade tests for every rule. The revision-1 and revision-2 ERB records keep
   their original revision and `f80ae0d22a7dfebafdbb679c13e4ea5a5860b014`
   baseline.

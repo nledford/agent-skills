@@ -264,8 +264,7 @@ def render_lead_permissions(
         '  "playwright_*": allow\n'
         '  "chrome-devtools_*": allow\n'
         '  "serena_*": allow\n'
-        '  "context7_*": allow\n'
-        '  "gh_grep_*": allow\n'
+        '  "hound_*": allow\n'
         '  "github_*": allow\n'
         "  task: deny\n"
         "  webfetch: ask\n"
@@ -1370,8 +1369,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     '  "playwright_*": allow\n'
                     '  "chrome-devtools_*": allow\n'
                     '  "serena_*": allow\n'
-                    '  "context7_*": allow\n'
-                    '  "gh_grep_*": allow\n'
+                    '  "hound_*": allow\n'
                     "  task: deny\n"
                     "  webfetch: ask\n"
                     "  websearch: ask\n"
