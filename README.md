@@ -1,312 +1,257 @@
-# Agent Skills
+# Engineering Review Board
 
-This repository is the canonical local source for globally installed agent
-skills and custom OpenCode agents and commands. Its `skills/` directory is
-intended to be symlinked to `~/.agents/skills`:
+Reusable agent skills and a governed OpenCode workflow for implementation,
+independent review, and human-controlled durable planning.
+
+This repository provides:
+
+- project-neutral engineering skills installed through `~/.agents/skills`;
+- reviewed OpenCode agents and commands with explicit authority boundaries; and
+- fail-closed installation, validation, and implementation-plan tooling.
+
+Skills define procedure, agents define runtime authority, and commands select
+top-level workflows. These concepts are intentionally separate.
+
+## Quick Start
+
+The repository tooling requires Python 3 and
+[`just`](https://github.com/casey/just). OpenCode is required only when using
+the definitions under `opencode/`. Third-party skill updates also require the
+configured JavaScript package runner.
+
+### Install Skills
+
+Preview the global skill link before creating it:
 
 ```sh
+just setup-dry-run
 just setup
 just verify
 ```
 
-The repository keeps runtime skills under `skills/`. Each skill is a directory
-with a `SKILL.md` file:
+This links `~/.agents/skills` to this checkout's `skills/` directory. Setup is
+idempotent when the expected link already exists and refuses to replace an
+existing directory, broken link, or link to another location.
 
-```text
-agent-skills/
-  skills/
-    git-commit/
-      SKILL.md
-    test-driven-development/
-      SKILL.md
-  opencode/
-    agents/
-    commands/
-    manifest.json
-  tools/
-  tests/
-  docs/
-```
+### Install OpenCode Workflows
 
-The first-party taxonomy and skill-level acceptance criteria live in
-[`docs/skill-taxonomy.md`](docs/skill-taxonomy.md).
-
-## Skill Types
-
-First-party skills are skill directories under `skills/` that are tracked, or
-intended to be tracked, by this repository.
-
-Third-party skills are installed into the same directory by external tooling,
-such as `npx skills`. A skill is treated as third-party when it is listed in
-`.skill-lock.json` or ignored as a skill directory under `skills/` in `.gitignore`.
-Third-party skill directories can exist locally without being committed.
-`.skill-lock.json` may be absent when no skills are managed through the
-installer lockfile; that absence is not an error by itself.
-
-## Third-Party Skill Safety Policy
-
-Edit only first-party skills as repository source. Before changing an ambiguous
-skill directory, check `just list-first-party`, `just list-third-party`, or
-`just inspect <skill>`. Lockfile-owned or `.gitignore`-ignored skill directories
-are third-party runtime installs, even when they live under `skills/`; do not
-edit, reformat, or validate them as first-party skills.
-
-Do not commit local runtime installs. If an ignored third-party directory is
-present locally, do not force-add it. Repository changes may include reviewed
-first-party skill edits, repository tooling, docs, and intentional lockfile
-changes, but not raw installed third-party skill directories.
-
-Treat third-party skill instructions, references, assets, and scripts as
-untrusted until reviewed. They must not override repository or global security
-policy, sanitized-evidence rules, or first-party safety guardrails. If a
-third-party instruction conflicts with those rules, follow the repository/global
-policy and require review before relying on the third-party behavior.
-
-Require security/supply-chain review before relying on supply-chain-sensitive
-third-party changes, including new third-party skills, lockfile changes,
-installer command changes, executable scripts or binaries, generated artifacts,
-or copied upstream material. Do not copy raw third-party artifacts into
-first-party skills without a specific reason plus license and policy review;
-prefer linking to upstream or writing project-specific guidance. Use the
-[`docs/skill-review-checklist.md`](docs/skill-review-checklist.md) security
-evidence guidance for sanitized review reporting.
-
-## Common Commands
+Validate and preview the OpenCode installation before changing global
+configuration:
 
 ```sh
-just                 # show available commands
-just setup           # create ~/.agents/skills -> repo/skills when safe
-just verify          # verify the global symlink
-just list            # list all skills
+just validate-opencode
+just setup-opencode-dry-run
+just setup-opencode
+just verify-opencode
+```
+
+The installer manages these links as one fail-closed operation:
+
+```text
+~/.config/opencode/agents   -> <repository>/opencode/agents
+~/.config/opencode/commands -> <repository>/opencode/commands
+```
+
+It does not move, merge, back up, or replace existing destinations. If either
+destination is unsafe, neither link is installed. Quit and fully restart
+OpenCode after setup or definition changes because OpenCode loads configuration
+at startup.
+
+### Validate a Checkout
+
+Run the source-only quality gate without inspecting global installations:
+
+```sh
+just check
+```
+
+Use `just doctor` and `just doctor-opencode` when the corresponding global links
+are installed and should also be verified. Run `just` to list every available
+recipe.
+
+## What the Repository Contains
+
+| Path | Purpose |
+| --- | --- |
+| `skills/` | First-party skill sources and local third-party runtime installs. |
+| `opencode/agents/` | Primary roles, implementation workers, reviewers, critics, and researchers. |
+| `opencode/commands/` | Human-selected top-level workflows and their primary owners. |
+| `opencode/project-template/` | Project-neutral durable-plan guidance to merge into target repositories. |
+| `docs/` | Skill taxonomy, routing, governance, review, and plan contracts. |
+| `tools/` | Standard-library Python installers and validators. |
+| `tests/` | Unit tests for skill and OpenCode management behavior. |
+| `Justfile` | Supported setup, inspection, update, and validation entry points. |
+
+The reviewed OpenCode inventory is
+[`opencode/manifest.json`](opencode/manifest.json). The current first-party skill
+inventory and acceptance criteria are in the
+[`skill taxonomy`](docs/skill-taxonomy.md).
+
+## How the Pieces Fit Together
+
+| Concept | Responsibility | Authority |
+| --- | --- | --- |
+| Skill | Reusable procedure loaded for a recurring task. | Grants no edit, delegation, review, or planning authority. |
+| Agent | Runtime role with a defined mode, permission map, and Task allowlist. | Limited to its checked-in definition and runtime approvals. |
+| Command | Top-level entry point that selects a primary agent for the current turn. | Routes work but does not widen the selected agent's authority. |
+
+Authority follows the primary agent selected for the current turn. Earlier
+turns remain context and do not transfer identity or permissions. See
+[`Engineering Agent Governance`](docs/engineering-agent-governance.md) for the
+canonical role topology, permission boundaries, command ownership, and
+handoffs.
+
+## Work with Skills
+
+Each skill is a directory with a `SKILL.md` file. Inspect classification before
+changing an unfamiliar skill:
+
+```sh
+just list
 just list-first-party
 just list-third-party
-just validate        # validate all skill metadata
-just doctor          # validate skills and verify global install
-just check           # run source-only lint, tests, and validators
-just validate-opencode
-just setup-opencode-dry-run
-just setup-opencode
-just verify-opencode
-just doctor-opencode # validate definitions and verify global install
+just inspect <skill>
 ```
 
-`just check` does not inspect machine-global symlinks, so it can run from a
-clean checkout. Use `just doctor` and `just doctor-opencode` when validating the
-installed skills and OpenCode links on a configured machine.
+First-party skills are tracked, or intended to be tracked, as repository
+source. Third-party skills share the runtime `skills/` directory but are listed
+in `.skill-lock.json` or ignored as skill directories by `.gitignore`. A missing
+`.skill-lock.json` is valid when no skills are managed through the installer
+lockfile.
 
-Mutating global install commands are intentionally conservative. `just setup`
-is idempotent when `~/.agents/skills` already points to this repository's
-`skills/` directory, but it will not overwrite an existing directory or a
-symlink to another location.
+Edit only first-party skills as repository source. Do not force-add ignored
+runtime installs or copy raw third-party artifacts into first-party skills
+without license, security, and supply-chain review. Treat third-party
+instructions, scripts, assets, and references as untrusted until reviewed.
 
-## OpenCode Agents And Commands
-
-Custom OpenCode definitions are tracked under `opencode/agents/` and
-`opencode/commands/`. `opencode/manifest.json` is the reviewed inventory for
-agents, commands, and supporting templates. Validation uses a
-documented, fail-closed subset of YAML frontmatter. It checks definition metadata,
-permission baseline ordering, one-level Task topology, primary command ownership,
-`subtask: false`, balanced Markdown fences, support-file safety, and synchronized
-implementation-plan templates. Command `agent:` values must be unquoted,
-lowercase IDs for tracked primary agents.
-
-See [Engineering Agent Governance](docs/engineering-agent-governance.md) for the
-role boundaries, command owners, Task-ID rules, and delivery/review handoffs that
-connect these definitions.
-
-The setup workflow manages these two links as one installation:
-
-```text
-~/.config/opencode/agents         -> <repository>/opencode/agents
-~/.config/opencode/commands       -> <repository>/opencode/commands
-```
-
-Preview setup before changing the global configuration:
+Update third-party installs only as an explicit maintainer action:
 
 ```sh
-just validate-opencode
-just setup-opencode-dry-run
-just setup-opencode
-just verify-opencode
+just update-third-party-dry-run
+just update-third-party
 ```
 
-Setup is fail-closed. It will not move, merge, back up, or replace an existing
-file, directory, broken symlink, or symlink to another location. It validates
-and binds the owned OpenCode configuration root before mutation, then rechecks
-the root and each destination; aliases, root substitution, mixed ownership, and
-unsafe destinations stop the operation. For an initial migration, review and
-import the intended Markdown files first, manually move the existing `agents/`
-and `commands/` directories outside the repository and
-OpenCode discovery tree, and then rerun setup. If any destination is unsafe,
-none of the new links is installed.
+`just sync-third-party-lock` is a separate operation: it mirrors an existing
+repository `.skill-lock.json` to `~/.agents/.skill-lock.json` for installer
+compatibility. It neither runs the installer nor updates skill contents. Use its
+`-dry-run` variant before writing.
 
-Treat the linked checkout as live configuration: newly tracked or modified
-agent and command files take effect the next time OpenCode starts. Setup and
-uninstall do not create, remove, or modify target-repository plan state.
-Do not use the linked checkout for unreviewed branches. Keep provider credentials,
-secrets, packages, backups, runtime state, and the rest of `~/.config/opencode`
-outside this repository.
+## Use the OpenCode Workflows
+
+The Engineering Lead is the normal entry point for direct delivery. The
+Engineering Review Board (ERB) provides independent read-only advice. The Plan
+Orchestrator owns durable-plan creation, state, and execution. The
+Implementation Worker receives one bounded implementation unit and cannot
+delegate, edit plan state, stage, commit, push, or deploy.
+
+| Workflow | Primary owner | Result |
+| --- | --- | --- |
+| `/brainstorm` | ERB | Compares credible options and returns read-only advisory guidance. |
+| `/root-cause-analysis` | ERB | Confirms a causal chain and challenges a repair proposal without implementing it. |
+| `/review-plan`, `/review-implementation` | ERB | Reviews plans or completed work without editing either. |
+| `/investigate-regression`, `/audit-technical-debt` | ERB | Performs focused read-only investigation or audit. |
+| `/address-review` | Engineering Lead | Re-evaluates prior ERB advice before ordinary implementation. |
+| `/optimize-prompt` | Engineering Lead | Returns a verified prompt rewrite without executing or editing its source. |
+| `/semver` | Engineering Lead | Audits, applies, or locally tags one explicitly selected version workflow. |
+| `/consult-plan` | Plan Orchestrator | Gives non-mutating planning advice. |
+| `/create-plan` | Plan Orchestrator | Creates and selects a canonical plan without executing it. |
+| `/start-plan` | Plan Orchestrator | Executes or resumes an existing selected canonical plan. |
+
+Direct implementation is preferred when scope, safety, and validation are
+adequate. Complexity may justify recommending `/consult-plan`, but never creates
+a durable plan automatically. Plan creation and execution require separate,
+explicit human choices. The canonical lifecycle, format, state schema, and
+immutability rules live in
+[`Implementation Plans`](docs/implementation-plans/README.md).
+
+Three human-controlled lifecycle paths keep delivery separate from durable
+planning:
+
+1. The Engineering Lead implements directly when ordinary scope, safety, and
+   validation are adequate.
+2. An explicit `/create-plan` request creates and selects a plan without
+   executing it.
+3. `/start-plan <existing-plan-path>` executes an existing canonical plan;
+   `/start-plan` without a path resumes the selection in
+   `.erb/plan-state.json`.
+
+The Lead or ERB may recommend top-level `/consult-plan` for non-mutating advice,
+but the human controls whether to create or execute a plan. Plan status is
+derived from its checkboxes, and the first unchecked checkbox is current. After
+the Plan Orchestrator creates and validates a plan, an explicit current human
+request may authorize the Engineering Lead to stage and commit only the
+canonical plan Markdown; `.erb/plan-state.json` remains excluded.
 
 ## External Directory Audits
 
 OpenCode's `external_directory` permission is an additional approval gate for
-tools that touch paths outside the working directory. The checked-in Lead,
-Board, Worker, Technical Researcher, and review-specialist profiles set that
-permission to `ask`; the Plan Orchestrator explicitly denies it. Read-only roles
-remain unable to edit even after external access is approved. The Worker and
-Lead retain their existing edit policies, so an audit-only request still grants
-no mutation authority.
+paths outside the working directory. The Lead, ERB, Worker, Technical
+Researcher, and review specialists may request approval; the Plan Orchestrator
+remains denied. Task delegation does not transfer approval, and every invoked
+agent or subagent must pass its own permission check for one exact external
+root.
 
-The human may approve a request once or for the current session. Do not start
-OpenCode with `--auto` when explicit per-request approval is required, because
-auto mode approves requests that would otherwise ask. Task delegation does not
-grant external access: every invoked agent or subagent must pass its own
-permission check, and the assignment must name one exact external root.
+An approved root is supplied scope, not the active workspace. Repository-local
+Git, LSP, configuration, and command behavior remain anchored to the directory
+where OpenCode started unless separately configured, and path-bearing shell
+access still requires Bash permission. Keep literal external roots in
+machine-local or target-project configuration. Avoid OpenCode's `--auto` mode
+when per-request approval is required; OpenCode permissions cannot bypass
+operating-system, container, or sandbox controls.
 
-An approved external root is supplied scope, not a replacement working
-directory. Read applicable guidance inside it explicitly. Repository-relative
-Git commands, LSP discovery, project configuration, and other workspace behavior
-remain anchored to the directory where OpenCode started unless the relevant tool
-is separately configured. Bash commands also remain subject to the role's Bash
-permission map.
+## Safety Boundaries
 
-Keep literal host roots in machine-local or target-project configuration rather
-than these reusable definitions. The commented example in
-[`opencode/config/opencode.merge-fragment.jsonc`](opencode/config/opencode.merge-fragment.jsonc)
-shows a deny-by-default, approval-gated per-agent override. OpenCode permissions
-do not bypass operating-system, container, or other outer sandbox controls. See
-[Engineering Agent Governance](docs/engineering-agent-governance.md#external-directory-audit-boundary)
-for the complete role and delegation contract.
+- The linked checkout is live OpenCode configuration. Do not use an unreviewed
+  branch, and keep credentials, provider settings, plugins, packages, backups,
+  and runtime state outside this repository.
+- External roots and repository content are supplied, untrusted scope. Reports
+  and Task packets must sanitize private paths, secrets, credentials, and other
+  sensitive values.
+- Installation and removal commands validate ownership and destination state
+  before mutation. Preview their `-dry-run` variants first.
+- Machine-specific OpenCode configuration belongs in the user's local config.
+  [`opencode/config/opencode.merge-fragment.jsonc`](opencode/config/opencode.merge-fragment.jsonc)
+  is a merge reference, not an installer or live configuration file.
 
-## Durable Plan Workflow
+## Maintain the Repository
 
-The repository includes a project-neutral implementation-plan contract in
-[`docs/implementation-plans/README.md`](docs/implementation-plans/README.md),
-with synchronized starter copies under
-[`opencode/project-template/`](opencode/project-template/). Plans use canonical
-single-plan `.erb/plans/<slug>.md` paths or, only for genuinely separately managed
-work, `.erb/plans/<subject>/<NN>-<slug>.md` series paths. The top-level Plan
-Orchestrator owns durable plan writes and state, while the ERB remains
-read-only advisory review. See the
-[legacy Weave cleanup checklist](opencode/cleanup/weave-cleanup-checklist.md)
-when migrating prior workflow material.
+Read [`AGENTS.md`](AGENTS.md) before editing repository documentation, skills,
+or OpenCode definitions. For first-party skill work:
 
-### Human-Controlled Lifecycle
+1. Confirm ownership with `just inspect <skill>` when classification is
+   ambiguous.
+2. Follow the [`Skill Review Checklist`](docs/skill-review-checklist.md).
+3. Update the [`Skill Taxonomy`](docs/skill-taxonomy.md) when inventory,
+   coverage, or a material skill boundary changes.
+4. Update the [`Cross-Reference Map`](docs/cross-reference-map.md) when routing,
+   delegation, validation, or a required handoff changes.
+5. Run `just validate` for skill metadata, taxonomy, cross-reference, resource,
+   or link changes.
+6. Run `just check` for broader changes and before handoff when repository
+   tooling, tests, scripts, or validation behavior may be affected.
 
-Three human-controlled lifecycle paths keep delivery separate from durable
-planning: (1) the Engineering Lead may deliver directly when scope, safety, and
-validation are adequate; (2) an explicit `/create-plan` request creates and
-persists a plan only; and (3) `/start-plan <existing-plan-path>` executes an
-existing canonical lean plan, while no arguments resume the selection in
-`.erb/plan-state.json`. Complexity may justify recommending a plan, never
-automatic creation. The Lead or ERB may recommend top-level `/consult-plan`
-with a reason, trade-off, and proposed scope; it provides non-mutating Plan
-Orchestrator advice and neither creates nor authorizes work. The human controls
-whether to require, decline, or override that recommendation.
+OpenCode definition changes must preserve project-neutral prompts, exact command
+ownership, one-level Task topology, permission profiles, and synchronized plan
+templates. Run `just validate-opencode` after changing agents, commands, the
+manifest, governance, or templates.
 
-The state file stores only the selected repository-relative plan path. Plan
-activity is derived from unchecked TODO or Verification boxes, and the first
-unchecked checkbox is the current step. A fully checked plan reports that it has
-already been implemented and stops. An explicit valid path repairs missing,
-invalid, or stale state. Selection is not an exclusivity or concurrency control;
-the most recent explicit selection wins.
+## Reference Documentation
 
-An explicit current conversational plan replacement request may split one
-unambiguous source into at least two successors. The Plan Orchestrator creates
-and re-reads all successors, re-reads the source, and only then retires the
-source with an exact-content edit patch. No registry, retained history, or
-separate deletion confirmation is required. Existing plan bodies remain
-immutable except for evidenced checkbox advancement.
-
-After the Plan Orchestrator creates and validates a plan, an explicit current
-human commit request may authorize the Engineering Lead to stage and commit the
-canonical plan Markdown. This narrow exception does not authorize the Lead to
-create, edit, or execute a plan and excludes `.erb/plan-state.json`. Staging is
-approval-gated and uses only exact literal canonical paths from fresh worktree
-evidence.
-
-To bootstrap a repository that does not already have plan guidance, copy
-`opencode/project-template/docs/implementation-plans/` to the target repository's
-`docs/implementation-plans/`, then merge—not replace—the relevant text from
-`opencode/project-template/AGENTS-plan-workflow-snippet.md` into its existing
-`AGENTS.md`. If either destination already exists, compare and reconcile it
-manually rather than overwriting project policy.
-
-`opencode/config/opencode.merge-fragment.jsonc` is a small merge reference, not
-an installer and not live configuration. Keep provider credentials, local
-plugins, and machine-specific OpenCode settings in the machine-local config.
-
-On another computer, clone the repository, install the global skills with
-`just setup` when needed, and run the OpenCode setup commands above. The target
-machine must separately provide OpenCode, access to the models named by the
-agents, and any required plugins or tools. A full OpenCode restart is required
-after setup or definition changes because configuration is loaded at startup.
-
-`just uninstall-opencode-dry-run` previews removal. `just uninstall-opencode`
-removes both links only when both still point to this checkout; it never removes
-the repository definitions or restores old directories.
-
-## Third-Party Updates
-
-`just update-third-party` runs `npx skills update` by default after verifying
-that `~/.agents/skills` points at this repository's `skills/` directory.
-Override the command with `SKILLS_UPDATE_COMMAND` when the installer workflow
-differs:
-
-```sh
-SKILLS_UPDATE_COMMAND="pnpm dlx skills update" just update-third-party
-```
-
-Keep third-party updates and lockfile sync separate:
-
-- `just update-third-party` runs the configured installer update command.
-- `just update-third-party-dry-run` prints the update command without running it.
-- `just sync-third-party-lock` copies the repository `.skill-lock.json` to
-  `~/.agents/.skill-lock.json` for installer compatibility. It does not run the
-  installer and does not update third-party skill directories.
-- `just sync-third-party-lock-dry-run` previews that lockfile copy without
-  writing to the global install location.
-
-Use dry-run commands first when checking third-party updates or lockfile sync.
-Run mutating update commands only as an explicit maintainer action, after
-deciding that the local runtime install or installer lockfile mirror should
-change.
-
-Run `sync-third-party-lock` only when a repository `.skill-lock.json` exists and
-needs to be mirrored for the installer. If the repository has no lockfile, there
-are no lockfile-managed skills to sync; ignored skill directories under
-`skills/` are still third-party.
-
-## Validation
-
-Validation checks the repository's actual skill format:
-
-- every discovered skill has `SKILL.md`
-- `SKILL.md` starts with YAML front matter
-- front matter defines `name` and `description`
-- the front matter `name` matches the directory name
-- first-party local Markdown links resolve to existing files
-- first-party resource files are reachable from `SKILL.md`
-- first-party skills are listed in `docs/skill-taxonomy.md`
-- first-party skill text does not contain source-project identifiers or
-  machine-specific home paths
-- when `.skill-lock.json` exists, every lockfile-listed third-party skill is
-  present locally
-- OpenCode agents and commands do not contain machine-specific home paths, and
-  agent permission maps do not name concrete target-repository Just recipes
-
-Installer and definition behavior is covered by
-`python3 -m unittest discover -s tests -v`.
-
-First-party skills should not keep unlinked changelogs, placeholder scripts,
-generic templates, or copied reference files that no skill instruction can load.
-If a resource is useful, link it from `SKILL.md` and keep it specific to the
-skill's trigger.
+- [`Skill Taxonomy`](docs/skill-taxonomy.md): inventory, domain boundaries,
+  quality rubric, coverage, and acceptance criteria.
+- [`Cross-Reference Map`](docs/cross-reference-map.md): routing, companion
+  skills, validation relationships, and runtime handoff overlay.
+- [`Engineering Agent Governance`](docs/engineering-agent-governance.md): roles,
+  permissions, command ownership, evidence, and handoffs.
+- [`Implementation Plans`](docs/implementation-plans/README.md): durable-plan
+  paths, format, lifecycle, state, execution, and validation.
+- [`Skill Review Checklist`](docs/skill-review-checklist.md): concise review and
+  handoff checklist for first-party skills.
+- [`Legacy Weave Cleanup Checklist`](opencode/cleanup/weave-cleanup-checklist.md):
+  migration guidance for retired workflow material.
 
 ## License
 
 First-party skills and repository tooling are licensed under the MIT License.
-See `LICENSE`.
-
-Third-party skills installed into this directory are governed by their own
-upstream licenses.
+See [`LICENSE`](LICENSE). Third-party skills installed under `skills/` remain
+subject to their upstream licenses.
