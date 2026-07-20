@@ -31,25 +31,34 @@ headings and fixed Context labels in [`TEMPLATE.md`](TEMPLATE.md). TODO and
 Verification entries are numbered Markdown checkboxes. Create every checkbox
 unchecked.
 
-After creation, plan prose and structure are immutable. During execution, only
+Active plan prose and structure are immutable by default. During execution, only
 an evidenced `[ ]` to `[x]` checkbox change is allowed. Do not add, remove,
-rewrite, reorder, or renumber plan content.
+rewrite, reorder, or renumber plan content during `/start-plan`.
+
+A current explicit `/update-plan <exact-plan-path>` request may update one active
+plan in place without executing it. Completed plans remain immutable. New
+checklist entries stay unchecked, unchecked entries never become checked during
+an update, and checked entries remain checked only when their obligation and the
+surrounding acceptance contract are materially unchanged and fresh evidence
+still supports them.
 
 ## Human-Controlled Lifecycle
 
-The workflow has three routes:
+The workflow has four routes:
 
 1. The Engineering Lead implements directly when normal scope, safety, and
    validation are adequate.
 2. An explicit human `/create-plan` request creates and persists a plan only.
    It does not execute TODOs.
-3. A separate human `/start-plan <existing-plan-path>` request executes an
+3. An explicit human `/update-plan <exact-plan-path>` request updates one active
+   plan in place without changing state or executing TODOs.
+4. A separate human `/start-plan <existing-plan-path>` request executes an
    existing canonical plan. With no path, `/start-plan` resumes the plan
    selected in `.erb/plan-state.json`.
 
 The Lead or ERB may recommend top-level `/consult-plan` for read-only advice,
 stating the reason, trade-off, and proposed scope. The human decides whether to
-create or execute a plan.
+create, update, or execute a plan.
 
 ## Plan State
 
@@ -95,6 +104,38 @@ the exact source, and only then delete the source with an exact-content edit
 patch. If successor creation or verification fails, keep the source. No registry,
 retained contract history, or additional deletion confirmation is required.
 
+## Active Plan Updates
+
+`/update-plan <exact-plan-path>` requires one explicit canonical plan path. It
+never infers the target from `.erb/plan-state.json`, and it does not select the
+updated plan. Accept only a plan with at least one unchecked TODO or Verification
+checkbox. A completed plan remains immutable; additional work requires a new
+human-authorized `/create-plan` request.
+
+Re-read and validate the exact plan plus fresh repository evidence immediately
+before mutation. Apply the smallest exact-content edit patch that satisfies the
+human's instructions, keep the same path and canonical format, then re-read and
+validate the whole result. If the patch no longer matches fresh content, stop
+instead of overwriting unexpected changes.
+
+Reconcile checklist evidence conservatively:
+
+- New TODO and Verification entries are unchecked.
+- An unchecked entry never becomes checked during an update.
+- A checked entry stays checked only when its obligation and the surrounding
+  acceptance contract remain materially unchanged and fresh evidence still
+  supports it.
+- A changed, invalidated, or insufficiently evidenced checked entry resets to
+  unchecked.
+- Preserve numbering and order where practical; after structural changes, keep
+  entries sequentially numbered within each checklist.
+
+Do not write `.erb/plan-state.json`, delegate, implement, run implementation
+validation, stage, commit, execute TODOs, or update native planned-work TODOs in
+this route. Report the applied changes and every retained or reset checked item.
+A later explicit `/start-plan <existing-plan-path>` request is required to
+execute or resume the updated plan.
+
 ## Plan Artifact Commits
 
 After the Plan Orchestrator creates and validates a plan, an explicit current
@@ -120,6 +161,12 @@ Check a TODO only after observed implementation or individual-validation
 evidence. Check a Verification step only after its own observed evidence. A
 blocked, failed, or uncertain step remains unchecked and is still current.
 Re-read the plan and fresh worktree evidence before each mutable phase.
+
+If fresh evidence shows that the plan contract needs a material update, leave
+the current checkbox unchecked, stop execution, and report the exact mismatch
+plus the smallest proposed amendment. The human may then choose
+`/update-plan <exact-plan-path>`. Never update the plan during `/start-plan`;
+resume only after a later explicit `/start-plan` request.
 
 The Plan Orchestrator may delegate one bounded implementation TODO at a time to
 the Implementation Worker. Each new Task receives a self-contained packet with

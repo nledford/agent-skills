@@ -26,8 +26,9 @@ Proceed under the Engineering Lead contract for ordinary implementation. Never
 claim that the Engineering Review Board is selected while this command is
 running. If an action is outside the Lead's authority, identify the actual
 authority boundary and route it instead of misidentifying the selected primary
-agent. Durable plan creation remains an explicit `/create-plan` choice;
-execution of an existing plan remains a separate
+agent. Durable plan creation remains an explicit `/create-plan` choice, an
+in-place active-plan amendment remains a separate
+`/update-plan <exact-plan-path>` choice, and execution remains a separate
 `/start-plan <existing-plan-path>` choice.
 
 Report accepted, adapted, and rejected findings; changes made; validation run or

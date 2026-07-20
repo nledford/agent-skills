@@ -11,6 +11,13 @@ human controls the route. Only an explicit human `/create-plan` request creates
 and persists a plan, and it is plan-only. Use `.erb/plans/<slug>.md` for one plan
 and `.erb/plans/<subject>/<NN>-<slug>.md` only for separately managed series.
 
+An explicit `/update-plan <exact-plan-path>` request may update one active plan
+in place and is plan-only. It requires one canonical path, never infers its
+target from `.erb/plan-state.json`, does not change state, and does not execute
+TODOs. Completed plans remain immutable. New checklist entries remain unchecked,
+and checked entries reset to unchecked when changed, invalidated, or no longer
+supported by fresh evidence.
+
 Execution-only `/start-plan` accepts an existing valid canonical plan path or,
 without a path, the selection in `.erb/plan-state.json`. The state file stores
 only the repository-relative plan path. Derive active status and current work
@@ -22,10 +29,12 @@ An explicit valid plan path repairs missing, invalid, or stale state. The latest
 explicit selection wins. The pointer is not concurrency control and does not
 prevent the user from starting another plan.
 
-Existing plan bodies are immutable except for evidenced checkbox advancement. A
-current explicit split-or-replace request may create at least two successors and
-retire one unambiguous source after the source and all successors are re-read.
-No registry or retained contract history is required.
+Active plan bodies are immutable by default and during execution except for
+evidenced checkbox advancement. Only a current explicit `/update-plan` request
+authorizes an in-place prose or structure update. Separately, a current explicit
+split-or-replace request may create at least two successors and retire one
+unambiguous source after the source and all successors are re-read. No registry
+or retained contract history is required.
 
 The Plan Orchestrator is the exclusive durable-plan and state writer. The
 Engineering Review Board remains separate, optional, and read-only advisory. The

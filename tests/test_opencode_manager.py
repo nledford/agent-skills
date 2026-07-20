@@ -3172,6 +3172,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "root-cause-analysis.md",
             "semver.md",
             "start-plan.md",
+            "update-plan.md",
         )
         expected_owners = {
             "address-review.md": "engineering-lead",
@@ -3186,6 +3187,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "root-cause-analysis.md": "engineering-review-board",
             "semver.md": "engineering-lead",
             "start-plan.md": "plan-orchestrator",
+            "update-plan.md": "plan-orchestrator",
         }
 
         self.assertEqual(len(manifest["agents"]), 23)
@@ -3325,7 +3327,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "ask the human to provide or identify them instead of inventing work.",
             "Never claim that the Engineering Review Board is selected while this command is running.",
             "identify the actual authority boundary and route",
-            "Durable plan creation remains an explicit `/create-plan` choice; execution of an existing plan remains a separate `/start-plan <existing-plan-path>` choice.",
+            "Durable plan creation remains an explicit `/create-plan` choice, an in-place active-plan amendment remains a separate `/update-plan <exact-plan-path>` choice, and execution remains a separate `/start-plan <existing-plan-path>` choice.",
         ):
             with self.subTest(required=required):
                 self.assertIn(required, normalized)
@@ -3349,6 +3351,9 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             ),
             "start-plan.md": (
                 "This invocation is the human's current request to execute or resume an existing plan under the Plan Orchestrator contract, subject to the path, state, and lifecycle validation below.",
+            ),
+            "update-plan.md": (
+                "This invocation is the human's explicit current authorization to update one existing active plan in place under the constraints below; it grants no execution authority.",
             ),
         }
 
@@ -3441,6 +3446,38 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
         for phrase in lead_requirements:
             with self.subTest(agent="engineering-lead", phrase=phrase):
                 self.assertIn(phrase, lead)
+
+    def test_checked_in_update_plan_requires_exact_plan_only_authority(self) -> None:
+        """Pin active-plan amendment, checkbox reconciliation, and resume separation."""
+        project_root = Path(__file__).parents[1]
+        command_path = project_root / "opencode/commands/update-plan.md"
+        command_text = command_path.read_text(encoding="utf-8")
+        normalized = " ".join(command_text.split())
+
+        parsed, errors = OpenCodeInstallService._parse_frontmatter(
+            "commands", "update-plan.md", command_text
+        )
+        self.assertEqual(errors, [])
+        assert parsed is not None
+        self.assertEqual(parsed.fields["agent"], "plan-orchestrator")
+        self.assertEqual(parsed.fields["subtask"], "false")
+
+        for required in (
+            "Use syntax `/update-plan <exact-plan-path> [instructions]`",
+            "requires one explicit canonical plan path and never infers the target from `.erb/plan-state.json`",
+            "Only an active plan with at least one unchecked TODO or Verification checkbox may be updated.",
+            "A completed plan remains immutable",
+            "Apply the smallest exact-content edit patch",
+            "New TODO and Verification entries must be unchecked.",
+            "Never change an unchecked checkbox to checked during an update.",
+            "Retain a checked item only when its obligation and the surrounding acceptance contract remain materially unchanged and fresh evidence still supports it.",
+            "Reset every changed, invalidated, or insufficiently evidenced checked item to unchecked.",
+            "Do not write or change `.erb/plan-state.json`.",
+            "Do not delegate, implement, validate implementation work, stage, commit, or execute TODOs.",
+            "A later explicit `/start-plan <existing-plan-path>` request is required to execute or resume the updated plan.",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, normalized)
 
     def test_checked_in_primary_agents_support_same_conversation_handoffs(self) -> None:
         """Keep primary-agent authority turn-scoped without transferring permissions."""
@@ -3616,7 +3653,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "must not create or mutate a plan or state",
             "must not read `.erb/plan-state.json`",
             "must not delegate implementation, implement, stage, or commit",
-            "The human controls whether to proceed directly, create a plan, or decline the recommendation.",
+            "The human controls whether to proceed directly, create or update a plan, or decline the recommendation.",
         ):
             self.assertIn(required, normalized)
 
@@ -3662,8 +3699,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     "Never send only a status preamble or references such as `these findings`",
                 ),
                 "plan-orchestrator.md": (
-                    "The lifecycle distinguishes read-only consultation, explicit plan-only creation, and execution.",
-                    "It must not execute newly created plans automatically.",
+                    "The lifecycle distinguishes read-only consultation, explicit plan-only creation, explicit active-plan updates, and execution.",
+                    "It must not execute newly created or updated plans automatically.",
                     "`.erb/plan-state.json`",
                     "Active means at least one unchecked TODO or Verification checkbox remains.",
                     "The current step is the first unchecked checkbox in document order.",
@@ -3672,6 +3709,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     "Never block because another plan is selected or may be running.",
                     "Before every mutable phase, freshly reload the selected plan, checkbox state, and worktree evidence; never rely on stale evidence.",
                     "or equally explicit current top-level human plan-creation or plan-replacement request",
+                    "`/update-plan <exact-plan-path>` is explicit plan-only authority",
+                    "Completed plans remain immutable.",
                     "must complete every planned TODO before beginning any dedicated Verification step",
                     "must not add, remove, rewrite, reorder, or renumber plan content",
                     "Treat every new Task child as context-isolated; its prompt must be self-contained",
@@ -4770,7 +4809,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                     result.errors,
                 )
 
-    def test_checked_in_plan_workflow_uses_only_start_plan_and_pointer_state(self) -> None:
+    def test_checked_in_plan_workflow_uses_explicit_commands_and_pointer_state(self) -> None:
         project_root = Path(__file__).parents[1]
         manifest = json.loads(
             (project_root / "opencode/manifest.json").read_text(encoding="utf-8")
@@ -4792,6 +4831,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                 "root-cause-analysis.md",
                 "semver.md",
                 "start-plan.md",
+                "update-plan.md",
             ],
         )
 

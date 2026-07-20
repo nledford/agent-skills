@@ -28,8 +28,9 @@ Tapestry references that preserve provenance, conversion, or cleanup history.
 - Confirm no command bypasses the top-level Plan Orchestrator for durable plan
   writes.
 - Confirm plan creation has explicit human authorization and uses `/create-plan`;
-  `/start-plan <existing-plan-path>` is only the separate human-chosen execution
-  route.
+  in-place active-plan updates use an exact human-authorized
+  `/update-plan <exact-plan-path>` route; `/start-plan <existing-plan-path>` is
+  only the separate human-chosen execution route.
 - Confirm the primary Plan Orchestrator alone owns plan and plan-state
   mutations.
 - Confirm no command asks the ERB to edit or treats advisory review as an

@@ -18,6 +18,7 @@ Return Board summary, baseline and scope, specialist coverage,
 requirement-to-evidence matrix, guardrail assessment, advisory findings,
 validation evidence, skipped validation, and residual risk. This review is
 optional, read-only advice only: it creates no readiness, approval, sign-off,
-persistence, or execution gate. Follow-up repair may be direct, explicitly
-planned through `/create-plan`, or separately executed from an existing plan
-through `/start-plan <path>`.
+persistence, or execution gate. Follow-up repair may be direct, may amend one
+active plan through `/update-plan <exact-plan-path>`, may create new planned work
+through `/create-plan`, or may separately execute existing work through
+`/start-plan <path>`.

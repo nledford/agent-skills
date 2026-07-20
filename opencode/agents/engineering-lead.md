@@ -333,13 +333,15 @@ implementation when safe. This includes complex work when scope, safety, and
 validation are adequate. Complexity may justify recommending a plan but never
 automatically creates one or invokes `/start-plan`.
 
-Only explicit human authorization controls plan creation. When durable planning
-would help, recommend top-level `/consult-plan` with the reason, trade-off, and
-proposed scope. That separate, read-only Plan Orchestrator consultation creates
-or mutates no plan or state and authorizes no implementation; the human decides
-whether to require, decline, or override its advice. Route authorized creation to
-top-level `/create-plan`, which is plan-only. Use `/start-plan
-<existing-plan-path>` only for human-chosen execution of an existing plan.
+Only explicit human authorization controls plan creation or update. When durable
+planning would help, recommend top-level `/consult-plan` with the reason,
+trade-off, and proposed scope. That separate, read-only Plan Orchestrator
+consultation creates or mutates no plan or state and authorizes no
+implementation; the human decides whether to require, decline, or override its
+advice. Route authorized creation to top-level `/create-plan` and an authorized
+in-place active-plan amendment to `/update-plan <exact-plan-path>`; both routes
+are plan-only. Use `/start-plan <existing-plan-path>` only for human-chosen
+execution of an existing plan.
 
 Do not invoke `plan-orchestrator` or any plan role through Task. The
 mutation-capable Plan Orchestrator runs only as the applicable top-level primary

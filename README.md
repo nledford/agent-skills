@@ -140,7 +140,8 @@ compatibility. It neither runs the installer nor updates skill contents. Use its
 
 The Engineering Lead is the normal entry point for direct delivery. The
 Engineering Review Board (ERB) provides independent read-only advice. The Plan
-Orchestrator owns durable-plan creation, state, and execution. The
+Orchestrator owns durable-plan creation, active-plan updates, state, and
+execution. The
 Implementation Worker receives one bounded implementation unit and cannot
 delegate, edit plan state, stage, commit, push, or deploy.
 
@@ -155,29 +156,32 @@ delegate, edit plan state, stage, commit, push, or deploy.
 | `/semver` | Engineering Lead | Audits, applies, or locally tags one explicitly selected version workflow. |
 | `/consult-plan` | Plan Orchestrator | Gives non-mutating planning advice. |
 | `/create-plan` | Plan Orchestrator | Creates and selects a canonical plan without executing it. |
+| `/update-plan` | Plan Orchestrator | Updates one exact active plan in place without executing it or changing state. |
 | `/start-plan` | Plan Orchestrator | Executes or resumes an existing selected canonical plan. |
 
 Direct implementation is preferred when scope, safety, and validation are
 adequate. Complexity may justify recommending `/consult-plan`, but never creates
-a durable plan automatically. Plan creation and execution require separate,
-explicit human choices. The canonical lifecycle, format, state schema, and
-immutability rules live in
+a durable plan automatically. Plan creation, active-plan updates, and execution
+require separate, explicit human choices. The canonical lifecycle, format, state
+schema, and mutation rules live in
 [`Implementation Plans`](docs/implementation-plans/README.md).
 
-Three human-controlled lifecycle paths keep delivery separate from durable
+Four human-controlled lifecycle paths keep delivery separate from durable
 planning:
 
 1. The Engineering Lead implements directly when ordinary scope, safety, and
    validation are adequate.
 2. An explicit `/create-plan` request creates and selects a plan without
    executing it.
-3. `/start-plan <existing-plan-path>` executes an existing canonical plan;
+3. `/update-plan <exact-plan-path>` updates one active canonical plan in place
+   without executing it or changing `.erb/plan-state.json`.
+4. `/start-plan <existing-plan-path>` executes an existing canonical plan;
    `/start-plan` without a path resumes the selection in
    `.erb/plan-state.json`.
 
 The Lead or ERB may recommend top-level `/consult-plan` for non-mutating advice,
-but the human controls whether to create or execute a plan. Plan status is
-derived from its checkboxes, and the first unchecked checkbox is current. After
+but the human controls whether to create, update, or execute a plan. Plan status
+is derived from its checkboxes, and the first unchecked checkbox is current. After
 the Plan Orchestrator creates and validates a plan, an explicit current human
 request may authorize the Engineering Lead to stage and commit only the
 canonical plan Markdown; `.erb/plan-state.json` remains excluded.

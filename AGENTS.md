@@ -45,17 +45,24 @@ complexity may justify a recommendation, but never automatic plan creation. The
 Lead or ERB may recommend top-level `/consult-plan` for bounded read-only Plan
 Orchestrator advice, stating the reason, trade-off, and proposed scope; the human
 controls the route. An explicit human `/create-plan` request may create and
-persist a new plan, and it is plan-only. `/start-plan` executes or resumes an
-existing canonical plan. It accepts an explicit plan path or, without a path,
-the selection in `.erb/plan-state.json`. The state file stores only the selected
-repository-relative plan path. Active status and the current step are derived
-from the plan: a plan is active while any TODO or Verification checkbox is
-unchecked, and the first unchecked checkbox is current. A completed selection
-reports that it has already been implemented and performs no work. An explicit
-valid path repairs missing, invalid, or stale state. The selection pointer does
-not serialize work or prevent the user from starting another plan.
+persist a new plan, and it is plan-only. An explicit
+`/update-plan <exact-plan-path>` request may update one active plan in place and
+is also plan-only; it never infers the target from state or changes state.
+`/start-plan` executes or resumes an existing canonical plan. It accepts an
+explicit plan path or, without a path, the selection in `.erb/plan-state.json`.
+The state file stores only the selected repository-relative plan path. Active
+status and the current step are derived from the plan: a plan is active while
+any TODO or Verification checkbox is unchecked, and the first unchecked
+checkbox is current. A completed selection reports that it has already been
+implemented and performs no work. An explicit valid path repairs missing,
+invalid, or stale state. The selection pointer does not serialize work or
+prevent the user from starting another plan.
 
-Existing plan bodies are immutable except for evidenced checkbox advancement.
+Active plan bodies are immutable by default and during execution except for
+evidenced checkbox advancement. A current explicit `/update-plan` request may
+apply the smallest exact-content update to one active plan; completed plans
+remain immutable, new work stays unchecked, and changed or invalidated checked
+items reset to unchecked.
 A current conversational split-or-replace request may create at least two
 successors and retire one unambiguous source after every successor is re-read;
 no registry or retained contract history is required. The Plan Orchestrator is

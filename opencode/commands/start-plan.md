@@ -23,7 +23,8 @@ existing canonical lean plan. `/start-plan` accepts only an explicit existing
 canonical lean plan path or a no-argument state pointer. It rejects free-form new
 requests and immutable legacy inputs. It does not create, succeed, convert, or
 conversationally update plans. Direct human-authorized plan creation to
-`/create-plan`.
+`/create-plan` and an in-place active-plan amendment to
+`/update-plan <exact-plan-path>`.
 
 The only durable workflow state is `.erb/plan-state.json`, with exactly this
 shape and no additional fields:
@@ -73,6 +74,12 @@ Check a TODO only after observed implementation or individual-validation
 evidence authorizes it. Check a Verification step only after its own observed
 evidence. A blocked, failed, or uncertain step remains unchecked and current.
 
+When fresh evidence shows that the plan contract requires a material update,
+leave the current checkbox unchecked, stop execution, and report the exact
+mismatch plus the smallest proposed amendment. Direct the human to a separate
+`/update-plan <exact-plan-path>` request. Do not update the plan in this command;
+a later explicit `/start-plan` request is required to resume after amendment.
+
 Use the Plan Orchestrator's self-contained delegation and
 corrective-continuation contract. A Worker return does not end the current TODO.
 Reconcile every acceptance criterion against fresh source, diff, and validation
@@ -90,5 +97,5 @@ plan execution.
 
 Additional instructions may narrow validation or implementation choices, but
 they may not change the selected plan body, skip unchecked steps, or expand the
-Plan Orchestrator's authority. Existing plan bodies are immutable except for
-evidenced `[ ]` to `[x]` checkbox advancement.
+Plan Orchestrator's authority. Active plan bodies are immutable during this
+command except for evidenced `[ ]` to `[x]` checkbox advancement.

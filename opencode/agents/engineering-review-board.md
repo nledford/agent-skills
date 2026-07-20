@@ -109,11 +109,11 @@ when separate Plan Orchestrator advice would help, recommend top-level
 `/consult-plan` and state the reason, trade-off, and recommended scope.
 Consultation is a separate primary, non-mutating route that cannot create or
 mutate plans or state, authorize implementation, or invoke `/start-plan`. The
-Board cannot create, authorize, or automatically initiate a plan or
-`/start-plan`. The human's decision to require, decline, or override planning
-advice controls the route. The mutation-capable Plan Orchestrator remains a
-separate primary owner and is never a Task child of the Board. Board advice is
-advisory evidence only and non-gating.
+Board cannot create or update a plan, authorize plan mutation, or automatically
+initiate a plan or `/start-plan`. The human's decision to require, decline, or
+override planning advice controls the route. The mutation-capable Plan
+Orchestrator remains a separate primary owner and is never a Task child of the
+Board. Board advice is advisory evidence only and non-gating.
 
 ## Task Contract
 

@@ -27,8 +27,8 @@ For this explicit ERB-to-Lead implementation handoff, `/address-review` selects
 the Engineering Lead for the current command turn and identifies prior Board
 output as read-only advisory context from a different primary agent. The
 command does not widen Lead authority: it requires fresh repository evidence
-and re-evaluation, and routes durable plan creation or existing-plan execution
-through the human-controlled Plan Orchestrator commands.
+and re-evaluation, and routes durable plan creation, active-plan updates, or
+existing-plan execution through the human-controlled Plan Orchestrator commands.
 
 `/brainstorm` selects the Engineering Review Board for the current command turn
 and makes that turn read-only solution exploration. It loads `brainstorming`,
@@ -68,10 +68,11 @@ remains. That result is advisory evidence, not approval, sign-off, readiness, or
 implementation authority; a separate explicit human request must select the
 Engineering Lead before direct implementation.
 
-`/consult-plan`, `/create-plan`, and `/start-plan` re-anchor the current command
-turn to the Plan Orchestrator. Each command identifies earlier Board or Lead
-output as context from a different primary agent, prevents that output from
-transferring identity or permissions, and keeps its existing lifecycle limits.
+`/consult-plan`, `/create-plan`, `/update-plan`, and `/start-plan` re-anchor the
+current command turn to the Plan Orchestrator. Each command identifies earlier
+Board or Lead output as context from a different primary agent, prevents that
+output from transferring identity or permissions, and keeps its existing
+lifecycle limits.
 
 ## Roles and Limits
 
@@ -79,7 +80,7 @@ transferring identity or permissions, and keeps its existing lifecycle limits.
 | --- | --- | --- |
 | [Engineering Lead](../opencode/agents/engineering-lead.md) | Request intake, process selection, direct or bounded unplanned delivery, integration, validation, and independent-review handoff. | Invoke the ERB as a Task child, claim a Board decision without its output, or write or execute a durable plan or plan state. |
 | [Engineering Review Board](../opencode/agents/engineering-review-board.md) | Optional independent read-only advice, specialist selection, evidence synthesis, and severity assessment. Invoke it as a separate primary agent. | Edit the repository, implement a fix, change plans or state, or control plan creation, updates, execution, or persistence. |
-| [Plan Orchestrator](../opencode/agents/plan-orchestrator.md) | Top-level read-only consultation, safe closed lean-plan creation, selected-plan state, planned execution, self-contained Worker handoffs, acceptance reconciliation, integration, validation, and native planned-work TODOs. | Act as a Task child, mutate a created plan beyond evidenced existing checkboxes, delegate to anything other than the Worker, or claim ERB advisory evidence controls planned work. |
+| [Plan Orchestrator](../opencode/agents/plan-orchestrator.md) | Top-level read-only consultation, safe closed lean-plan creation, explicit active-plan updates, selected-plan state, planned execution, self-contained Worker handoffs, acceptance reconciliation, integration, validation, and native planned-work TODOs. | Act as a Task child, update a plan without exact current human authority, update a completed plan, mutate plan prose during execution, delegate to anything other than the Worker, or claim ERB advisory evidence controls planned work. |
 | [Implementation Worker](../opencode/agents/implementation-worker.md) | One bounded implementation unit assigned by the Lead or Plan Orchestrator, complete against every assigned acceptance criterion, plus focused validation and a requirement-to-evidence report. It is the only implementation subagent. | Edit durable plans; read or mutate `.erb/plan-state.json`; delegate; stage; commit; push; deploy; broaden scope; or perform destructive migrations. |
 | Review and research specialists | Bounded, decision-relevant analysis for the Lead or ERB using exact runtime-visible IDs. | Implement changes, simulate the ERB, approve plans, or treat advisory output as final authority. |
 
@@ -149,6 +150,18 @@ re-reads every successor, re-reads the exact source, and then uses an
 exact-content edit patch for retirement. This guarded file retirement does not
 permit an in-place plan rewrite or execution. No registry or retained contract
 history is involved.
+
+An explicit top-level `/update-plan <exact-plan-path>` request is plan-only
+authority to update one existing active canonical plan in place. It requires one
+exact path and never resolves the target from `.erb/plan-state.json`. The Plan
+Orchestrator applies the smallest exact-content patch, preserves canonical
+format, and leaves state unchanged. New entries remain unchecked; checked items
+remain checked only when their obligation and surrounding acceptance contract
+are materially unchanged and fresh evidence still supports them. Changed,
+invalidated, or insufficiently evidenced checked items reset to unchecked.
+Completed plans remain immutable. Updating never delegates, implements,
+validates implementation work, stages, commits, executes TODOs, or resumes
+execution; a later explicit `/start-plan` request is required.
 
 For `/start-plan`, the Plan Orchestrator validates an explicit canonical plan
 path or reads the selection from `.erb/plan-state.json`. The state schema stores
@@ -323,10 +336,14 @@ remains authoritative for durable-plan details:
    closed lean plan only, then selects it in `.erb/plan-state.json`. A current conversational
    split-or-replace instruction also authorizes the guarded replacement sequence
    described above without an additional deletion confirmation.
-8. A separately selected ERB primary-agent turn may provide optional independent
+8. On explicit human authorization, top-level
+   [`/update-plan <exact-plan-path>`](../opencode/commands/update-plan.md) updates
+   one active canonical plan in place, reconciles checked evidence, leaves state
+   unchanged, and stops without execution.
+9. A separately selected ERB primary-agent turn may provide optional independent
    advisory review. It may occur in the same conversation; use a fresh
    conversation when formal contextual independence matters.
-9. A separate human choice of top-level
+10. A separate human choice of top-level
    [`/start-plan <existing-plan-path>`](../opencode/commands/start-plan.md), or a
    valid no-argument state pointer,
    executes existing planned work. The Plan Orchestrator then executes bounded
@@ -340,11 +357,11 @@ remains authoritative for durable-plan details:
    correction scope, validation to rerun, and unchanged constraints; a
    status-only reference to findings is not an actionable Task packet.
 
-Existing plan content cannot be updated after creation except for evidenced
-existing checkbox advancement during execution. Guarded replacement retires one
-source file after successor creation but never updates its content. Material
-discoveries require a new human decision and, when authorized, a new
-`/create-plan` request or guarded conversational replacement.
+Active plan content is immutable by default and during execution except for
+evidenced checkbox advancement. A material discovery requires a new human
+decision: `/update-plan <exact-plan-path>` may amend one active plan in place,
+`/create-plan` may create new work, or guarded conversational replacement may
+split one plan into successors. Completed plans remain immutable.
 
 ERB output is advisory evidence, not implementation, plan, state, or execution
 authority.
@@ -362,6 +379,7 @@ are authoritative for primary ownership.
 | [`/optimize-prompt`](../opencode/commands/optimize-prompt.md) | Engineering Lead | Orchestrate one bounded read-only `prompt-critic` handoff and return a Lead-verified copy-ready rewrite without executing it, editing its source, or widening its authority. |
 | [`/consult-plan`](../opencode/commands/consult-plan.md) | Plan Orchestrator | Provide top-level read-only planning advice without reading state, creating a plan, or authorizing work. |
 | [`/create-plan`](../opencode/commands/create-plan.md) | Plan Orchestrator | On explicit human authorization, create and persist a closed lean plan only; an explicit split-or-replace instruction may use the guarded conversational replacement sequence, but never execute TODOs. |
+| [`/update-plan`](../opencode/commands/update-plan.md) | Plan Orchestrator | On explicit human authorization, update one exact active canonical plan in place, reconcile checkbox evidence, leave state unchanged, and stop without execution. |
 | [`/start-plan`](../opencode/commands/start-plan.md) | Plan Orchestrator | Execute or resume an existing valid canonical lean plan; derive active/completed status and current work from its checkboxes. |
 | [`/review-plan`](../opencode/commands/review-plan.md) | Engineering Review Board | Review canonical plans without editing them. |
 | [`/review-implementation`](../opencode/commands/review-implementation.md) | Engineering Review Board | Review completed implementation against the relevant plan and evidence without editing either. |

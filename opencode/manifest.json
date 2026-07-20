@@ -36,7 +36,8 @@
     "review-plan.md",
     "root-cause-analysis.md",
     "semver.md",
-    "start-plan.md"
+    "start-plan.md",
+    "update-plan.md"
   ],
   "support_files": [
     "cleanup/weave-cleanup-checklist.md",
