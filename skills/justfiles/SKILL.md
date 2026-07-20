@@ -244,6 +244,11 @@ regen:
 
 ## Workflow ownership routing
 
+- Load [`script-engineering`](../script-engineering/SKILL.md) when interpreter
+  availability, script-language selection, external script design, or script
+  testing is material; keep this skill focused on recipe syntax, discoverability,
+  parameters, orchestration, and Just-specific validation.
+
 - Load [`ci-release-engineering`](../ci-release-engineering/SKILL.md) when a
   change affects hosted pipeline triggers, jobs, permissions, artifacts, or
   automated release behavior; keep this skill focused on the Just recipe the
