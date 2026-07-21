@@ -123,7 +123,7 @@ handoff.
 | Category | Skills | Boundary |
 | --- | --- | --- |
 | Skill authoring and governance | `create-agent-skill`, `code-review`, `review-verification-protocol` | Creating, validating, and reviewing durable agent guidance and repository changes. |
-| Specialist reviews and release readiness | `adversarial-review`, `architecture-review`, `domain-modeling`, `performance-review`, `prompt-engineering-review`, `release-readiness`, `testing-strategy`, `ux-accessibility-review` | Focused final verification, architecture/domain/performance/test/prompt/UX/accessibility review, and evidence-based ship or hold decisions; implementation remains with the owning method or engineering skill. |
+| Specialist reviews and release readiness | `adversarial-review`, `architecture-review`, `domain-modeling`, `performance-review`, `prompt-engineering-review`, `release-readiness`, `technical-debt-audit`, `testing-strategy`, `ux-accessibility-review` | Focused final verification, architecture/domain/performance/test/prompt/technical-debt/UX/accessibility review, repository debt portfolio assessment, and evidence-based ship or hold decisions; implementation remains with the owning method or engineering skill. |
 | Security review | `threat-modeling`, `security-review`, `security-review-evidence`, `dependency-supply-chain-review` | Security design analysis, implemented-control audits, sanitized evidence handling, and dependency/supply-chain risk for trust-boundary work. |
 | Documentation | `documentation-engineering` | Markdown, README, API docs, comments, docstrings, Rustdoc, pydoc, Javadoc, JSDoc/TSDoc, perldoc/POD, executable examples, and documentation review. |
 | Internationalization and localization | `internationalization-localization` | User-facing text localization, Project Fluent, `.ftl` authoring, locale fallback, multilingual catalogs, and localized output validation across language stacks. |
@@ -462,6 +462,7 @@ reading the code, making a small change, and running the relevant check is enoug
 | `sqlite-sql-engineering` | SQLite schema, migrations, PRAGMAs, WAL/locking, transactions, temporary DB tests, limitations, and query review. | Owns SQLite-native behavior without duplicating PostgreSQL or Rust adapter guidance. |
 | `suggest-lucide-icons` | Verified Lucide icon name selection for UI concepts and placements. | Provides a small, independently routable icon-verification workflow. |
 | `systematic-debugging` | Active failures, regressions, crashes, flakes, performance issues, build failures, and evidence-driven fixes. | Owns active symptom diagnosis with detailed heuristics progressively disclosed. |
+| `technical-debt-audit` | Repository-wide or focused audits of accumulated maintainability debt, code-quality hotspots, dependency and upgrade friction, testing gaps, architecture erosion, documentation drift, quick wins, and blockers to future work or scaling. | Owns evidence-backed debt portfolio assessment and prioritization while focused review, security, language, testing, architecture, and documentation skills retain their specialist mechanics. |
 | `test-driven-development` | Red-Green-Refactor, regression tests, test-level selection, and behavior-first implementation. | Owns the concise test-first implementation method used by language and workflow skills. |
 | `testing-strategy` | Risk-focused review of test plans and suites, confidence gaps, flaky tests, boundary coverage, test levels, and maintainability. | Owns test-strategy assessment while test writing and TDD implementation remain separate. |
 | `threat-modeling` | Threat models, abuse cases, actors, assets, data flows, trust boundaries, attack surface, security requirements, mitigations, assumptions, and residual risk. | Owns design-time security analysis and hands implemented-control findings to security review. |
@@ -479,6 +480,7 @@ existing skill.
 | Required Topic | Covering Skill(s) | Status | Notes |
 | --- | --- | --- | --- |
 | Code review | `code-review`, `review-verification-protocol`, `adversarial-review`, `architecture-review`, `domain-modeling`, `performance-review`, `testing-strategy`, `ux-accessibility-review`, `rust-code-review` | Baseline complete | Generic review and evidence gates plus focused final, architecture, domain, performance, test, UX/accessibility, and Rust review lenses. |
+| Technical-debt audit | `technical-debt-audit`, `review-verification-protocol`, `architecture-review`, `testing-strategy`, `dependency-supply-chain-review`, `security-review`, `security-review-evidence`, `documentation-engineering`, language review skills | Baseline complete | Repository overview, evidence-gated systemic debt findings, qualitative test coverage when measured output is unavailable, dependency-health evidence, quick wins, strategic blockers, effort, benefit, sequencing, and residual risk are covered without conflating defects or cosmetic smells with debt. |
 | Security review and audit | `threat-modeling`, `security-review`, `security-review-evidence`, `dependency-supply-chain-review`, `code-review`, language/data skills | Baseline complete | Design-time modeling, implemented-control review, supply-chain review, generic audit routing, and sanitized evidence are covered. |
 | Public web research and source retrieval | `hound-web-research`, `github-mcp-operations`, `security-review`, `security-review-evidence`, `agent-browser`, `playwright-e2e` | Baseline complete | Covers sanitized public search, authoritative-source retrieval, known URLs and PDFs, bounded same-domain crawling, OCR and screenshots, GitHub-object separation, prompt-injection resistance, cache/version diagnostics, authenticated-browser and durable-test boundaries, and security handoffs. |
 | GitHub platform operations | `github-mcp-operations`, `git-workflows`, `hound-web-research`, `security-review`, `security-review-evidence` | Baseline complete | Covers official-server provenance, structured remote GitHub reads, explicitly authorized mutations, local-Git and public-web boundaries, least-privilege operation, untrusted GitHub content, and distinct-gap combination with Hound. |
@@ -565,6 +567,17 @@ Scenario: First-party skills remain project-neutral
   Then skill instructions and reachable text resources contain no source-project identifiers
   And machine-specific home paths use placeholders or repository-relative examples
   And repository-specific modules, recipes, frameworks, and commands are derived from target-repository evidence
+```
+
+```gherkin
+Scenario: Technical-debt audits separate systemic debt from defects
+  Given a user requests a repository-wide or focused technical-debt audit
+  When the agent assesses accumulated maintenance cost
+  Then it loads technical-debt-audit and review-verification-protocol
+  And maps the repository before reporting evidence-backed findings
+  And uses qualitative test coverage unless observed tooling provides numeric coverage
+  And verifies current dependency status before claiming deprecation, abandonment, or vulnerability
+  And prioritizes quick wins, strategic blockers, and longer-term remediation without padding categories
 ```
 
 ```gherkin

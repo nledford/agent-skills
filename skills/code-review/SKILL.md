@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Perform repository-local code reviews. Use for requested audits, pull-request-style reviews, final focused review after implementation, or changes that affect behavior, APIs, domain boundaries, tests, security, workflows, dependencies, CI, documentation, or agent instructions. Do not use as the primary workflow for implementation, active failure debugging, or design-only threat modeling.
+description: Perform repository-local code reviews. Use for requested diff or pull-request audits, final focused review after implementation, or changes that affect behavior, APIs, domain boundaries, tests, security, workflows, dependencies, CI, documentation, or agent instructions. Do not use as the primary workflow for repository-wide technical-debt portfolio audits, implementation, active failure debugging, or design-only threat modeling.
 ---
 
 # Code Review
@@ -8,6 +8,13 @@ description: Perform repository-local code reviews. Use for requested audits, pu
 Use this skill to review repository changes for correctness, maintainability,
 security, reliability, domain integrity, test quality, and operational fit. A
 review is not a style pass; report only issues with evidence and impact.
+
+For a repository-wide or focused technical-debt portfolio audit of accumulated
+change friction, architecture erosion, modernization risk, quick wins, or future
+blockers, use
+[`technical-debt-audit`](../technical-debt-audit/SKILL.md) instead. Keep this
+skill as the primary workflow for diffs, pull requests, completed changes, and
+other repository-local change reviews.
 
 Before reporting findings, apply
 [`review-verification-protocol`](../review-verification-protocol/SKILL.md).
