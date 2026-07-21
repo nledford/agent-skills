@@ -11,6 +11,8 @@ from unittest.mock import patch
 
 from tools.opencode_manager import (
     ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS,
+    ALL_FIRST_PARTY_SKILL_IDS,
+    CANONICAL_AGENT_SKILL_IDS,
     CANONICAL_AGENT_TOPOLOGY,
     CANONICAL_PERMISSION_PROFILES,
     CANONICAL_PROMPT_SECTION_CONTRACTS,
@@ -34,10 +36,12 @@ from tools.opencode_manager import (
     TECHNICAL_DEBT_AUDIT_PROMPT_CONTRACTS,
     TECHNICAL_RESEARCHER_EXTERNAL_EGRESS_INVARIANT,
     OpenCodeInstallService,
+    canonical_agent_permissions,
     main,
     opencode_wildcard_match,
     resolve_opencode_permission_action,
 )
+from tools.skills_manager import SkillRegistry
 
 
 SUPPORT_FILES = (
@@ -264,11 +268,11 @@ def render_lead_permissions(
             for pattern, action in LEAD_PLAN_STAGING_RULES
         )
         + '    "pbcopy *": allow\n'
-        '  "playwright_*": allow\n'
-        '  "chrome-devtools_*": allow\n'
-        '  "serena_*": allow\n'
-        '  "hound_*": allow\n'
-        '  "github_*": allow\n'
+        '  "playwright_*": ask\n'
+        '  "chrome-devtools_*": ask\n'
+        '  "serena_*": ask\n'
+        '  "hound_*": ask\n'
+        '  "github_*": ask\n'
         "  task: deny\n"
         "  webfetch: ask\n"
         "  websearch: ask\n"
@@ -1369,10 +1373,10 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                     '    "*.erb/plans*": deny\n'
                     '    "*.erb/plan-state.json*": deny\n'
                     '    "pbcopy *": allow\n'
-                    '  "playwright_*": allow\n'
-                    '  "chrome-devtools_*": allow\n'
-                    '  "serena_*": allow\n'
-                    '  "hound_*": allow\n'
+                    '  "playwright_*": ask\n'
+                    '  "chrome-devtools_*": ask\n'
+                    '  "serena_*": ask\n'
+                    '  "hound_*": ask\n'
                     "  task: deny\n"
                     "  webfetch: ask\n"
                     "  websearch: ask\n"
@@ -1383,7 +1387,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
 
             self.assertFalse(result.ok)
             self.assertTrue(
-                any("configured MCP tool pattern" in error for error in result.errors)
+                any("approval-gated MCP tool patterns" in error for error in result.errors)
             )
 
     def test_validate_rejects_unclosed_markdown_code_fence(self) -> None:
@@ -3193,7 +3197,7 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "update-plan.md": "plan-orchestrator",
         }
 
-        self.assertEqual(len(manifest["agents"]), 23)
+        self.assertEqual(len(manifest["agents"]), 24)
         self.assertEqual(tuple(manifest["commands"]), expected_commands)
         self.assertEqual(set(manifest), {"agents", "commands", "support_files"})
         command_root = project_root / "opencode/commands"
@@ -3799,7 +3803,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 },
                 "commands/investigate-regression.md": {
                     "required": (
-                        "Return repair guidance for direct Lead implementation when safe.",
+                        "Return repair guidance for direct Lead implementation only when the direct cause is confirmed and the repair is safely bounded.",
+                        "For a probable or incomplete result, return the next discriminating experiment instead of a repair.",
                         "When the human wants durable repair planning, recommend top-level `/create-plan`;",
                         "`/start-plan <existing-plan-path>` is only a separate human-chosen execution of an existing plan.",
                     ),
@@ -4001,7 +4006,7 @@ class CanonicalPromptSectionTests(unittest.TestCase):
             with self.subTest(agent=name):
                 prompt = (project_root / "opencode" / "agents" / name).read_text(encoding="utf-8")
                 self.assertEqual(1, sum(line.strip() == heading for line in prompt.splitlines()))
-                for phrase in removed_restatements[name]:
+                for phrase in removed_restatements.get(name, ()):
                     self.assertNotIn(phrase, prompt)
 
     def test_checked_in_board_plan_reviews_match_closed_lean_contract(self) -> None:
@@ -4618,7 +4623,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
         assert inventory is not None
         self.assertEqual(CANONICAL_AGENT_TOPOLOGY.agent_filenames, inventory.agents)
         self.assertEqual(CANONICAL_AGENT_TOPOLOGY.command_filenames, inventory.commands)
-        self.assertEqual(23, len(CANONICAL_AGENT_TOPOLOGY.agents))
+        self.assertEqual(24, len(CANONICAL_AGENT_TOPOLOGY.agents))
 
         metadata = service._agent_metadata(inventory)
         expected_agents = {
@@ -4641,6 +4646,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                 "engineering-review-board": "engineering-review-board",
                 "plan-orchestrator": "plan-orchestrator",
                 "implementation-worker": "implementation-worker",
+                "browser-evidence-collector": "browser-evidence-collector",
                 "technical-debt-auditor": "technical-debt-auditor",
                 "technical-researcher": "technical-researcher",
             },
@@ -4813,7 +4819,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             self.assertEqual([], errors)
             assert parsed is not None
             self.assertEqual(
-                CANONICAL_PERMISSION_PROFILES[policy.permission_profile].permissions,
+                canonical_agent_permissions(policy),
                 parsed.permissions,
                 policy.agent_id,
             )
@@ -4838,10 +4844,17 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                     resolve_opencode_action(rules, ".erb/plan-state.json", baseline="deny"),
                 )
             if policy.permission_profile == "review-specialist":
+                permissions_without_skills = {
+                    key: value
+                    for key, value in parsed.permissions.items()
+                    if key != "skill"
+                }
                 if specialist_permissions is None:
-                    specialist_permissions = parsed.permissions
+                    specialist_permissions = permissions_without_skills
                 else:
-                    self.assertEqual(specialist_permissions, parsed.permissions)
+                    self.assertEqual(
+                        specialist_permissions, permissions_without_skills
+                    )
 
     def test_checked_in_external_directory_governance_contract(self) -> None:
         project_root = Path(__file__).parents[1]
@@ -5127,6 +5140,138 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, normalized)
 
+class AuditRemediationContractTests(unittest.TestCase):
+    def _checked_in_agent(self, name: str):
+        project_root = Path(__file__).parents[1]
+        parsed, errors = OpenCodeInstallService._parse_frontmatter(
+            "agents",
+            f"{name}.md",
+            (project_root / "opencode" / "agents" / f"{name}.md").read_text(
+                encoding="utf-8"
+            ),
+        )
+        self.assertEqual([], errors)
+        assert parsed is not None
+        return parsed
+
+    def test_mutation_capable_mcp_prefixes_require_runtime_approval(self) -> None:
+        for agent_name in ("engineering-lead", "implementation-worker"):
+            parsed = self._checked_in_agent(agent_name)
+            for pattern in (
+                "playwright_*",
+                "chrome-devtools_*",
+                "serena_*",
+                "hound_*",
+                "github_*",
+            ):
+                with self.subTest(agent=agent_name, pattern=pattern):
+                    self.assertEqual("ask", parsed.permissions[pattern])
+
+    def test_agent_skill_catalogs_are_fail_closed_and_role_scoped(self) -> None:
+        expected_allowed_skill = {
+            "accessibility-critic": "ux-accessibility-review",
+            "engineering-lead": "rust-engineering",
+            "engineering-review-board": "code-review",
+            "implementation-worker": "python-engineering",
+            "plan-orchestrator": "git-commit",
+            "technical-debt-auditor": "technical-debt-audit",
+            "technical-researcher": "hound-web-research",
+        }
+        for agent_name, allowed_skill in expected_allowed_skill.items():
+            parsed = self._checked_in_agent(agent_name)
+            rules = parsed.permissions["skill"]
+            self.assertIsInstance(rules, tuple)
+            assert isinstance(rules, tuple)
+            with self.subTest(agent=agent_name):
+                self.assertEqual(
+                    "deny",
+                    resolve_opencode_action(rules, "find-skills", baseline="deny"),
+                )
+                self.assertEqual(
+                    "allow",
+                    resolve_opencode_action(rules, allowed_skill, baseline="deny"),
+                )
+
+    def test_agent_skill_catalog_registry_matches_first_party_inventory(self) -> None:
+        project_root = Path(__file__).parents[1]
+        first_party = {
+            skill.name for skill in SkillRegistry.load(project_root).first_party()
+        }
+
+        self.assertEqual(first_party, set(ALL_FIRST_PARTY_SKILL_IDS))
+        self.assertEqual(
+            {policy.agent_id for policy in CANONICAL_AGENT_TOPOLOGY.agents},
+            set(CANONICAL_AGENT_SKILL_IDS),
+        )
+        for agent_id, skill_ids in CANONICAL_AGENT_SKILL_IDS.items():
+            with self.subTest(agent=agent_id):
+                self.assertEqual(len(skill_ids), len(set(skill_ids)))
+                self.assertLessEqual(set(skill_ids), first_party)
+
+    def test_browser_evidence_collector_is_registered_and_ask_gated(self) -> None:
+        project_root = Path(__file__).parents[1]
+        manifest = json.loads(
+            (project_root / "opencode/manifest.json").read_text(encoding="utf-8")
+        )
+        self.assertIn("browser-evidence-collector.md", manifest["agents"])
+        parsed = self._checked_in_agent("browser-evidence-collector")
+        self.assertEqual("ask", parsed.permissions["playwright_*"])
+        self.assertEqual("ask", parsed.permissions["chrome-devtools_*"])
+        self.assertEqual("deny", parsed.permissions["edit"])
+        self.assertEqual("deny", parsed.permissions["task"])
+
+    def test_audit_and_regression_commands_load_required_companions(self) -> None:
+        project_root = Path(__file__).parents[1]
+        audit = (
+            project_root / "opencode/commands/audit-technical-debt.md"
+        ).read_text(encoding="utf-8")
+        regression = (
+            project_root / "opencode/commands/investigate-regression.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "`dependency-supply-chain-review`, `security-review`, and "
+            "`security-review-evidence`",
+            audit,
+        )
+        self.assertIn(
+            "Load `systematic-debugging` and `review-verification-protocol`.",
+            regression,
+        )
+        self.assertIn(
+            "hand off to `root-cause-analysis` only after the direct cause is understood",
+            regression,
+        )
+
+    def test_technical_debt_auditor_supports_exact_non_rust_evidence_lanes(self) -> None:
+        parsed = self._checked_in_agent("technical-debt-auditor")
+        bash = parsed.permissions["bash"]
+        self.assertIsInstance(bash, tuple)
+        assert isinstance(bash, tuple)
+        cases = (
+            ("python3 -m pytest -q", "ask"),
+            ("ruff check .", "ask"),
+            ("npm run lint", "ask"),
+            ("npm audit", "ask"),
+            ("bundle exec rspec", "ask"),
+            ("just check", "ask"),
+            ("npm audit fix", "deny"),
+            ("npm test -- --updateSnapshot", "deny"),
+            ("bun test --update-snapshots", "deny"),
+            ("pytest --snapshot-update", "deny"),
+            ("bundle exec rubocop -A", "deny"),
+            ("bundle exec rubocop --autocorrect", "deny"),
+            ("bundle exec rubocop --auto-correct", "deny"),
+            ("bundle exec rubocop --auto-gen-config", "deny"),
+            ("bundle install", "deny"),
+            ("npx eslint .", "deny"),
+        )
+        for command, expected in cases:
+            with self.subTest(command=command):
+                self.assertEqual(
+                    expected,
+                    resolve_opencode_action(bash, command, baseline="deny"),
+                )
 
 
 if __name__ == "__main__":

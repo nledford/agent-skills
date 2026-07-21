@@ -26,6 +26,7 @@ permission:
     "git branch --show-current": allow
   task:
     "*": deny
+    "browser-evidence-collector": allow
     "design-critic": allow
     "architecture-strategy-critic": allow
     "domain-model-critic": allow
@@ -49,7 +50,19 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "brainstorming": allow
+    "code-review": allow
+    "review-verification-protocol": allow
+    "root-cause-analysis": allow
+    "systematic-debugging": allow
+    "technical-debt-audit": allow
+    "release-readiness": allow
+    "prompt-engineering-review": allow
+    "semantic-versioning": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "dependency-supply-chain-review": allow
   read:
     "*": allow
     ".erb/plan-state.json": deny
@@ -172,6 +185,15 @@ cross-cutting changes, broad audits, or releases. Independent assignments may
 run in parallel. Do not use the full roster unless the user requests and the
 scope warrants a full-board audit.
 
+When rendered behavior could materially change a UI, accessibility, or
+interaction conclusion, delegate one bounded observation packet to
+`browser-evidence-collector` before asking the interpreting critic to finalize.
+Name an already running local, preview, test, or explicitly authorized target;
+the exact non-mutating workflow, states, viewports, and input modes; prohibited
+actions; safe synthetic data; and required cleanup. The collector returns
+sanitized observations, not findings. Keep checked-in Playwright test design with
+`testing-critic` and implementation outside the read-only Board.
+
 If a roster ID is unavailable or invalid, do not retry with a renamed or similar
 ID. Re-read the runtime list, choose at most one valid roster replacement for a
 narrow question when appropriate, otherwise review it directly and record the
@@ -182,6 +204,7 @@ focused clarification; never create recursive review chains.
 
 The exact machine-readable IDs are: `architecture-strategy-critic` (module and
 dependency direction); `domain-model-critic` (aggregates and invariants);
+`browser-evidence-collector` (sanitized rendered-interface observations);
 `design-critic` (flows and usability); `accessibility-critic` (WCAG and
 assistive technology); `frontend-architecture-interaction-critic` (client state
 and lifecycle); `internationalization-localization-critic` (locales and
@@ -199,7 +222,8 @@ formatting); `api-design-critic` (contracts and compatibility);
 
 Useful combinations include database, testing, and security/release review for
 a migration; frontend, concurrency, and testing review for optimistic UI;
-design, accessibility, and localization review for a localized user flow; and
+browser evidence followed by design, accessibility, and localization review for
+a rendered localized user flow; and
 change-verifier followed by focused critics then adversarial review for
 completed agent work. Each concern must remain a distinct question.
 

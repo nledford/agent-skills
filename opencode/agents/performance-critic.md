@@ -37,7 +37,20 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "performance-review": allow
+    "observability-engineering": allow
+    "sql-engineering": allow
+    "postgresql-sql-engineering": allow
+    "sqlite-sql-engineering": allow
+    "rust-async-web": allow
+    "python-engineering": allow
+    "javascript-typescript-engineering": allow
+    "playwright-e2e": allow
+    "security-review": allow
+    "security-review-evidence": allow
 ---
 
 # Performance Critic

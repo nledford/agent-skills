@@ -30,12 +30,18 @@ interpretation. Separate missing tooling, environment constraints, and invalid
 invocations from repository findings. Name exact unrun validation when a check
 is unsafe, unavailable, or outside the active role's permission boundary.
 
+For Python, JavaScript/TypeScript, Ruby, Rust, or Just-backed repositories,
+derive the evidence lane from checked-in manifests and workflow files. Request
+only the exact ask-gated commands exposed by `technical-debt-auditor`; never
+substitute a package runner, installer, arbitrary script, or broader shell form.
+
 For an Axum + Leptos SSR repository, also load `rust-async-web`,
 `rust-testing-quality`, and `rust-antipatterns`, require the central auditor Task
 to load them, and follow the Axum + Leptos technical-debt audit reference routed
-by `rust-async-web`. Add `dependency-supply-chain-review` together with its
-`security-review-evidence` companion, or add other focused specialists, only
-when their evidence could change a finding.
+by `rust-async-web`. When dependency, lockfile, registry, advisory, provenance,
+install-script, or binary trust is in scope, load
+`dependency-supply-chain-review`, `security-review`, and `security-review-evidence` together. Add other focused specialists only when
+their evidence could change a finding.
 
 Include `technical-debt-auditor` as the central specialist and select only additional specialists whose evidence could materially change prioritization or remediation.
 

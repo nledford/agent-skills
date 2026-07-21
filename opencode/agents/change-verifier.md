@@ -37,7 +37,15 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "adversarial-review": allow
+    "testing-strategy": allow
+    "release-readiness": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "documentation-engineering": allow
 ---
 
 # Change Verifier

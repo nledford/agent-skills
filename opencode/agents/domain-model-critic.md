@@ -37,7 +37,18 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "domain-modeling": allow
+    "domain-driven-design": allow
+    "architecture-review": allow
+    "clean-architecture": allow
+    "hexagonal-architecture": allow
+    "onion-architecture": allow
+    "python-design-patterns": allow
+    "rust-design-patterns": allow
+    "typescript-javascript-design-patterns": allow
 ---
 
 # Domain Model Critic

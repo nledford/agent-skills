@@ -37,7 +37,17 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "adversarial-review": allow
+    "architecture-review": allow
+    "domain-modeling": allow
+    "performance-review": allow
+    "testing-strategy": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "release-readiness": allow
 ---
 
 # Adversarial Reviewer

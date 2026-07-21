@@ -37,7 +37,17 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "threat-modeling": allow
+    "dependency-supply-chain-review": allow
+    "api-design": allow
+    "random-data-identifiers": allow
+    "ci-release-engineering": allow
+    "container-engineering": allow
 ---
 
 # Security Critic

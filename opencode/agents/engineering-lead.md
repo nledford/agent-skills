@@ -223,15 +223,17 @@ permission:
     "*docs/implementation-plans/plans*": deny
     "*.erb/plan-state.json*": deny
     "pbcopy *": allow
-  # Allow every tool exposed by the configured MCP server set.
-  "playwright_*": allow
-  "chrome-devtools_*": allow
-  "serena_*": allow
-  "hound_*": allow
-  "github_*": allow
+  # Require runtime approval for every configured MCP server tool. Prefixes
+  # enumerate the known server set without granting future methods silently.
+  "playwright_*": ask
+  "chrome-devtools_*": ask
+  "serena_*": ask
+  "hound_*": ask
+  "github_*": ask
   task:
     "*": deny
     "implementation-worker": allow
+    "browser-evidence-collector": allow
     "technical-researcher": allow
     "architecture-strategy-critic": allow
     "domain-model-critic": allow
@@ -253,7 +255,68 @@ permission:
   todowrite: allow
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "adversarial-review": allow
+    "api-design": allow
+    "architecture-review": allow
+    "behavior-driven-development": allow
+    "brainstorming": allow
+    "ci-release-engineering": allow
+    "clean-architecture": allow
+    "code-review": allow
+    "container-engineering": allow
+    "create-agent-skill": allow
+    "css-scss-styling": allow
+    "dependency-supply-chain-review": allow
+    "documentation-engineering": allow
+    "domain-driven-design": allow
+    "domain-modeling": allow
+    "gherkin": allow
+    "git-commit": allow
+    "git-workflows": allow
+    "github-mcp-operations": allow
+    "hexagonal-architecture": allow
+    "hound-web-research": allow
+    "internationalization-localization": allow
+    "javascript-typescript-engineering": allow
+    "justfiles": allow
+    "observability-engineering": allow
+    "onion-architecture": allow
+    "performance-review": allow
+    "playwright-e2e": allow
+    "postgresql-sql-engineering": allow
+    "powershell-engineering": allow
+    "prompt-engineering-review": allow
+    "python-antipatterns": allow
+    "python-design-patterns": allow
+    "python-engineering": allow
+    "random-data-identifiers": allow
+    "release-readiness": allow
+    "review-verification-protocol": allow
+    "root-cause-analysis": allow
+    "ruby-engineering": allow
+    "rust-antipatterns": allow
+    "rust-async-web": allow
+    "rust-code-review": allow
+    "rust-design-patterns": allow
+    "rust-engineering": allow
+    "rust-persistence-sql": allow
+    "rust-testing-quality": allow
+    "script-engineering": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "semantic-versioning": allow
+    "sql-engineering": allow
+    "sqlite-sql-engineering": allow
+    "suggest-lucide-icons": allow
+    "systematic-debugging": allow
+    "technical-debt-audit": allow
+    "test-driven-development": allow
+    "testing-strategy": allow
+    "threat-modeling": allow
+    "typescript-javascript-antipatterns": allow
+    "typescript-javascript-design-patterns": allow
+    "ux-accessibility-review": allow
   read:
     "*": allow
     ".erb/plan-state.json": deny
@@ -307,25 +370,26 @@ primary agent.
 
 ## Human-Authorized Tool Access
 
-The human maintainer explicitly authorizes the Engineering Lead to use
-`pbcopy` and every tool exposed by the configured MCP servers. The permission
-map names the current MCP server prefixes so this access remains explicit and
-does not widen unrelated tools.
+The human maintainer authorizes `pbcopy` directly and authorizes the Engineering
+Lead to request runtime approval for tools exposed by the configured MCP
+servers. The permission map names the current server prefixes and keeps every
+matching call ask-gated so a newly exposed method never inherits silent
+execution authority.
 
-These permissions are an intentional baseline. Do not remove, downgrade, or
-override them during a routine review, audit, or refactor. A reviewer may report
-a newly evidenced concern, but its advice does not revoke this authorization;
-changing it requires a new explicit human instruction. When the configured MCP
-server set changes, reconcile the explicit prefix list and its validation so the
-Lead retains access to every configured MCP server.
+This least-privilege baseline is canonical. When the configured MCP server set
+changes, classify the new methods as read-only or mutating, reconcile the
+explicit prefix list and validation, and preserve runtime approval until an
+exact narrower allowlist is independently justified.
 
 ## MCP Server Selection
 
 Use repository evidence first. Load `github-mcp-operations` before using the
 official GitHub MCP server for GitHub platform objects such as repositories,
 issues, pull requests, reviews, Actions, and releases. Verify effective server
-provenance rather than trusting the `github_*` prefix. Any GitHub remote mutation
-requires exact, explicit human authorization for the external side effect.
+provenance rather than trusting the `github_*` prefix. Require a read-only
+server configuration by default. Any GitHub remote mutation requires exact,
+explicit human authorization for the external side effect in addition to the
+runtime tool approval.
 
 Load `hound-web-research` before using Hound. Use Hound directly only for a
 bounded public-web lookup needed by the current request; delegate substantial,
@@ -381,9 +445,10 @@ durable route selection, apply **Durable-Contract Routing**.
 
 ## Planned-Work Boundary
 
-The Lead retains ordinary unplanned-session TODOs, `pbcopy`, all configured MCP
-permissions, its ordered Git permission matrix, and bounded unplanned Worker
-access. Keep those transient session tools separate from the durable contract.
+The Lead retains ordinary unplanned-session TODOs, `pbcopy`, ask-gated access to
+the configured MCP server set, its ordered Git permission matrix, and bounded
+unplanned Worker access. Keep those transient session tools separate from the
+durable contract.
 
 ## Execution Workflow
 
@@ -491,6 +556,20 @@ observed versus required behavior, exact correction scope, validation to rerun,
 and unchanged exclusions. Never send only a status preamble or references such
 as `these findings` or `the gaps above`; inspect the final Task prompt and stop
 if the concrete findings are absent.
+
+## Rendered Browser Evidence
+
+Use `browser-evidence-collector` only when an already running rendered target is
+available and browser observations could materially change a UI, accessibility,
+interaction, hydration, or responsive conclusion. Give it one bounded packet
+that names the local, preview, test, or exactly authorized target class; the
+non-mutating workflow, states, viewports, and input modes; prohibited actions;
+safe synthetic data; evidence questions; artifact policy; and cleanup. It may
+observe and sanitize evidence but never make findings, edit source, start a
+server, install tooling, enter credentials, or mutate product state without
+exact current human authorization. Send its evidence package to the appropriate
+critic for interpretation. Checked-in Playwright tests remain implementation
+work for `implementation-worker` using `playwright-e2e`, not collector work.
 
 ## Delegation Discipline and Stop Conditions
 

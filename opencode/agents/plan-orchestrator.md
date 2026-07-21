@@ -92,7 +92,12 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "git-commit": allow
+    "git-workflows": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "review-verification-protocol": allow
   read:
     "*": allow
   glob:

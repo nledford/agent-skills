@@ -4,6 +4,7 @@
     "adversarial-reviewer.md",
     "api-design-critic.md",
     "architecture-strategy-critic.md",
+    "browser-evidence-collector.md",
     "change-verifier.md",
     "database-engineering-critic.md",
     "design-critic.md",

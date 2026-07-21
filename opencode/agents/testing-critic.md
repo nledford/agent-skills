@@ -37,7 +37,18 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "testing-strategy": allow
+    "test-driven-development": allow
+    "behavior-driven-development": allow
+    "gherkin": allow
+    "playwright-e2e": allow
+    "rust-testing-quality": allow
+    "python-engineering": allow
+    "javascript-typescript-engineering": allow
+    "ruby-engineering": allow
 ---
 
 # Testing Critic

@@ -37,7 +37,15 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "api-design": allow
+    "semantic-versioning": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "documentation-engineering": allow
+    "observability-engineering": allow
 ---
 
 # API Design Critic

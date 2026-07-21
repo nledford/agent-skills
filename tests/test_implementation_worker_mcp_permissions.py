@@ -29,7 +29,7 @@ def worker_permissions(
     permissions.update(
         {tool: navigation for tool in ("read", "glob", "grep", "list", "lsp")}
     )
-    permissions.update({pattern: "allow" for pattern in patterns})
+    permissions.update({pattern: "ask" for pattern in patterns})
     return permissions
 
 
@@ -57,7 +57,7 @@ class ImplementationWorkerMcpPermissionTests(unittest.TestCase):
         )
 
         self.assertTrue(
-            any("configured MCP tool pattern" in error for error in errors),
+            any("approval-gated MCP tool patterns" in error for error in errors),
             errors,
         )
 

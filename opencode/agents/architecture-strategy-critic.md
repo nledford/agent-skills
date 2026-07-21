@@ -37,7 +37,16 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "architecture-review": allow
+    "clean-architecture": allow
+    "hexagonal-architecture": allow
+    "onion-architecture": allow
+    "domain-driven-design": allow
+    "domain-modeling": allow
+    "performance-review": allow
 ---
 
 # Architecture Strategy Critic

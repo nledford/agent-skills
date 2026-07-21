@@ -15,8 +15,10 @@ from typing import Callable, Sequence
 
 try:
     from .project_neutrality import project_neutrality_errors
+    from .skills_manager import SkillRegistry
 except ImportError:  # Direct script execution.
     from project_neutrality import project_neutrality_errors
+    from skills_manager import SkillRegistry
 
 
 GLOBAL_CONFIG_ROOT = Path.home() / ".config" / "opencode"
@@ -46,7 +48,6 @@ REQUIRED_AGENT_FIELDS = frozenset(
 PERMISSION_ACTIONS = frozenset({"allow", "ask", "deny"})
 REASONING_EFFORTS = frozenset({"low", "medium", "high", "xhigh"})
 ROOT_ASK_AGENT_IDS = frozenset({"engineering-lead", "implementation-worker"})
-MCP_ENABLED_AGENT_IDS = frozenset({"engineering-lead", "implementation-worker"})
 TECHNICAL_RESEARCHER_MCP_TOOL_PATTERNS = ("hound_*",)
 LEGACY_PLAN_PATH_EDIT_RULE = "docs/implementation-plans/plans/**"
 PLAN_PATH_EDIT_RULE = ".erb/plans/**"
@@ -112,6 +113,12 @@ CANONICAL_AGENT_TOPOLOGY = CanonicalAgentTopology(
         CanonicalAgentPolicy("adversarial-reviewer", "subagent", (), "review-specialist"),
         CanonicalAgentPolicy("api-design-critic", "subagent", (), "review-specialist"),
         CanonicalAgentPolicy("architecture-strategy-critic", "subagent", (), "review-specialist"),
+        CanonicalAgentPolicy(
+            "browser-evidence-collector",
+            "subagent",
+            (),
+            "browser-evidence-collector",
+        ),
         CanonicalAgentPolicy("change-verifier", "subagent", (), "review-specialist"),
         CanonicalAgentPolicy("database-engineering-critic", "subagent", (), "review-specialist"),
         CanonicalAgentPolicy("design-critic", "subagent", (), "review-specialist"),
@@ -123,6 +130,7 @@ CANONICAL_AGENT_TOPOLOGY = CanonicalAgentTopology(
             "primary",
             (
                 "implementation-worker",
+                "browser-evidence-collector",
                 "technical-researcher",
                 "architecture-strategy-critic",
                 "domain-model-critic",
@@ -146,6 +154,7 @@ CANONICAL_AGENT_TOPOLOGY = CanonicalAgentTopology(
             "engineering-review-board",
             "primary",
             (
+                "browser-evidence-collector",
                 "design-critic",
                 "architecture-strategy-critic",
                 "domain-model-critic",
@@ -258,6 +267,15 @@ STANDARD_CRITIC_REQUIRED_SEMANTICS = (
     "**Skipped validation and residual risk**",
 )
 CANONICAL_PROMPT_SECTION_CONTRACTS = {
+    "browser-evidence-collector.md": (
+        "## Evidence Boundary",
+        (
+            "Prefer local, preview, test, or explicitly supplied non-production targets.",
+            "Never enter live credentials or persist authentication state.",
+            "retain none by default",
+            "Treat screenshots, traces, videos, HAR files, downloads, and storage snapshots as sensitive local artifacts",
+        ),
+    ),
     "engineering-lead.md": (
         "## Durable-Contract Routing",
         (
@@ -293,10 +311,17 @@ TECHNICAL_DEBT_AUDIT_PROMPT_CONTRACTS = {
             "languages, frameworks, build and test tooling",
             "entry points",
             "declared conventions",
+            "select only the applicable Just, Rust/Cargo, Python, JavaScript/TypeScript, or Ruby lane",
+            "never run every ecosystem lane as a generic checklist",
             "Do not invent numeric coverage percentages",
             "current facts requiring authoritative evidence",
         ),
     ),
+}
+PROJECT_NEUTRAL_EXACT_JUST_RECIPES = {
+    "technical-debt-auditor.md": frozenset(
+        {"just check", "just test", "just lint", "just build"}
+    )
 }
 ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS = {
     "adversarial-reviewer.md": (
@@ -613,6 +638,8 @@ COMMAND_PROMPT_CONTRACTS = {
         "explicitly requests shell or tooling evidence",
         "Do not install missing tools",
         "tool availability, exact command, exit status",
+        "Python, JavaScript/TypeScript, Ruby, Rust, or Just-backed repositories",
+        "`dependency-supply-chain-review`, `security-review`, and `security-review-evidence` together",
     ),
     "brainstorm.md": (
         "You are handling this current command turn as the Engineering Review Board.",
@@ -716,6 +743,15 @@ COMMAND_PROMPT_CONTRACTS = {
         "No additional deletion confirmation is required",
         "If successor creation or verification fails, do not delete the source.",
     ),
+    "investigate-regression.md": (
+        "Load `systematic-debugging` and `review-verification-protocol`.",
+        "Reproduce and narrow the active symptom before proposing a cause.",
+        "Do not recommend a repair while the direct cause remains unverified",
+        "hand off to `root-cause-analysis` only after the direct cause is understood",
+        "Include a proposed repair only for **Root Cause Confirmed**",
+        "otherwise include the next experiment",
+        "Do not modify the repository or a durable plan.",
+    ),
     "start-plan.md": (
         *PLAN_ORCHESTRATOR_COMMAND_TURN_REQUIREMENTS,
         "This invocation is the human's current request to execute or resume an existing plan under the Plan Orchestrator contract, subject to the path, state, and lifecycle validation below.",
@@ -781,7 +817,8 @@ RETAINED_ROUTE_CONTRACTS = {
         "`/start-plan <existing-plan-path>` is only a separate human-chosen execution of an existing plan.",
     ),
     "commands/investigate-regression.md": (
-        "Return repair guidance for direct Lead implementation when safe.",
+        "Return repair guidance for direct Lead implementation only when the direct cause is confirmed and the repair is safely bounded.",
+        "For a probable or incomplete result, return the next discriminating experiment instead of a repair.",
         "When the human wants durable repair planning, recommend top-level `/create-plan`;",
         "`/start-plan <existing-plan-path>` is only a separate human-chosen execution of an existing plan.",
     ),
@@ -1169,6 +1206,19 @@ CONFIGURED_MCP_TOOL_PATTERNS = (
     "hound_*",
     "github_*",
 )
+MCP_TOOL_ACTIONS_BY_AGENT = {
+    "engineering-lead": {
+        pattern: "ask" for pattern in CONFIGURED_MCP_TOOL_PATTERNS
+    },
+    "implementation-worker": {
+        pattern: "ask" for pattern in CONFIGURED_MCP_TOOL_PATTERNS
+    },
+    "browser-evidence-collector": {
+        "playwright_*": "ask",
+        "chrome-devtools_*": "ask",
+    },
+}
+MCP_ENABLED_AGENT_IDS = frozenset(MCP_TOOL_ACTIONS_BY_AGENT)
 NAVIGATION_RULES = (("*", "allow"), (STATE_PATH_EDIT_RULE, "deny"))
 NAVIGATION_TOOLS = ("read", "glob", "grep", "list", "lsp")
 EXTERNAL_DIRECTORY_ASK_RULES = (("*", "ask"),)
@@ -1184,6 +1234,15 @@ REVIEW_SPECIALIST_BASH_RULES = (
     ("git branch --show-current", "allow"),
 )
 TECHNICAL_DEBT_AUDITOR_BASH_RULES = REVIEW_SPECIALIST_BASH_RULES + (
+    ("just --version", "ask"),
+    ("just --list --unsorted", "ask"),
+    ("just --summary", "ask"),
+    ("just --groups", "ask"),
+    ("just --fmt --check", "ask"),
+    ("just check", "ask"),
+    ("just test", "ask"),
+    ("just lint", "ask"),
+    ("just build", "ask"),
     ("cargo --version", "ask"),
     ("rustc --version", "ask"),
     ("cargo metadata *", "ask"),
@@ -1202,6 +1261,98 @@ TECHNICAL_DEBT_AUDITOR_BASH_RULES = REVIEW_SPECIALIST_BASH_RULES + (
     ("cargo leptos build *", "ask"),
     ("cargo leptos test *", "ask"),
     ("cargo leptos end-to-end *", "ask"),
+    ("python --version", "ask"),
+    ("python3 --version", "ask"),
+    ("pytest", "ask"),
+    ("pytest *", "ask"),
+    ("python -m pytest", "ask"),
+    ("python -m pytest *", "ask"),
+    ("python3 -m pytest", "ask"),
+    ("python3 -m pytest *", "ask"),
+    ("ruff --version", "ask"),
+    ("ruff check *", "ask"),
+    ("ruff format --check *", "ask"),
+    ("ty --version", "ask"),
+    ("ty check *", "ask"),
+    ("mypy *", "ask"),
+    ("pyright *", "ask"),
+    ("pip-audit", "ask"),
+    ("pip-audit *", "ask"),
+    ("uv --version", "ask"),
+    ("uv tree", "ask"),
+    ("uv tree *", "ask"),
+    ("uv lock --check", "ask"),
+    ("node --version", "ask"),
+    ("npm --version", "ask"),
+    ("pnpm --version", "ask"),
+    ("yarn --version", "ask"),
+    ("bun --version", "ask"),
+    ("npm test", "ask"),
+    ("npm test *", "ask"),
+    ("npm run test", "ask"),
+    ("npm run test *", "ask"),
+    ("npm run lint", "ask"),
+    ("npm run lint *", "ask"),
+    ("npm run typecheck", "ask"),
+    ("npm run typecheck *", "ask"),
+    ("npm run build", "ask"),
+    ("npm run build *", "ask"),
+    ("npm audit", "ask"),
+    ("npm audit *", "ask"),
+    ("npm outdated", "ask"),
+    ("npm outdated *", "ask"),
+    ("npm ls", "ask"),
+    ("npm ls *", "ask"),
+    ("pnpm test", "ask"),
+    ("pnpm test *", "ask"),
+    ("pnpm run test", "ask"),
+    ("pnpm run test *", "ask"),
+    ("pnpm run lint", "ask"),
+    ("pnpm run lint *", "ask"),
+    ("pnpm run typecheck", "ask"),
+    ("pnpm run typecheck *", "ask"),
+    ("pnpm run build", "ask"),
+    ("pnpm run build *", "ask"),
+    ("pnpm audit", "ask"),
+    ("pnpm audit *", "ask"),
+    ("pnpm outdated", "ask"),
+    ("pnpm outdated *", "ask"),
+    ("pnpm list", "ask"),
+    ("pnpm list *", "ask"),
+    ("yarn test", "ask"),
+    ("yarn test *", "ask"),
+    ("yarn run test", "ask"),
+    ("yarn run test *", "ask"),
+    ("yarn run lint", "ask"),
+    ("yarn run lint *", "ask"),
+    ("yarn run typecheck", "ask"),
+    ("yarn run typecheck *", "ask"),
+    ("yarn run build", "ask"),
+    ("yarn run build *", "ask"),
+    ("yarn outdated", "ask"),
+    ("yarn outdated *", "ask"),
+    ("bun test", "ask"),
+    ("bun test *", "ask"),
+    ("bun run test", "ask"),
+    ("bun run test *", "ask"),
+    ("bun run lint", "ask"),
+    ("bun run lint *", "ask"),
+    ("bun run typecheck", "ask"),
+    ("bun run typecheck *", "ask"),
+    ("bun run build", "ask"),
+    ("bun run build *", "ask"),
+    ("ruby --version", "ask"),
+    ("bundle --version", "ask"),
+    ("bundle exec rspec", "ask"),
+    ("bundle exec rspec *", "ask"),
+    ("bundle exec rake test", "ask"),
+    ("bundle exec rake test *", "ask"),
+    ("bundle exec rubocop", "ask"),
+    ("bundle exec rubocop *", "ask"),
+    ("bundle audit", "ask"),
+    ("bundle audit *", "ask"),
+    ("bundle outdated", "ask"),
+    ("bundle outdated *", "ask"),
     ("cargo *--target *", "deny"),
     ("cargo *--target=*", "deny"),
     ("cargo tree *--target wasm32-unknown-unknown *", "ask"),
@@ -1229,12 +1380,61 @@ TECHNICAL_DEBT_AUDITOR_BASH_RULES = REVIEW_SPECIALIST_BASH_RULES + (
     ("cargo remove *", "deny"),
     ("cargo clean *", "deny"),
     ("cargo leptos new *", "deny"),
+    ("python -m pip install *", "deny"),
+    ("python3 -m pip install *", "deny"),
+    ("pip install *", "deny"),
+    ("pip uninstall *", "deny"),
+    ("uv add *", "deny"),
+    ("uv remove *", "deny"),
+    ("uv sync *", "deny"),
+    ("uv lock", "deny"),
+    ("uv lock --upgrade*", "deny"),
+    ("npm audit fix*", "deny"),
+    ("npm install *", "deny"),
+    ("npm ci*", "deny"),
+    ("npm update *", "deny"),
+    ("npm uninstall *", "deny"),
+    ("npm exec *", "deny"),
+    ("npx *", "deny"),
+    ("pnpm install *", "deny"),
+    ("pnpm add *", "deny"),
+    ("pnpm update *", "deny"),
+    ("pnpm remove *", "deny"),
+    ("pnpm exec *", "deny"),
+    ("pnpm dlx *", "deny"),
+    ("yarn install *", "deny"),
+    ("yarn add *", "deny"),
+    ("yarn up *", "deny"),
+    ("yarn remove *", "deny"),
+    ("yarn dlx *", "deny"),
+    ("bun install *", "deny"),
+    ("bun add *", "deny"),
+    ("bun update *", "deny"),
+    ("bun remove *", "deny"),
+    ("bunx *", "deny"),
+    ("bundle install *", "deny"),
+    ("bundle update *", "deny"),
+    ("bundle add *", "deny"),
+    ("bundle remove *", "deny"),
+    ("bundle exec rubocop *--autocorrect*", "deny"),
+    ("bundle exec rubocop *--auto-correct*", "deny"),
+    ("bundle exec rubocop *--auto-gen-config*", "deny"),
+    ("bundle exec rubocop *--auto-gen-only-exclude*", "deny"),
+    ("bundle exec rubocop -a*", "deny"),
+    ("bundle exec rubocop -A*", "deny"),
+    ("bundle exec rubocop * -a*", "deny"),
+    ("bundle exec rubocop * -A*", "deny"),
     ("cargo *--manifest-path*", "deny"),
     ("cargo *--config*", "deny"),
     ("cargo *--target-dir*", "deny"),
     ("cargo *--out-dir*", "deny"),
     ("cargo *--lockfile-path*", "deny"),
     ("cargo *--artifact-dir*", "deny"),
+    ("*--fix*", "deny"),
+    ("*--updateSnapshot*", "deny"),
+    ("*--update-snapshots*", "deny"),
+    ("*--snapshot-update*", "deny"),
+    ("* -u*", "deny"),
     ("*>*", "deny"),
     ("*<*", "deny"),
     ("*|*", "deny"),
@@ -1333,6 +1533,309 @@ class CanonicalPermissionProfile:
     permissions: dict[str, str | tuple[tuple[str, str], ...]]
 
 
+ALL_FIRST_PARTY_SKILL_IDS = (
+    "adversarial-review",
+    "api-design",
+    "architecture-review",
+    "behavior-driven-development",
+    "brainstorming",
+    "ci-release-engineering",
+    "clean-architecture",
+    "code-review",
+    "container-engineering",
+    "create-agent-skill",
+    "css-scss-styling",
+    "dependency-supply-chain-review",
+    "documentation-engineering",
+    "domain-driven-design",
+    "domain-modeling",
+    "gherkin",
+    "git-commit",
+    "git-workflows",
+    "github-mcp-operations",
+    "hexagonal-architecture",
+    "hound-web-research",
+    "internationalization-localization",
+    "javascript-typescript-engineering",
+    "justfiles",
+    "observability-engineering",
+    "onion-architecture",
+    "performance-review",
+    "playwright-e2e",
+    "postgresql-sql-engineering",
+    "powershell-engineering",
+    "prompt-engineering-review",
+    "python-antipatterns",
+    "python-design-patterns",
+    "python-engineering",
+    "random-data-identifiers",
+    "release-readiness",
+    "review-verification-protocol",
+    "root-cause-analysis",
+    "ruby-engineering",
+    "rust-antipatterns",
+    "rust-async-web",
+    "rust-code-review",
+    "rust-design-patterns",
+    "rust-engineering",
+    "rust-persistence-sql",
+    "rust-testing-quality",
+    "script-engineering",
+    "security-review",
+    "security-review-evidence",
+    "semantic-versioning",
+    "sql-engineering",
+    "sqlite-sql-engineering",
+    "suggest-lucide-icons",
+    "systematic-debugging",
+    "technical-debt-audit",
+    "test-driven-development",
+    "testing-strategy",
+    "threat-modeling",
+    "typescript-javascript-antipatterns",
+    "typescript-javascript-design-patterns",
+    "ux-accessibility-review",
+)
+
+REVIEW_BASE_SKILLS = ("code-review", "review-verification-protocol")
+
+CANONICAL_AGENT_SKILL_IDS = {
+    "accessibility-critic": REVIEW_BASE_SKILLS
+    + (
+        "ux-accessibility-review",
+        "css-scss-styling",
+        "internationalization-localization",
+        "playwright-e2e",
+    ),
+    "adversarial-reviewer": REVIEW_BASE_SKILLS
+    + (
+        "adversarial-review",
+        "architecture-review",
+        "domain-modeling",
+        "performance-review",
+        "testing-strategy",
+        "security-review",
+        "security-review-evidence",
+        "release-readiness",
+    ),
+    "api-design-critic": REVIEW_BASE_SKILLS
+    + (
+        "api-design",
+        "semantic-versioning",
+        "security-review",
+        "security-review-evidence",
+        "documentation-engineering",
+        "observability-engineering",
+    ),
+    "architecture-strategy-critic": REVIEW_BASE_SKILLS
+    + (
+        "architecture-review",
+        "clean-architecture",
+        "hexagonal-architecture",
+        "onion-architecture",
+        "domain-driven-design",
+        "domain-modeling",
+        "performance-review",
+    ),
+    "browser-evidence-collector": (
+        "review-verification-protocol",
+        "ux-accessibility-review",
+        "security-review",
+        "security-review-evidence",
+        "playwright-e2e",
+        "internationalization-localization",
+    ),
+    "change-verifier": REVIEW_BASE_SKILLS
+    + (
+        "adversarial-review",
+        "testing-strategy",
+        "release-readiness",
+        "security-review",
+        "security-review-evidence",
+        "documentation-engineering",
+    ),
+    "database-engineering-critic": REVIEW_BASE_SKILLS
+    + (
+        "sql-engineering",
+        "postgresql-sql-engineering",
+        "sqlite-sql-engineering",
+        "rust-persistence-sql",
+        "performance-review",
+        "security-review",
+        "security-review-evidence",
+    ),
+    "design-critic": REVIEW_BASE_SKILLS
+    + (
+        "ux-accessibility-review",
+        "css-scss-styling",
+        "internationalization-localization",
+    ),
+    "distributed-systems-concurrency-critic": REVIEW_BASE_SKILLS
+    + (
+        "performance-review",
+        "testing-strategy",
+        "observability-engineering",
+        "rust-async-web",
+        "python-engineering",
+        "javascript-typescript-engineering",
+        "security-review",
+        "security-review-evidence",
+    ),
+    "documentation-critic": REVIEW_BASE_SKILLS
+    + (
+        "documentation-engineering",
+        "python-engineering",
+        "javascript-typescript-engineering",
+        "ruby-engineering",
+        "rust-engineering",
+        "rust-testing-quality",
+        "powershell-engineering",
+    ),
+    "domain-model-critic": REVIEW_BASE_SKILLS
+    + (
+        "domain-modeling",
+        "domain-driven-design",
+        "architecture-review",
+        "clean-architecture",
+        "hexagonal-architecture",
+        "onion-architecture",
+        "python-design-patterns",
+        "rust-design-patterns",
+        "typescript-javascript-design-patterns",
+    ),
+    "engineering-lead": ALL_FIRST_PARTY_SKILL_IDS,
+    "engineering-review-board": (
+        "brainstorming",
+        "code-review",
+        "review-verification-protocol",
+        "root-cause-analysis",
+        "systematic-debugging",
+        "technical-debt-audit",
+        "release-readiness",
+        "prompt-engineering-review",
+        "semantic-versioning",
+        "security-review",
+        "security-review-evidence",
+        "dependency-supply-chain-review",
+    ),
+    "frontend-architecture-interaction-critic": REVIEW_BASE_SKILLS
+    + (
+        "ux-accessibility-review",
+        "css-scss-styling",
+        "javascript-typescript-engineering",
+        "rust-async-web",
+        "playwright-e2e",
+        "internationalization-localization",
+        "performance-review",
+    ),
+    "implementation-worker": ALL_FIRST_PARTY_SKILL_IDS,
+    "internationalization-localization-critic": REVIEW_BASE_SKILLS
+    + (
+        "internationalization-localization",
+        "css-scss-styling",
+        "playwright-e2e",
+        "javascript-typescript-engineering",
+        "python-engineering",
+        "rust-async-web",
+        "security-review",
+        "security-review-evidence",
+    ),
+    "performance-critic": REVIEW_BASE_SKILLS
+    + (
+        "performance-review",
+        "observability-engineering",
+        "sql-engineering",
+        "postgresql-sql-engineering",
+        "sqlite-sql-engineering",
+        "rust-async-web",
+        "python-engineering",
+        "javascript-typescript-engineering",
+        "playwright-e2e",
+        "security-review",
+        "security-review-evidence",
+    ),
+    "plan-orchestrator": (
+        "git-commit",
+        "git-workflows",
+        "security-review",
+        "security-review-evidence",
+        "review-verification-protocol",
+    ),
+    "prompt-critic": REVIEW_BASE_SKILLS
+    + ("prompt-engineering-review", "create-agent-skill"),
+    "release-readiness-reviewer": REVIEW_BASE_SKILLS
+    + (
+        "release-readiness",
+        "adversarial-review",
+        "semantic-versioning",
+        "ci-release-engineering",
+        "container-engineering",
+        "security-review",
+        "security-review-evidence",
+        "documentation-engineering",
+        "observability-engineering",
+    ),
+    "security-critic": REVIEW_BASE_SKILLS
+    + (
+        "security-review",
+        "security-review-evidence",
+        "threat-modeling",
+        "dependency-supply-chain-review",
+        "api-design",
+        "random-data-identifiers",
+        "ci-release-engineering",
+        "container-engineering",
+    ),
+    "technical-debt-auditor": (
+        "technical-debt-audit",
+        "review-verification-protocol",
+        "architecture-review",
+        "testing-strategy",
+        "dependency-supply-chain-review",
+        "security-review",
+        "security-review-evidence",
+        "documentation-engineering",
+        "performance-review",
+        "justfiles",
+        "rust-engineering",
+        "rust-async-web",
+        "rust-testing-quality",
+        "rust-antipatterns",
+        "python-engineering",
+        "python-antipatterns",
+        "javascript-typescript-engineering",
+        "typescript-javascript-antipatterns",
+        "ruby-engineering",
+    ),
+    "technical-researcher": (
+        "hound-web-research",
+        "github-mcp-operations",
+        "security-review",
+        "security-review-evidence",
+        "documentation-engineering",
+    ),
+    "testing-critic": REVIEW_BASE_SKILLS
+    + (
+        "testing-strategy",
+        "test-driven-development",
+        "behavior-driven-development",
+        "gherkin",
+        "playwright-e2e",
+        "rust-testing-quality",
+        "python-engineering",
+        "javascript-typescript-engineering",
+        "ruby-engineering",
+    ),
+}
+
+
+def canonical_skill_rules(agent_id: str) -> tuple[tuple[str, str], ...]:
+    return (
+        ("*", "deny"),
+        *((skill_id, "allow") for skill_id in CANONICAL_AGENT_SKILL_IDS[agent_id]),
+    )
+
+
 REVIEW_SPECIALIST_PERMISSION_PROFILE = CanonicalPermissionProfile(
     "review-specialist",
     {
@@ -1345,7 +1848,7 @@ REVIEW_SPECIALIST_PERMISSION_PROFILE = CanonicalPermissionProfile(
         "webfetch": "deny",
         "websearch": "deny",
         "question": "allow",
-        "skill": (("*", "allow"),),
+        "skill": (("*", "deny"),),
     },
 )
 TECHNICAL_DEBT_AUDITOR_PERMISSION_PROFILE = CanonicalPermissionProfile(
@@ -1360,7 +1863,24 @@ TECHNICAL_DEBT_AUDITOR_PERMISSION_PROFILE = CanonicalPermissionProfile(
         "webfetch": "deny",
         "websearch": "deny",
         "question": "allow",
-        "skill": (("*", "allow"),),
+        "skill": (("*", "deny"),),
+    },
+)
+BROWSER_EVIDENCE_COLLECTOR_PERMISSION_PROFILE = CanonicalPermissionProfile(
+    "browser-evidence-collector",
+    {
+        "*": "deny",
+        "external_directory": EXTERNAL_DIRECTORY_ASK_RULES,
+        **_navigation_permissions(),
+        "edit": "deny",
+        "bash": REVIEW_SPECIALIST_BASH_RULES,
+        "task": "deny",
+        "playwright_*": "ask",
+        "chrome-devtools_*": "ask",
+        "webfetch": "deny",
+        "websearch": "deny",
+        "question": "allow",
+        "skill": (("*", "deny"),),
     },
 )
 CANONICAL_PERMISSION_PROFILES = {
@@ -1384,13 +1904,13 @@ CANONICAL_PERMISSION_PROFILES = {
                 )
                 + ENGINEERING_LEAD_POST_PLAN_BASH_RULES
             ),
-            **{pattern: "allow" for pattern in CONFIGURED_MCP_TOOL_PATTERNS},
+            **MCP_TOOL_ACTIONS_BY_AGENT["engineering-lead"],
             "task": _task_rules("engineering-lead"),
             "webfetch": "ask",
             "websearch": "ask",
             "todowrite": "allow",
             "question": "allow",
-            "skill": (("*", "allow"),),
+            "skill": (("*", "deny"),),
             **_navigation_permissions(),
         },
     ),
@@ -1405,7 +1925,7 @@ CANONICAL_PERMISSION_PROFILES = {
             "webfetch": "deny",
             "websearch": "deny",
             "question": "allow",
-            "skill": (("*", "allow"),),
+            "skill": (("*", "deny"),),
             **_navigation_permissions(),
         },
     ),
@@ -1444,12 +1964,12 @@ CANONICAL_PERMISSION_PROFILES = {
                 (PLAN_REDIRECTION_DENY_RULE, "deny"),
                 (STATE_REDIRECTION_DENY_RULE, "deny"),
             ),
-            **{pattern: "allow" for pattern in CONFIGURED_MCP_TOOL_PATTERNS},
+            **MCP_TOOL_ACTIONS_BY_AGENT["implementation-worker"],
             "task": (("*", "deny"),),
             "webfetch": "deny",
             "websearch": "deny",
             "question": "allow",
-            "skill": (("*", "allow"),),
+            "skill": (("*", "deny"),),
             **_navigation_permissions(),
         },
     ),
@@ -1470,7 +1990,7 @@ CANONICAL_PERMISSION_PROFILES = {
             "webfetch": "deny",
             "websearch": "deny",
             "question": "allow",
-            "skill": (("*", "allow"),),
+            "skill": (("*", "deny"),),
             **_navigation_permissions(allow_plan_state=True),
         },
     ),
@@ -1490,12 +2010,22 @@ CANONICAL_PERMISSION_PROFILES = {
             "webfetch": "ask",
             "websearch": "ask",
             "question": "allow",
-            "skill": (("*", "allow"),),
+            "skill": (("*", "deny"),),
         },
     ),
+    "browser-evidence-collector": BROWSER_EVIDENCE_COLLECTOR_PERMISSION_PROFILE,
     "review-specialist": REVIEW_SPECIALIST_PERMISSION_PROFILE,
     "technical-debt-auditor": TECHNICAL_DEBT_AUDITOR_PERMISSION_PROFILE,
 }
+
+
+def canonical_agent_permissions(
+    policy: CanonicalAgentPolicy,
+) -> dict[str, str | tuple[tuple[str, str], ...]]:
+    profile = CANONICAL_PERMISSION_PROFILES[policy.permission_profile]
+    permissions = dict(profile.permissions)
+    permissions["skill"] = canonical_skill_rules(policy.agent_id)
+    return permissions
 WORKER_DENY_COMMANDS = (
     "git add -- src/example.py",
     "git commit",
@@ -1681,6 +2211,7 @@ class OpenCodeInstallService:
             errors.extend(self._validate_task_delegation(agent_metadata))
             errors.extend(self._validate_canonical_agent_topology(inventory, agent_metadata))
             errors.extend(self._validate_canonical_permission_profiles(inventory))
+            errors.extend(self._validate_canonical_skill_catalogs())
 
         if not errors:
             if not canonical_active_workflow:
@@ -1739,6 +2270,10 @@ class OpenCodeInstallService:
                         pattern.startswith("just ")
                         and not pattern.removeprefix("just ").startswith("-")
                         and "*" not in pattern
+                        and pattern
+                        not in PROJECT_NEUTRAL_EXACT_JUST_RECIPES.get(
+                            name, frozenset()
+                        )
                     ):
                         errors.append(
                             f"agents: '{name}' Bash permission names concrete "
@@ -1942,6 +2477,43 @@ class OpenCodeInstallService:
             for relative_path in ACTIVE_WORKFLOW_FIXED_FILES
         )
 
+    def _validate_canonical_skill_catalogs(self) -> list[str]:
+        skill_root = self.repo_root / "skills"
+        if not skill_root.is_dir():
+            return []
+        registry = SkillRegistry.load(self.repo_root)
+        actual_first_party = {skill.name for skill in registry.first_party()}
+        declared_first_party = set(ALL_FIRST_PARTY_SKILL_IDS)
+        errors = [
+            f"canonical OpenCode skill catalog omits first-party skill: {name}"
+            for name in sorted(actual_first_party - declared_first_party)
+        ]
+        errors.extend(
+            f"canonical OpenCode skill catalog lists non-first-party skill: {name}"
+            for name in sorted(declared_first_party - actual_first_party)
+        )
+        expected_agents = {policy.agent_id for policy in CANONICAL_AGENT_TOPOLOGY.agents}
+        actual_agents = set(CANONICAL_AGENT_SKILL_IDS)
+        errors.extend(
+            f"canonical OpenCode skill catalog missing agent: {name}"
+            for name in sorted(expected_agents - actual_agents)
+        )
+        errors.extend(
+            f"canonical OpenCode skill catalog lists unknown agent: {name}"
+            for name in sorted(actual_agents - expected_agents)
+        )
+        for agent_id, skill_ids in CANONICAL_AGENT_SKILL_IDS.items():
+            if len(skill_ids) != len(set(skill_ids)):
+                errors.append(
+                    f"canonical OpenCode skill catalog for {agent_id} contains duplicates"
+                )
+            errors.extend(
+                f"canonical OpenCode skill catalog for {agent_id} lists "
+                f"non-first-party skill: {skill_id}"
+                for skill_id in sorted(set(skill_ids) - declared_first_party)
+            )
+        return errors
+
     @staticmethod
     def _validate_canonical_agent_topology(
         inventory: DefinitionInventory,
@@ -1997,7 +2569,8 @@ class OpenCodeInstallService:
             )
             if parsed is None or parse_errors:
                 continue
-            if parsed.permissions != profile.permissions:
+            expected_permissions = canonical_agent_permissions(policy)
+            if parsed.permissions != expected_permissions:
                 errors.append(
                     f"agents: '{policy.agent_id}.md' violates canonical "
                     f"'{profile.name}' permission profile"
@@ -2445,7 +3018,7 @@ class OpenCodeInstallService:
         errors: list[str] = []
         allowed_tools = set(KNOWN_PERMISSION_TOOLS)
         if agent_id in MCP_ENABLED_AGENT_IDS:
-            allowed_tools.update(CONFIGURED_MCP_TOOL_PATTERNS)
+            allowed_tools.update(MCP_TOOL_ACTIONS_BY_AGENT[agent_id])
         if agent_id == "technical-researcher":
             allowed_tools.update(TECHNICAL_RESEARCHER_MCP_TOOL_PATTERNS)
         unknown_tools = set(permissions) - allowed_tools
@@ -2596,11 +3169,11 @@ class OpenCodeInstallService:
                 )
                 break
         if agent_id in MCP_ENABLED_AGENT_IDS and any(
-            permissions.get(pattern) != "allow"
-            for pattern in CONFIGURED_MCP_TOOL_PATTERNS
+            permissions.get(pattern) != action
+            for pattern, action in MCP_TOOL_ACTIONS_BY_AGENT[agent_id].items()
         ):
             errors.append(
-                f"agents: '{name}' must allow every configured MCP tool pattern"
+                f"agents: '{name}' must preserve approval-gated MCP tool patterns"
             )
         if agent_id == "technical-researcher" and any(
             permissions.get(pattern) != "ask"

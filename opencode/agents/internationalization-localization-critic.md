@@ -37,7 +37,17 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "internationalization-localization": allow
+    "css-scss-styling": allow
+    "playwright-e2e": allow
+    "javascript-typescript-engineering": allow
+    "python-engineering": allow
+    "rust-async-web": allow
+    "security-review": allow
+    "security-review-evidence": allow
 ---
 
 # Internationalization and Localization Critic

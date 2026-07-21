@@ -37,7 +37,18 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "release-readiness": allow
+    "adversarial-review": allow
+    "semantic-versioning": allow
+    "ci-release-engineering": allow
+    "container-engineering": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "documentation-engineering": allow
+    "observability-engineering": allow
 ---
 
 # Release Readiness Reviewer

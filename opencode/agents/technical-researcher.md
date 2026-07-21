@@ -38,7 +38,12 @@ permission:
   websearch: ask
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "hound-web-research": allow
+    "github-mcp-operations": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "documentation-engineering": allow
 ---
 
 # Technical Researcher

@@ -36,19 +36,81 @@ permission:
     "*docs/implementation-plans/plans*": deny
     "*.erb/plans*": deny
     "*.erb/plan-state.json*": deny
-  # Allow every tool exposed by the configured MCP server set.
-  "playwright_*": allow
-  "chrome-devtools_*": allow
-  "serena_*": allow
-  "hound_*": allow
-  "github_*": allow
+  # Require runtime approval for every configured MCP server tool. Prefixes
+  # enumerate the known server set without granting future methods silently.
+  "playwright_*": ask
+  "chrome-devtools_*": ask
+  "serena_*": ask
+  "hound_*": ask
+  "github_*": ask
   task:
     "*": deny
   webfetch: deny
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "adversarial-review": allow
+    "api-design": allow
+    "architecture-review": allow
+    "behavior-driven-development": allow
+    "brainstorming": allow
+    "ci-release-engineering": allow
+    "clean-architecture": allow
+    "code-review": allow
+    "container-engineering": allow
+    "create-agent-skill": allow
+    "css-scss-styling": allow
+    "dependency-supply-chain-review": allow
+    "documentation-engineering": allow
+    "domain-driven-design": allow
+    "domain-modeling": allow
+    "gherkin": allow
+    "git-commit": allow
+    "git-workflows": allow
+    "github-mcp-operations": allow
+    "hexagonal-architecture": allow
+    "hound-web-research": allow
+    "internationalization-localization": allow
+    "javascript-typescript-engineering": allow
+    "justfiles": allow
+    "observability-engineering": allow
+    "onion-architecture": allow
+    "performance-review": allow
+    "playwright-e2e": allow
+    "postgresql-sql-engineering": allow
+    "powershell-engineering": allow
+    "prompt-engineering-review": allow
+    "python-antipatterns": allow
+    "python-design-patterns": allow
+    "python-engineering": allow
+    "random-data-identifiers": allow
+    "release-readiness": allow
+    "review-verification-protocol": allow
+    "root-cause-analysis": allow
+    "ruby-engineering": allow
+    "rust-antipatterns": allow
+    "rust-async-web": allow
+    "rust-code-review": allow
+    "rust-design-patterns": allow
+    "rust-engineering": allow
+    "rust-persistence-sql": allow
+    "rust-testing-quality": allow
+    "script-engineering": allow
+    "security-review": allow
+    "security-review-evidence": allow
+    "semantic-versioning": allow
+    "sql-engineering": allow
+    "sqlite-sql-engineering": allow
+    "suggest-lucide-icons": allow
+    "systematic-debugging": allow
+    "technical-debt-audit": allow
+    "test-driven-development": allow
+    "testing-strategy": allow
+    "threat-modeling": allow
+    "typescript-javascript-antipatterns": allow
+    "typescript-javascript-design-patterns": allow
+    "ux-accessibility-review": allow
   read:
     "*": allow
     ".erb/plan-state.json": deny
@@ -77,12 +139,14 @@ destructive migrations; or broaden scope.
 ## MCP Server Selection
 
 Use repository evidence first for the assigned work unit. Use configured MCP
-tools only within that unit; their availability does not widen scope or authorize
-remote mutation or other external side effects. Load `github-mcp-operations`
+tools only within that unit; every matching tool call is ask-gated, and their
+availability does not widen scope or authorize remote mutation or other external
+side effects. Load `github-mcp-operations`
 before using the official GitHub MCP server for GitHub platform objects, and
 verify effective server provenance rather than trusting the `github_*` prefix.
-Any GitHub remote mutation requires exact, explicit human authorization preserved
-in the assignment and permitted by this role.
+Require a read-only server configuration by default. Any GitHub remote mutation
+requires exact, explicit human authorization preserved in the assignment and
+permitted by this role in addition to runtime tool approval.
 
 Load `hound-web-research` before using Hound and use it only for a bounded public
 evidence gap inside the assignment. Never send sensitive or private inputs, use

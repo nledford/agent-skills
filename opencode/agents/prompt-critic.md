@@ -37,7 +37,11 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "prompt-engineering-review": allow
+    "create-agent-skill": allow
 ---
 
 # Prompt Critic

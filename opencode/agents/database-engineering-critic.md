@@ -37,7 +37,16 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "sql-engineering": allow
+    "postgresql-sql-engineering": allow
+    "sqlite-sql-engineering": allow
+    "rust-persistence-sql": allow
+    "performance-review": allow
+    "security-review": allow
+    "security-review-evidence": allow
 ---
 
 # Database Engineering Critic

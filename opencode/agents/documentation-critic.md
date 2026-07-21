@@ -37,7 +37,16 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "documentation-engineering": allow
+    "python-engineering": allow
+    "javascript-typescript-engineering": allow
+    "ruby-engineering": allow
+    "rust-engineering": allow
+    "rust-testing-quality": allow
+    "powershell-engineering": allow
 ---
 
 # Documentation Critic

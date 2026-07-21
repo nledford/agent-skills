@@ -37,7 +37,17 @@ permission:
   websearch: deny
   question: allow
   skill:
-    "*": allow
+    "*": deny
+    "code-review": allow
+    "review-verification-protocol": allow
+    "performance-review": allow
+    "testing-strategy": allow
+    "observability-engineering": allow
+    "rust-async-web": allow
+    "python-engineering": allow
+    "javascript-typescript-engineering": allow
+    "security-review": allow
+    "security-review-evidence": allow
 ---
 
 # Distributed Systems and Concurrency Critic
