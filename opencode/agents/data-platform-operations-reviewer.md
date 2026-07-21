@@ -40,6 +40,7 @@ permission:
     "*": deny
     "code-review": allow
     "review-verification-protocol": allow
+    "data-platform-engineering": allow
     "observability-engineering": allow
     "performance-review": allow
     "ci-release-engineering": allow

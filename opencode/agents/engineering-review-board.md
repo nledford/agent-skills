@@ -190,14 +190,17 @@ cross-cutting changes, broad audits, or releases. Independent assignments may
 run in parallel. Do not use the full roster unless the user requests and the
 scope warrants a full-board audit.
 
-Route data-platform questions by the affected lifecycle stage:
+Route data-platform questions by responsibility lane rather than vendor name or
+a single linear lifecycle:
 
 - `ingestion-specialist` owns source-to-landing connectivity, CDC, watermarks,
   replay, backfills, source protection, and reconciliation.
 - `analytics-engineering-critic` owns post-landing lakehouse or warehouse
-  transformations, Delta tables, layer contracts, and consumption readiness.
+  transformations, Delta tables, layer contracts, technical execution lineage,
+  and consumption readiness.
 - `data-model-steward` owns analytical grain, identity, history, canonical
-  definitions, governed metrics, lineage, and semantic ownership.
+  definitions, governed metrics, semantic and business lineage, and semantic
+  ownership.
 - `business-intelligence-critic` owns Power BI semantic models, DAX,
   relationships, storage modes, RLS/OLS, refresh, and report-query behavior.
 - `data-platform-operations-reviewer` owns Fabric and Power BI promotion,
@@ -205,10 +208,14 @@ Route data-platform questions by the affected lifecycle stage:
   readiness; `release-readiness-reviewer` still owns the final ship or hold
   decision.
 
+Treat `data-model-steward` as a cross-cutting analytical-semantics lens, not a
+mutually exclusive lifecycle stage.
+
 A mention of Fabric, Power BI, or a data platform alone does not justify
-selecting all five. Select only the stages that could materially change the
-answer, and keep physical database design with `database-engineering-critic`
-and application aggregates with `domain-model-critic`.
+selecting all five. Select only the responsibility lanes that could materially
+change the answer, and keep physical database design with
+`database-engineering-critic` and application aggregates with
+`domain-model-critic`.
 
 When rendered behavior could materially change a UI, accessibility, or
 interaction conclusion, delegate one bounded observation packet to

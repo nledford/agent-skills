@@ -40,6 +40,7 @@ permission:
     "*": deny
     "code-review": allow
     "review-verification-protocol": allow
+    "data-platform-engineering": allow
     "performance-review": allow
     "testing-strategy": allow
     "ux-accessibility-review": allow

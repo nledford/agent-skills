@@ -317,6 +317,94 @@
       }
     },
     {
+      "id": "ingestion-concurrency-overlap-review",
+      "synthetic": true,
+      "prompt": "Review a synthetic source-to-landing CDC flow where two pipeline runs can overlap, leases expire, duplicate delivery is possible, and checkpoint advancement crosses source and landing systems. Review ingestion correctness and the generic concurrency protocol; post-landing transformations and production scheduling are out of scope.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "skills": [
+          "code-review",
+          "review-verification-protocol"
+        ],
+        "handoffs": [
+          "ingestion-specialist",
+          "distributed-systems-concurrency-critic"
+        ]
+      },
+      "forbidden": {
+        "handoffs": [
+          "analytics-engineering-critic",
+          "data-platform-operations-reviewer"
+        ]
+      }
+    },
+    {
+      "id": "analytics-stewardship-overlap-review",
+      "synthetic": true,
+      "prompt": "Review synthetic already-landed transformations that change a Gold table's row grain, historical identity, metric definition, and Delta restatement behavior. Review both transformation implementation and analytical semantic governance; extraction and Power BI implementation are out of scope.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "skills": [
+          "code-review",
+          "review-verification-protocol"
+        ],
+        "handoffs": [
+          "analytics-engineering-critic",
+          "data-model-steward"
+        ]
+      },
+      "forbidden": {
+        "handoffs": [
+          "ingestion-specialist",
+          "business-intelligence-critic"
+        ]
+      }
+    },
+    {
+      "id": "business-intelligence-stewardship-overlap-review",
+      "synthetic": true,
+      "prompt": "Review a synthetic Power BI semantic model whose DAX measures and relationships implement a newly governed KPI, including grain, inclusion rules, totals, RLS, and compatibility for existing reports. Review semantic governance and BI behavior; upstream transformations and visual design are out of scope.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "skills": [
+          "code-review",
+          "review-verification-protocol"
+        ],
+        "handoffs": [
+          "business-intelligence-critic",
+          "data-model-steward"
+        ]
+      },
+      "forbidden": {
+        "handoffs": [
+          "analytics-engineering-critic",
+          "design-critic"
+        ]
+      }
+    },
+    {
+      "id": "data-platform-rollout-readiness-overlap-review",
+      "synthetic": true,
+      "prompt": "Make a synthetic final ship-or-hold recommendation for a Fabric and Power BI rollout using supplied evidence about promotion, schedules, gateways, alerts, capacity thresholds, recovery exercises, rollback, and support runbooks. Workload correctness is already established.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "skills": [
+          "code-review",
+          "review-verification-protocol"
+        ],
+        "handoffs": [
+          "data-platform-operations-reviewer",
+          "release-readiness-reviewer"
+        ]
+      },
+      "forbidden": {
+        "handoffs": [
+          "ingestion-specialist",
+          "analytics-engineering-critic"
+        ]
+      }
+    },
+    {
       "id": "physical-database-design-near-miss",
       "synthetic": true,
       "prompt": "Review a synthetic PostgreSQL migration that adds a unique constraint, changes an index, and alters transaction locking. This is physical relational design, not analytical metric or grain governance.",

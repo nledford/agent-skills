@@ -4190,6 +4190,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "analytics-engineering-critic": (
                 "code-review",
                 "review-verification-protocol",
+                "data-platform-engineering",
                 "architecture-review",
                 "sql-engineering",
                 "performance-review",
@@ -4202,6 +4203,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "business-intelligence-critic": (
                 "code-review",
                 "review-verification-protocol",
+                "data-platform-engineering",
                 "performance-review",
                 "testing-strategy",
                 "ux-accessibility-review",
@@ -4213,6 +4215,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "data-model-steward": (
                 "code-review",
                 "review-verification-protocol",
+                "data-platform-engineering",
                 "architecture-review",
                 "documentation-engineering",
                 "testing-strategy",
@@ -4222,6 +4225,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "ingestion-specialist": (
                 "code-review",
                 "review-verification-protocol",
+                "data-platform-engineering",
                 "api-design",
                 "sql-engineering",
                 "performance-review",
@@ -4233,6 +4237,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "data-platform-operations-reviewer": (
                 "code-review",
                 "review-verification-protocol",
+                "data-platform-engineering",
                 "observability-engineering",
                 "performance-review",
                 "ci-release-engineering",
@@ -4263,7 +4268,44 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                     set(policies[caller_id].task_targets),
                 )
 
-    def test_data_review_routing_contract_distinguishes_lifecycle_stages(self) -> None:
+    def test_data_platform_engineering_skill_uses_progressive_lane_references(self) -> None:
+        project_root = Path(__file__).parents[1]
+        skill_root = project_root / "skills/data-platform-engineering"
+        skill_path = skill_root / "SKILL.md"
+        self.assertTrue(skill_path.is_file())
+        text = skill_path.read_text(encoding="utf-8")
+
+        for reference in (
+            "ingestion.md",
+            "analytics-transformations.md",
+            "analytical-semantics.md",
+            "power-bi-semantic-models.md",
+            "fabric-power-bi-operations.md",
+        ):
+            with self.subTest(reference=reference):
+                self.assertIn(f"(references/{reference})", text)
+                self.assertTrue((skill_root / "references" / reference).is_file())
+
+        for agent_id in (
+            "analytics-engineering-critic",
+            "business-intelligence-critic",
+            "data-model-steward",
+            "data-platform-operations-reviewer",
+            "engineering-lead",
+            "implementation-worker",
+            "ingestion-specialist",
+        ):
+            with self.subTest(agent_id=agent_id):
+                self.assertIn(
+                    "data-platform-engineering",
+                    CANONICAL_AGENT_SKILL_IDS[agent_id],
+                )
+        self.assertNotIn(
+            "data-platform-engineering",
+            CANONICAL_AGENT_SKILL_IDS["engineering-review-board"],
+        )
+
+    def test_data_review_routing_contract_distinguishes_responsibility_lanes(self) -> None:
         project_root = Path(__file__).parents[1]
         agent_ids = {
             "analytics-engineering-critic",
@@ -4289,9 +4331,15 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "A mention of Fabric, Power BI, or a data platform alone does not "
             "justify selecting all five."
         )
+        stewardship_guard = (
+            "Treat `data-model-steward` as a cross-cutting analytical-semantics "
+            "lens, not a mutually exclusive lifecycle stage."
+        )
         for name, text in (("Board", board), ("Lead", lead)):
             with self.subTest(definition=name):
-                self.assertIn(selection_guard, " ".join(text.split()))
+                normalized = " ".join(text.split())
+                self.assertIn(selection_guard, normalized)
+                self.assertIn(stewardship_guard, normalized)
                 for agent_id in agent_ids:
                     self.assertIn(f"`{agent_id}`", text)
 
@@ -4300,25 +4348,87 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             ("cross-reference", cross_reference),
         ):
             with self.subTest(document=name):
+                self.assertIn(stewardship_guard, " ".join(text.split()))
                 for agent_id in agent_ids:
                     self.assertIn(f"`{agent_id}`", text)
 
         corpus = json.loads(
             (project_root / "evals/routing/v1.json").read_text(encoding="utf-8")
         )
-        case_ids = {case["id"] for case in corpus["cases"]}
-        self.assertLessEqual(
-            {
-                "data-ingestion-cdc-review",
-                "analytics-medallion-transformation-review",
-                "power-bi-semantic-model-review",
-                "analytical-grain-governance-review",
-                "data-platform-operations-review",
-                "physical-database-design-near-miss",
-                "application-domain-model-near-miss",
-            },
-            case_ids,
-        )
+        cases = {case["id"]: case for case in corpus["cases"]}
+        expected_routes = {
+            "data-ingestion-cdc-review": (
+                {"ingestion-specialist"},
+                {
+                    "analytics-engineering-critic",
+                    "business-intelligence-critic",
+                    "data-model-steward",
+                },
+            ),
+            "analytics-medallion-transformation-review": (
+                {"analytics-engineering-critic"},
+                {"ingestion-specialist", "business-intelligence-critic"},
+            ),
+            "power-bi-semantic-model-review": (
+                {"business-intelligence-critic"},
+                {"analytics-engineering-critic", "design-critic"},
+            ),
+            "analytical-grain-governance-review": (
+                {"data-model-steward"},
+                {"domain-model-critic", "database-engineering-critic"},
+            ),
+            "data-platform-operations-review": (
+                {"data-platform-operations-reviewer"},
+                {"release-readiness-reviewer", "ingestion-specialist"},
+            ),
+            "physical-database-design-near-miss": (
+                {"database-engineering-critic"},
+                {"data-model-steward"},
+            ),
+            "application-domain-model-near-miss": (
+                {"domain-model-critic"},
+                {"data-model-steward"},
+            ),
+            "ingestion-concurrency-overlap-review": (
+                {
+                    "ingestion-specialist",
+                    "distributed-systems-concurrency-critic",
+                },
+                {
+                    "analytics-engineering-critic",
+                    "data-platform-operations-reviewer",
+                },
+            ),
+            "analytics-stewardship-overlap-review": (
+                {"analytics-engineering-critic", "data-model-steward"},
+                {"ingestion-specialist", "business-intelligence-critic"},
+            ),
+            "business-intelligence-stewardship-overlap-review": (
+                {"business-intelligence-critic", "data-model-steward"},
+                {"analytics-engineering-critic", "design-critic"},
+            ),
+            "data-platform-rollout-readiness-overlap-review": (
+                {
+                    "data-platform-operations-reviewer",
+                    "release-readiness-reviewer",
+                },
+                {"ingestion-specialist", "analytics-engineering-critic"},
+            ),
+        }
+        for case_id, (expected_handoffs, forbidden_handoffs) in expected_routes.items():
+            with self.subTest(case_id=case_id):
+                self.assertIn(case_id, cases)
+                case = cases[case_id]
+                self.assertEqual("engineering-review-board", case["expected"]["agent"])
+                self.assertEqual(
+                    {"code-review", "review-verification-protocol"},
+                    set(case["expected"]["skills"]),
+                )
+                self.assertEqual(expected_handoffs, set(case["expected"]["handoffs"]))
+                self.assertEqual(
+                    forbidden_handoffs,
+                    set(case["forbidden"]["handoffs"]),
+                )
 
     def test_technical_debt_auditor_uses_ask_gated_evidence_profile(self) -> None:
         policy = next(

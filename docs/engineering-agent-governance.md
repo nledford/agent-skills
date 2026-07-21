@@ -87,23 +87,26 @@ lifecycle limits.
 
 ### Data-platform review specialists
 
-Five canonical leaf reviewers cover distinct data-platform lifecycle stages and
-are conditionally selected by the Lead or ERB:
+Five canonical leaf reviewers cover four data-platform lifecycle responsibility
+lanes plus a cross-cutting analytical-semantics lens and are conditionally
+selected by the Lead or ERB:
 
 | Specialist | Owns | Near-miss boundary |
 | --- | --- | --- |
 | `ingestion-specialist` | Source-to-landing connectivity, extraction, CDC, watermarks, replay, backfills, source protection, schema fidelity, provenance, and reconciliation. | Post-landing transformation belongs to `analytics-engineering-critic`; generic cross-system protocols belong to `distributed-systems-concurrency-critic`. |
-| `analytics-engineering-critic` | Post-landing lakehouse and warehouse layers, transformations, Delta tables, incremental and historical processing, data quality, and published-table readiness. | Source extraction belongs to `ingestion-specialist`; Power BI semantic models belong to `business-intelligence-critic`. |
-| `data-model-steward` | Analytical grain, identity, history, canonical definitions, facts and dimensions, governed metrics, lineage, ownership, and semantic contract evolution. | Application aggregates belong to `domain-model-critic`; physical constraints and indexes belong to `database-engineering-critic`. |
+| `analytics-engineering-critic` | Post-landing lakehouse and warehouse layers, transformations, Delta tables, incremental and historical processing, data quality, technical execution lineage, and published-table readiness. | Source extraction belongs to `ingestion-specialist`; Power BI semantic models belong to `business-intelligence-critic`. |
+| `data-model-steward` | Analytical grain, identity, history, canonical definitions, facts and dimensions, governed metrics, semantic and business lineage, ownership, and semantic contract evolution. | Application aggregates belong to `domain-model-critic`; physical constraints and indexes belong to `database-engineering-critic`. |
 | `business-intelligence-critic` | Power BI semantic models, DAX, relationships, storage modes, RLS/OLS, refresh, model usability, and report-query behavior. | Upstream transformations belong to `analytics-engineering-critic`; generic UX and accessibility remain with their focused critics. |
 | `data-platform-operations-reviewer` | Fabric and Power BI promotion, scheduling, monitoring, alerts, gateways, capacity and cost operations, recovery, runbooks, continuity, and support readiness. | Generic application operations remain with existing focused critics; `release-readiness-reviewer` owns the final ship or hold decision. |
 
-These definitions are part of the canonical roster; “optional” means the caller
-selects them only when their stage can materially change the answer. A platform
-name alone is not sufficient reason to invoke the whole group. They use the
-existing `review-specialist` permission profile, cannot delegate, and return
-exact-ID handoffs to the caller. No secondary manifest, plugin, or data-review
-orchestrator changes that authority model.
+Treat `data-model-steward` as a cross-cutting analytical-semantics lens, not a
+mutually exclusive lifecycle stage. These definitions are part of the canonical
+roster; “optional” means the caller selects them only when their responsibility
+can materially change the answer. A platform name alone is not sufficient reason
+to invoke the whole group. They use the existing `review-specialist` permission
+profile, cannot delegate, and return exact-ID handoffs to the caller. No
+secondary manifest, plugin, or data-review orchestrator changes that authority
+model.
 
 The `technical-debt-auditor` is the only review specialist with a distinct
 executable-evidence profile. When the current human explicitly requests shell or

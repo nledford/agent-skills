@@ -1636,6 +1636,7 @@ CANONICAL_AGENT_SKILL_IDS = {
     ),
     "analytics-engineering-critic": REVIEW_BASE_SKILLS
     + (
+        "data-platform-engineering",
         "architecture-review",
         "sql-engineering",
         "performance-review",
@@ -1674,6 +1675,7 @@ CANONICAL_AGENT_SKILL_IDS = {
     ),
     "business-intelligence-critic": REVIEW_BASE_SKILLS
     + (
+        "data-platform-engineering",
         "performance-review",
         "testing-strategy",
         "ux-accessibility-review",
@@ -1693,6 +1695,7 @@ CANONICAL_AGENT_SKILL_IDS = {
     ),
     "data-model-steward": REVIEW_BASE_SKILLS
     + (
+        "data-platform-engineering",
         "architecture-review",
         "documentation-engineering",
         "testing-strategy",
@@ -1701,6 +1704,7 @@ CANONICAL_AGENT_SKILL_IDS = {
     ),
     "data-platform-operations-reviewer": REVIEW_BASE_SKILLS
     + (
+        "data-platform-engineering",
         "observability-engineering",
         "performance-review",
         "ci-release-engineering",
@@ -1786,6 +1790,7 @@ CANONICAL_AGENT_SKILL_IDS = {
     "implementation-worker": ALL_FIRST_PARTY_SKILL_IDS,
     "ingestion-specialist": REVIEW_BASE_SKILLS
     + (
+        "data-platform-engineering",
         "api-design",
         "sql-engineering",
         "performance-review",

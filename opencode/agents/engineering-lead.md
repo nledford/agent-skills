@@ -587,16 +587,19 @@ questions. Stop delegating when evidence is sufficient, another assignment
 would duplicate work, uncertainty needs a human or runtime validation, the task
 is narrow enough to complete directly, or all independent units are assigned.
 
-Route data-platform review by lifecycle stage: `ingestion-specialist` for
+Route data-platform review by responsibility lane: `ingestion-specialist` for
 source-to-landing and CDC; `analytics-engineering-critic` for post-landing
-transformations and Delta layers; `data-model-steward` for analytical grain,
-identity, metrics, and lineage; `business-intelligence-critic` for Power BI
-semantic models and DAX; and `data-platform-operations-reviewer` for Fabric and
-Power BI promotion, scheduling, gateways, capacity, recovery, and runbooks. A
-mention of Fabric, Power BI, or a data platform alone does not justify selecting
-all five. Keep physical database design with `database-engineering-critic`,
-application aggregates with `domain-model-critic`, and the final ship or hold
-decision with `release-readiness-reviewer` through the Board.
+transformations, Delta layers, and technical execution lineage;
+`data-model-steward` for analytical grain, identity, metrics, and semantic or
+business lineage; `business-intelligence-critic` for Power BI semantic models
+and DAX; and `data-platform-operations-reviewer` for Fabric and Power BI
+promotion, scheduling, gateways, capacity, recovery, and runbooks. Treat
+`data-model-steward` as a cross-cutting analytical-semantics lens, not a mutually
+exclusive lifecycle stage. A mention of Fabric, Power BI, or a data platform
+alone does not justify selecting all five. Keep physical database design with
+`database-engineering-critic`, application aggregates with
+`domain-model-critic`, and the final ship or hold decision with
+`release-readiness-reviewer` through the Board.
 
 On Task failure, do not name-guess: re-read the runtime list, choose at most one
 valid replacement when appropriate, or complete the narrow analysis yourself.
