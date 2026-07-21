@@ -191,6 +191,14 @@ Evidence-backed concerns may be reported for a human decision, but only a new
 explicit human instruction may change the authorization. Reconcile the MCP
 prefix list and validator when the configured server set changes.
 
+MCP permission does not select a server or prove its provenance. The Lead uses
+repository evidence first, loads `github-mcp-operations` for structured GitHub
+platform objects, and loads `hound-web-research` for sanitized public-web
+research. It verifies that the effective GitHub server is the official
+implementation rather than trusting the `github_*` prefix. It may use both only
+for distinct evidence gaps, must never send private GitHub material to Hound,
+and requires explicit human authorization for an exact GitHub remote mutation.
+
 ### Engineering Lead plan artifact commit boundary
 
 After the top-level Plan Orchestrator creates and validates a plan, the
@@ -219,6 +227,11 @@ same current server prefixes as the Lead, and repository validation protects
 the complete explicit set. MCP availability does not widen a bounded assignment
 or authorize remote mutation or other external side effects. Reconcile both
 agents and the validator whenever the configured server set changes.
+
+The Worker follows the same repository-first, GitHub-object, Hound-public-web,
+provenance, distinct-gap combination, and private-data boundaries as the Lead.
+Any GitHub remote mutation also requires exact human authorization preserved in
+the assignment and must remain within Worker authority.
 
 ### Technical Researcher Hound access
 

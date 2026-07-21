@@ -21,6 +21,7 @@ from tools.opencode_manager import (
     EXTERNAL_DIRECTORY_DOC_TOKENS,
     EXTERNAL_DIRECTORY_SCOPE_INVARIANT,
     HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS,
+    MCP_SELECTION_PROMPT_CONTRACTS,
     PLAN_ORCHESTRATOR_BASH_RULES,
     PLAN_ORCHESTRATOR_COMMIT_PROMPT_REQUIREMENTS,
     PRIMARY_AGENT_TURN_PROMPT_CONTRACTS,
@@ -3862,6 +3863,40 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
 
 
 class CanonicalPromptSectionTests(unittest.TestCase):
+    def test_validate_rejects_mcp_selection_prompt_contract_drift(self) -> None:
+        for name, (heading, semantics) in MCP_SELECTION_PROMPT_CONTRACTS.items():
+            for semantic in semantics:
+                with self.subTest(agent=name, semantic=semantic), tempfile.TemporaryDirectory() as temp_dir:
+                    root = Path(temp_dir)
+                    repo = create_canonical_active_workflow_repo(root)
+                    definition = repo / "opencode" / "agents" / name
+                    original = definition.read_text(encoding="utf-8")
+                    self.assertEqual(
+                        1,
+                        sum(line.strip() == heading for line in original.splitlines()),
+                    )
+                    pattern = re.escape(semantic).replace(r"\ ", r"\s+")
+                    mutated, count = re.subn(
+                        pattern,
+                        "SYNTHETIC_MCP_SELECTION_CONTRACT_MARKER",
+                        original,
+                        count=1,
+                    )
+                    self.assertEqual(1, count, semantic)
+                    definition.write_text(mutated, encoding="utf-8")
+
+                    result = OpenCodeInstallService(repo, root / "config").validate()
+
+                    self.assertFalse(result.ok)
+                    self.assertTrue(
+                        any(
+                            f"agents: '{name}' MCP-selection prompt contract is incomplete"
+                            in error
+                            for error in result.errors
+                        ),
+                        result.errors,
+                    )
+
     def test_validate_rejects_adversarial_stage_prompt_contract_drift(self) -> None:
         for name, stage_contracts in ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS.items():
             for heading, semantics in stage_contracts:
@@ -4604,6 +4639,21 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
         self.assertEqual([], errors)
         assert parsed is not None
         self.assertEqual("ask", parsed.permissions["hound_*"])
+
+    def test_checked_in_mcp_enabled_agents_define_server_selection(self) -> None:
+        project_root = Path(__file__).parents[1]
+        for name, (heading, required_tokens) in MCP_SELECTION_PROMPT_CONTRACTS.items():
+            with self.subTest(agent=name):
+                text = (project_root / "opencode" / "agents" / name).read_text(
+                    encoding="utf-8"
+                )
+                self.assertEqual(
+                    1,
+                    sum(line.strip() == heading for line in text.splitlines()),
+                )
+                normalized = " ".join(text.split())
+                for token in required_tokens:
+                    self.assertIn(token, normalized)
 
     def test_validate_rejects_external_directory_governance_drift(self) -> None:
         for relative_path, tokens in EXTERNAL_DIRECTORY_DOC_TOKENS.items():

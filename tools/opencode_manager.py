@@ -335,6 +335,20 @@ CODE_DOCUMENTATION_PROMPT_CONTRACTS = {
         ),
     ),
 }
+MCP_SELECTION_PROMPT_CONTRACTS = {
+    name: (
+        "## MCP Server Selection",
+        (
+            "`github-mcp-operations`",
+            "GitHub platform objects",
+            "repository evidence first",
+            "distinct evidence gap",
+            "exact, explicit human authorization",
+            "never send private GitHub material to Hound",
+        ),
+    )
+    for name in ("engineering-lead.md", "implementation-worker.md")
+}
 PRIMARY_AGENT_TURN_SHARED_PROMPT_REQUIREMENTS = (
     "Authority follows the primary agent selected for the current user turn.",
     "Earlier assistant turns from another primary agent are attributed context, not this agent's identity or permission boundary.",
@@ -2749,6 +2763,21 @@ class OpenCodeInstallService:
                 if section is None or not all(token in section for token in required):
                     errors.append(
                         f"agents: '{name}' code-documentation prompt contract is incomplete"
+                    )
+        if set(MCP_SELECTION_PROMPT_CONTRACTS).issubset(inventory.agents):
+            for name, (heading, required) in MCP_SELECTION_PROMPT_CONTRACTS.items():
+                try:
+                    prompt = (self.sources["agents"] / name).read_text(encoding="utf-8")
+                except (OSError, UnicodeError):
+                    errors.append(
+                        f"agents: '{name}' MCP-selection prompt contract is unreadable"
+                    )
+                    continue
+                section = self._single_markdown_section(prompt, heading)
+                normalized = " ".join(section.split()) if section is not None else ""
+                if section is None or not all(token in normalized for token in required):
+                    errors.append(
+                        f"agents: '{name}' MCP-selection prompt contract is incomplete"
                     )
         if set(PRIMARY_AGENT_TURN_PROMPT_CONTRACTS).issubset(inventory.agents):
             for name, (heading, required) in PRIMARY_AGENT_TURN_PROMPT_CONTRACTS.items():
