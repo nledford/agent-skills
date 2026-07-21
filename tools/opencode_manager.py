@@ -278,6 +278,18 @@ CANONICAL_PROMPT_SECTION_CONTRACTS = {
         ),
     ),
 }
+TECHNICAL_DEBT_AUDIT_PROMPT_CONTRACTS = {
+    "technical-debt-auditor.md": (
+        "## Review Method",
+        (
+            "languages, frameworks, build and test tooling",
+            "entry points",
+            "declared conventions",
+            "Do not invent numeric coverage percentages",
+            "current facts requiring authoritative evidence",
+        ),
+    ),
+}
 ADVERSARIAL_REVIEWER_STAGE_PROMPT_CONTRACTS = {
     "adversarial-reviewer.md": (
         (
@@ -578,6 +590,18 @@ COMMAND_PROMPT_CONTRACTS = {
         "Never claim that the Engineering Review Board is selected while this command is running.",
         "identify the actual authority boundary and route",
         "Durable plan creation remains an explicit `/create-plan` choice, an in-place active-plan amendment remains a separate `/update-plan <exact-plan-path>` choice, and execution remains a separate `/start-plan <existing-plan-path>` choice.",
+    ),
+    "audit-technical-debt.md": (
+        "Load `technical-debt-audit` and `review-verification-protocol`.",
+        "Repository overview",
+        "Evidence reviewed and limitations",
+        "Prioritized findings",
+        "Quick wins",
+        "Strategic blockers",
+        "Longer-term improvement program",
+        "Skipped validation and residual risk",
+        "Do not invent numeric coverage percentages",
+        "current authoritative evidence",
     ),
     "brainstorm.md": (
         "You are handling this current command turn as the Engineering Review Board.",
@@ -2723,6 +2747,18 @@ class OpenCodeInstallService:
                 errors.extend(self._validate_plan_orchestrator_prompt_contract(name, prompt))
         if set(CANONICAL_PROMPT_SECTION_CONTRACTS).issubset(inventory.agents):
             for name, (heading, required) in CANONICAL_PROMPT_SECTION_CONTRACTS.items():
+                try:
+                    prompt = (self.sources["agents"] / name).read_text(encoding="utf-8")
+                except (OSError, UnicodeError):
+                    errors.append(f"agents: '{name}' prompt contract is unreadable")
+                    continue
+                section = self._single_markdown_section(prompt, heading)
+                if section is None or not all(token in section for token in required):
+                    errors.append(f"agents: '{name}' prompt contract is incomplete")
+        if set(TECHNICAL_DEBT_AUDIT_PROMPT_CONTRACTS).issubset(inventory.agents):
+            for name, (heading, required) in (
+                TECHNICAL_DEBT_AUDIT_PROMPT_CONTRACTS.items()
+            ):
                 try:
                     prompt = (self.sources["agents"] / name).read_text(encoding="utf-8")
                 except (OSError, UnicodeError):

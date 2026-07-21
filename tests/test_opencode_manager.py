@@ -30,6 +30,7 @@ from tools.opencode_manager import (
     STANDARD_CRITIC_REQUIRED_HEADINGS,
     STANDARD_CRITIC_REQUIRED_SEMANTICS,
     STANDARD_CRITIC_STAGE_REVIEWER_IDS,
+    TECHNICAL_DEBT_AUDIT_PROMPT_CONTRACTS,
     TECHNICAL_RESEARCHER_EXTERNAL_EGRESS_INVARIANT,
     OpenCodeInstallService,
     main,
@@ -3693,6 +3694,9 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
                 name: semantics
                 for name, (_, semantics) in CANONICAL_PROMPT_SECTION_CONTRACTS.items()
             } | {
+                name: semantics
+                for name, (_, semantics) in TECHNICAL_DEBT_AUDIT_PROMPT_CONTRACTS.items()
+            } | {
                 "engineering-lead.md": (
                     "Use only `implementation-worker` for bounded implementation Tasks.",
                     "When resuming the same Worker for a correction, send a complete actionable packet",
@@ -4184,6 +4188,85 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                     self.assertIn(heading, prompt)
                 for semantic in STANDARD_CRITIC_REQUIRED_SEMANTICS:
                     self.assertIn(semantic, normalized)
+
+    def test_checked_in_technical_debt_audit_contract_is_structured(self) -> None:
+        project_root = Path(__file__).parents[1]
+        skill = " ".join(
+            (
+                project_root / "skills/technical-debt-audit/SKILL.md"
+            ).read_text(encoding="utf-8").split()
+        )
+        auditor = " ".join(
+            (
+                project_root / "opencode/agents/technical-debt-auditor.md"
+            ).read_text(encoding="utf-8").split()
+        )
+        command = " ".join(
+            (
+                project_root / "opencode/commands/audit-technical-debt.md"
+            ).read_text(encoding="utf-8").split()
+        )
+        code_review = " ".join(
+            (project_root / "skills/code-review/SKILL.md")
+            .read_text(encoding="utf-8")
+            .split()
+        )
+        taxonomy = (
+            project_root / "docs/skill-taxonomy.md"
+        ).read_text(encoding="utf-8")
+        cross_reference = (
+            project_root / "docs/cross-reference-map.md"
+        ).read_text(encoding="utf-8")
+
+        for required in (
+            "name: technical-debt-audit",
+            "`review-verification-protocol`",
+            "Repository overview",
+            "qualitative",
+            "Quick wins",
+            "Strategic blockers",
+            "`architecture-review`",
+            "`testing-strategy`",
+            "`dependency-supply-chain-review`",
+            "`security-review-evidence`",
+            "`documentation-engineering`",
+        ):
+            with self.subTest(skill=required):
+                self.assertIn(required, skill)
+
+        for required in (
+            "Load `technical-debt-audit`",
+            "languages, frameworks, build and test tooling",
+            "entry points",
+            "Unused dependencies",
+            "skipped or quarantined tests",
+            "`technical-researcher`",
+            "Quick wins",
+            "Strategic blockers",
+        ):
+            with self.subTest(auditor=required):
+                self.assertIn(required, auditor)
+
+        for required in (
+            "Load `technical-debt-audit` and `review-verification-protocol`.",
+            "Repository overview",
+            "Evidence reviewed and limitations",
+            "Prioritized findings",
+            "Quick wins",
+            "Strategic blockers",
+            "Longer-term improvement program",
+            "Skipped validation and residual risk",
+            "Do not invent numeric coverage percentages",
+        ):
+            with self.subTest(command=required):
+                self.assertIn(required, command)
+
+        self.assertIn(
+            "repository-wide or focused technical-debt portfolio audit",
+            code_review,
+        )
+        self.assertIn("`technical-debt-audit`", taxonomy)
+        self.assertIn("| Technical-debt audit | `technical-debt-audit` |", cross_reference)
 
     def test_checked_in_code_documentation_route_is_source_scoped(self) -> None:
         project_root = Path(__file__).parents[1]
