@@ -150,7 +150,7 @@ delegate, edit plan state, stage, commit, push, or deploy.
 | `/brainstorm` | ERB | Compares credible options and returns read-only advisory guidance. |
 | `/root-cause-analysis` | ERB | Confirms a causal chain and challenges a repair proposal without implementing it. |
 | `/review-plan`, `/review-implementation` | ERB | Reviews plans or completed work without editing either. |
-| `/investigate-regression`, `/audit-technical-debt` | ERB | Performs focused read-only investigation or audit. |
+| `/investigate-regression`, `/audit-technical-debt` | ERB | Performs focused read-only investigation or audit; an explicitly tool-backed technical-debt audit may request approval-gated evidence commands without gaining edit or installation authority. |
 | `/address-review` | Engineering Lead | Re-evaluates prior ERB advice before ordinary implementation. |
 | `/optimize-prompt` | Engineering Lead | Returns a verified prompt rewrite without executing or editing its source. |
 | `/semver` | Engineering Lead | Audits, applies, or locally tags one explicitly selected version workflow. |

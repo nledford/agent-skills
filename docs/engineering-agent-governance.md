@@ -84,6 +84,18 @@ lifecycle limits.
 | [Implementation Worker](../opencode/agents/implementation-worker.md) | One bounded implementation unit assigned by the Lead or Plan Orchestrator, complete against every assigned acceptance criterion, plus focused validation and a requirement-to-evidence report. It is the only implementation subagent. | Edit durable plans; read or mutate `.erb/plan-state.json`; delegate; stage; commit; push; deploy; broaden scope; or perform destructive migrations. |
 | Review and research specialists | Bounded, decision-relevant analysis for the Lead or ERB using exact runtime-visible IDs. | Implement changes, simulate the ERB, approve plans, or treat advisory output as final authority. |
 
+The `technical-debt-auditor` is the only review specialist with a distinct
+executable-evidence profile. When the current human explicitly requests shell or
+tooling evidence, it may request runtime approval for the canonical Cargo and
+cargo-leptos inspection, build, lint, dependency, and test commands. It remains
+read-only: edits, Task delegation, web access, arbitrary scripts, shell
+composition or redirection, installs, dependency updates, automatic fixes, and
+cleanup are denied. Repository code can execute through build scripts,
+procedural macros, and tests, so every command remains ask-gated and must be
+reported with tool availability, exact command, exit status, and a short
+sanitized excerpt. Missing tools are limitations and are never installed during
+the audit. Permission-definition changes require a full OpenCode restart.
+
 ## External Directory Audit Boundary
 
 The `external_directory` permission is a second gate for any tool call that
@@ -291,14 +303,18 @@ permission-profile assignments. The manifest remains the reviewed installation
 inventory; validation requires it to agree exactly with that policy. Roster
 drift fails closed and does not disable lifecycle checks.
 
-The six permission profiles cover the Lead, ERB, Plan Orchestrator, Worker,
-read-only review specialists, and Technical Researcher. Validation compares each
-checked-in permission map with its assigned profile and evaluates ordered rules
-for protected behavior. In particular:
+The seven permission profiles cover the Lead, ERB, Plan Orchestrator, Worker,
+read-only review specialists, the ask-gated technical-debt auditor, and
+Technical Researcher. Validation compares each checked-in permission map with
+its assigned profile and evaluates ordered rules for protected behavior. In
+particular:
 
 - the Lead, ERB, Worker, reviewers, and researchers deny direct navigation of
   `.erb/plan-state.json`;
 - the Plan Orchestrator may read and edit `.erb/plan-state.json` directly;
+- the technical-debt auditor may request only its canonical Cargo and
+  cargo-leptos evidence commands and cannot use them to install, update, fix,
+  redirect, compose shell operations, or invoke arbitrary scripts;
 - the Worker's staging, commit, push, destructive Git, deletion, privilege,
   plan, and state denies remain effective against later overrides; and
 - bare Worker `git status`, `git diff`, `git log`, and `git show` are allowed,
@@ -398,7 +414,7 @@ are authoritative for primary ownership.
 | [`/review-implementation`](../opencode/commands/review-implementation.md) | Engineering Review Board | Review completed implementation against the relevant plan and evidence without editing either. |
 | [`/investigate-regression`](../opencode/commands/investigate-regression.md) | Engineering Review Board | Investigate a suspected regression without modifying the repository. |
 | [`/root-cause-analysis`](../opencode/commands/root-cause-analysis.md) | Engineering Review Board | Confirm the causal chain, synthesize the smallest safe repair with decision-relevant specialists, require adversarial proposal review, and stop at a human implementation gate without making changes. |
-| [`/audit-technical-debt`](../opencode/commands/audit-technical-debt.md) | Engineering Review Board | Run a read-only general or focused technical-debt audit. |
+| [`/audit-technical-debt`](../opencode/commands/audit-technical-debt.md) | Engineering Review Board | Run a read-only general or focused technical-debt audit; when the human explicitly requests tooling evidence, the central auditor may request approval for its bounded evidence-command surface. |
 
 ## Audit or Refactor Governance
 

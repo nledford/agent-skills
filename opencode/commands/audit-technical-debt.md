@@ -12,13 +12,38 @@ Treat the argument as either repository-wide scope or a focused concern such as 
 
 Load `technical-debt-audit` and `review-verification-protocol`.
 
+When the current request explicitly requests shell or tooling evidence, preserve
+that requirement in the central `technical-debt-auditor` Task packet. Ask for
+the narrowest repository-native or allowlisted evidence checks that are safe for
+the inspected repository; otherwise keep the audit inspection-only. Commands
+that build or test repository code can execute build scripts, procedural macros,
+test binaries, and repository-defined tooling, so approval remains required.
+Do not install missing tools or dependencies, update lockfiles, apply automatic
+fixes, compose shell commands, or treat a missing command as permission to
+expand the audit. When a tracked lockfile exists, use supported `--locked`
+options and verify worktree status before and after execution; report a stale
+lockfile rather than changing it.
+
+For every attempted check, report tool availability, exact command, exit status,
+a short sanitized relevant output excerpt (normally one to five lines), and the
+interpretation. Separate missing tooling, environment constraints, and invalid
+invocations from repository findings. Name exact unrun validation when a check
+is unsafe, unavailable, or outside the active role's permission boundary.
+
+For an Axum + Leptos SSR repository, also load `rust-async-web`,
+`rust-testing-quality`, and `rust-antipatterns`, require the central auditor Task
+to load them, and follow the Axum + Leptos technical-debt audit reference routed
+by `rust-async-web`. Add `dependency-supply-chain-review` together with its
+`security-review-evidence` companion, or add other focused specialists, only
+when their evidence could change a finding.
+
 Include `technical-debt-auditor` as the central specialist and select only additional specialists whose evidence could materially change prioritization or remediation.
 
 Establish a concise Repository overview before reporting findings: primary languages, frameworks, package/build/test tooling, top-level architecture, key modules, entry points, and declared repository conventions. For a focused audit, keep the overview proportional to the requested scope.
 
 Inspect code quality, dependency health, test confidence, architecture and design, and documentation or operational knowledge. Use repository evidence first. Request `technical-researcher` only when current versions, deprecations, maintenance status, advisories, or other authoritative external facts could materially change a dependency finding. Route active vulnerabilities to `security-critic` rather than treating them only as maintenance debt.
 
-Do not invent numeric coverage percentages. Cite observed coverage output when available; otherwise use a qualitative module or boundary map and state its evidence. Do not assert that a dependency is outdated, deprecated, unmaintained, or vulnerable without current authoritative evidence. Name exact unrun validation when permissions or the environment prevent a safe repository-native check.
+Do not invent numeric coverage percentages. Cite observed coverage output when available; otherwise use a qualitative module or boundary map and state its evidence. Do not assert that a dependency is outdated, deprecated, unmaintained, or vulnerable without current authoritative evidence.
 
 Return between 0 and 30 distinct, evidence-supported findings. Do not pad the
 list and do not confuse active defects, acceptable trade-offs, or cosmetic

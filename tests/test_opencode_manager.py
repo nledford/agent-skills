@@ -16,6 +16,7 @@ from tools.opencode_manager import (
     CANONICAL_PROMPT_SECTION_CONTRACTS,
     CODE_DOCUMENTATION_PROMPT_CONTRACTS,
     COMMAND_PROMPT_CONTRACTS,
+    CRITIC_PERMISSION_PROFILE_NAMES,
     ENGINEERING_LEAD_PLAN_STAGING_PROMPT_REQUIREMENTS,
     EXTERNAL_DIRECTORY_ASK_AGENT_IDS,
     EXTERNAL_DIRECTORY_DOC_TOKENS,
@@ -4162,10 +4163,14 @@ class CanonicalPromptSectionTests(unittest.TestCase):
 
 class CanonicalAgentTopologyTests(unittest.TestCase):
     def test_standard_critic_membership_is_derived_from_topology(self) -> None:
+        self.assertEqual(
+            {"review-specialist", "technical-debt-auditor"},
+            CRITIC_PERMISSION_PROFILE_NAMES,
+        )
         review_specialists = {
             policy.agent_id
             for policy in CANONICAL_AGENT_TOPOLOGY.agents
-            if policy.permission_profile == "review-specialist"
+            if policy.permission_profile in CRITIC_PERMISSION_PROFILE_NAMES
         }
 
         self.assertTrue(STANDARD_CRITIC_STAGE_REVIEWER_IDS <= review_specialists)
@@ -4174,6 +4179,115 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             STANDARD_CRITIC_AGENT_IDS,
         )
         self.assertEqual(15, len(STANDARD_CRITIC_AGENT_IDS))
+
+    def test_technical_debt_auditor_uses_ask_gated_evidence_profile(self) -> None:
+        policy = next(
+            policy
+            for policy in CANONICAL_AGENT_TOPOLOGY.agents
+            if policy.agent_id == "technical-debt-auditor"
+        )
+        self.assertEqual("technical-debt-auditor", policy.permission_profile)
+
+        project_root = Path(__file__).parents[1]
+        parsed, errors = OpenCodeInstallService._parse_frontmatter(
+            "agents",
+            "technical-debt-auditor.md",
+            (
+                project_root / "opencode/agents/technical-debt-auditor.md"
+            ).read_text(encoding="utf-8"),
+        )
+        self.assertEqual([], errors)
+        assert parsed is not None
+        bash = parsed.permissions["bash"]
+        self.assertIsInstance(bash, tuple)
+        assert isinstance(bash, tuple)
+
+        cases = (
+            ("metadata", "cargo metadata --no-deps", "ask"),
+            ("dependency tree", "cargo tree -d", "ask"),
+            ("clippy", "cargo clippy --all-targets", "ask"),
+            ("audit", "cargo audit", "ask"),
+            ("audit fix", "cargo audit fix", "deny"),
+            ("outdated", "cargo outdated", "ask"),
+            ("nightly udeps", "cargo +nightly udeps", "ask"),
+            ("server build", "cargo build --release --features ssr", "ask"),
+            (
+                "WASM hydration build",
+                "cargo build --target wasm32-unknown-unknown --features hydrate",
+                "ask",
+            ),
+            (
+                "WASM hydration lint",
+                "cargo clippy --target=wasm32-unknown-unknown --features hydrate",
+                "ask",
+            ),
+            ("Leptos build", "cargo leptos build --release", "ask"),
+            ("tests", "cargo test --workspace", "ask"),
+            ("Clippy fix", "cargo clippy --fix", "deny"),
+            (
+                "WASM Clippy fix",
+                "cargo clippy --fix --target wasm32-unknown-unknown",
+                "deny",
+            ),
+            ("install", "cargo install cargo-audit", "deny"),
+            (
+                "WASM-targeted install",
+                "cargo install cargo-audit --target wasm32-unknown-unknown",
+                "deny",
+            ),
+            ("update", "cargo update", "deny"),
+            ("new project", "cargo leptos new example", "deny"),
+            (
+                "manifest escape",
+                "cargo test --manifest-path ../other/Cargo.toml",
+                "deny",
+            ),
+            (
+                "command-line Cargo config",
+                'cargo build --config \'build.rustc-wrapper="sh"\'',
+                "deny",
+            ),
+            ("target directory", "cargo build --target-dir src", "deny"),
+            (
+                "custom target specification",
+                "cargo build --target ../outside/target.json",
+                "deny",
+            ),
+            (
+                "unapproved WASM subcommand",
+                "cargo run --target wasm32-unknown-unknown",
+                "deny",
+            ),
+            (
+                "direct rustc output",
+                "cargo rustc --target wasm32-unknown-unknown -- -o src/output",
+                "deny",
+            ),
+            ("output directory", "cargo build --out-dir src", "deny"),
+            (
+                "lockfile path",
+                "cargo build --lockfile-path src/Cargo.lock",
+                "deny",
+            ),
+            (
+                "artifact directory",
+                "cargo build -Z unstable-options --artifact-dir src",
+                "deny",
+            ),
+            ("shell composition", "cargo test; cargo audit", "deny"),
+            (
+                "newline composition",
+                "cargo test --workspace\ncargo audit",
+                "deny",
+            ),
+            ("arbitrary shell", "sh scripts/audit.sh", "deny"),
+        )
+        for label, command, expected in cases:
+            with self.subTest(action=label, command=command):
+                self.assertEqual(
+                    expected,
+                    resolve_opencode_action(bash, command, baseline="deny"),
+                )
 
     def test_checked_in_standard_critics_preserve_common_prompt_contract(self) -> None:
         project_root = Path(__file__).parents[1]
@@ -4206,6 +4320,12 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                 project_root / "opencode/commands/audit-technical-debt.md"
             ).read_text(encoding="utf-8").split()
         )
+        rust_reference = " ".join(
+            (
+                project_root
+                / "skills/rust-async-web/references/axum-leptos-debt-audit.md"
+            ).read_text(encoding="utf-8").split()
+        )
         code_review = " ".join(
             (project_root / "skills/code-review/SKILL.md")
             .read_text(encoding="utf-8")
@@ -4230,6 +4350,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "`dependency-supply-chain-review`",
             "`security-review-evidence`",
             "`documentation-engineering`",
+            "approved evidence commands",
         ):
             with self.subTest(skill=required):
                 self.assertIn(required, skill)
@@ -4243,6 +4364,9 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "`technical-researcher`",
             "Quick wins",
             "Strategic blockers",
+            "tool availability, exact command, exit status",
+            "`frontend-architecture-interaction-critic`",
+            "`distributed-systems-concurrency-critic`",
         ):
             with self.subTest(auditor=required):
                 self.assertIn(required, auditor)
@@ -4257,9 +4381,26 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             "Longer-term improvement program",
             "Skipped validation and residual risk",
             "Do not invent numeric coverage percentages",
+            "explicitly requests shell or tooling evidence",
+            "Do not install missing tools",
         ):
             with self.subTest(command=required):
                 self.assertIn(required, command)
+
+        for required in (
+            "[package.metadata.leptos]",
+            "[[workspace.metadata.leptos]]",
+            "hydrate_islands",
+            "hydrate_body",
+            "HydrationScripts",
+            "cargo leptos build --release",
+            "wasm32-unknown-unknown",
+            "Do not run `--all-features` blindly",
+            "ordinary manual Axum routes",
+            "process-local state",
+        ):
+            with self.subTest(rust_reference=required):
+                self.assertIn(required, rust_reference)
 
         self.assertIn(
             "repository-wide or focused technical-debt portfolio audit",
@@ -4500,6 +4641,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                 "engineering-review-board": "engineering-review-board",
                 "plan-orchestrator": "plan-orchestrator",
                 "implementation-worker": "implementation-worker",
+                "technical-debt-auditor": "technical-debt-auditor",
                 "technical-researcher": "technical-researcher",
             },
             {

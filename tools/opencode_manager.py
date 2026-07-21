@@ -176,7 +176,12 @@ CANONICAL_AGENT_TOPOLOGY = CanonicalAgentTopology(
         CanonicalAgentPolicy("prompt-critic", "subagent", (), "review-specialist"),
         CanonicalAgentPolicy("release-readiness-reviewer", "subagent", (), "review-specialist"),
         CanonicalAgentPolicy("security-critic", "subagent", (), "review-specialist"),
-        CanonicalAgentPolicy("technical-debt-auditor", "subagent", (), "review-specialist"),
+        CanonicalAgentPolicy(
+            "technical-debt-auditor",
+            "subagent",
+            (),
+            "technical-debt-auditor",
+        ),
         CanonicalAgentPolicy("technical-researcher", "subagent", (), "technical-researcher"),
         CanonicalAgentPolicy("testing-critic", "subagent", (), "review-specialist"),
     ),
@@ -204,10 +209,13 @@ EXTERNAL_DIRECTORY_ASK_AGENT_IDS = frozenset(
     for policy in CANONICAL_AGENT_TOPOLOGY.agents
     if policy.agent_id != "plan-orchestrator"
 )
+CRITIC_PERMISSION_PROFILE_NAMES = frozenset(
+    {"review-specialist", "technical-debt-auditor"}
+)
 STANDARD_CRITIC_AGENT_IDS = frozenset(
     policy.agent_id
     for policy in CANONICAL_AGENT_TOPOLOGY.agents
-    if policy.permission_profile == "review-specialist"
+    if policy.permission_profile in CRITIC_PERMISSION_PROFILE_NAMES
 ) - STANDARD_CRITIC_STAGE_REVIEWER_IDS
 STANDARD_CRITIC_REQUIRED_HEADINGS = (
     "## Operating Contract",
@@ -602,6 +610,9 @@ COMMAND_PROMPT_CONTRACTS = {
         "Skipped validation and residual risk",
         "Do not invent numeric coverage percentages",
         "current authoritative evidence",
+        "explicitly requests shell or tooling evidence",
+        "Do not install missing tools",
+        "tool availability, exact command, exit status",
     ),
     "brainstorm.md": (
         "You are handling this current command turn as the Engineering Review Board.",
@@ -1172,6 +1183,68 @@ REVIEW_SPECIALIST_BASH_RULES = (
     ("git log --oneline -10", "allow"),
     ("git branch --show-current", "allow"),
 )
+TECHNICAL_DEBT_AUDITOR_BASH_RULES = REVIEW_SPECIALIST_BASH_RULES + (
+    ("cargo --version", "ask"),
+    ("rustc --version", "ask"),
+    ("cargo metadata *", "ask"),
+    ("cargo tree *", "ask"),
+    ("cargo check *", "ask"),
+    ("cargo test *", "ask"),
+    ("cargo nextest run *", "ask"),
+    ("cargo clippy *", "ask"),
+    ("cargo fmt --check *", "ask"),
+    ("cargo build *", "ask"),
+    ("cargo audit *", "ask"),
+    ("cargo outdated *", "ask"),
+    ("cargo udeps *", "ask"),
+    ("cargo +* udeps *", "ask"),
+    ("cargo leptos --version", "ask"),
+    ("cargo leptos build *", "ask"),
+    ("cargo leptos test *", "ask"),
+    ("cargo leptos end-to-end *", "ask"),
+    ("cargo *--target *", "deny"),
+    ("cargo *--target=*", "deny"),
+    ("cargo tree *--target wasm32-unknown-unknown *", "ask"),
+    ("cargo tree *--target=wasm32-unknown-unknown *", "ask"),
+    ("cargo check *--target wasm32-unknown-unknown *", "ask"),
+    ("cargo check *--target=wasm32-unknown-unknown *", "ask"),
+    ("cargo test *--target wasm32-unknown-unknown *", "ask"),
+    ("cargo test *--target=wasm32-unknown-unknown *", "ask"),
+    ("cargo nextest run *--target wasm32-unknown-unknown *", "ask"),
+    ("cargo nextest run *--target=wasm32-unknown-unknown *", "ask"),
+    ("cargo clippy *--target wasm32-unknown-unknown *", "ask"),
+    ("cargo clippy *--target=wasm32-unknown-unknown *", "ask"),
+    ("cargo build *--target wasm32-unknown-unknown *", "ask"),
+    ("cargo build *--target=wasm32-unknown-unknown *", "ask"),
+    ("cargo udeps *--target wasm32-unknown-unknown *", "ask"),
+    ("cargo udeps *--target=wasm32-unknown-unknown *", "ask"),
+    ("cargo +* udeps *--target wasm32-unknown-unknown *", "ask"),
+    ("cargo +* udeps *--target=wasm32-unknown-unknown *", "ask"),
+    ("cargo *--fix*", "deny"),
+    ("cargo fix *", "deny"),
+    ("cargo audit fix *", "deny"),
+    ("cargo install *", "deny"),
+    ("cargo update *", "deny"),
+    ("cargo add *", "deny"),
+    ("cargo remove *", "deny"),
+    ("cargo clean *", "deny"),
+    ("cargo leptos new *", "deny"),
+    ("cargo *--manifest-path*", "deny"),
+    ("cargo *--config*", "deny"),
+    ("cargo *--target-dir*", "deny"),
+    ("cargo *--out-dir*", "deny"),
+    ("cargo *--lockfile-path*", "deny"),
+    ("cargo *--artifact-dir*", "deny"),
+    ("*>*", "deny"),
+    ("*<*", "deny"),
+    ("*|*", "deny"),
+    ("*&*", "deny"),
+    ("*;*", "deny"),
+    ("*\n*", "deny"),
+    ("*\r*", "deny"),
+    ("*$(*", "deny"),
+    ("*`*", "deny"),
+)
 ENGINEERING_REVIEW_BOARD_BASH_RULES = (
     ("*", "deny"),
     ("git status --short", "allow"),
@@ -1268,6 +1341,21 @@ REVIEW_SPECIALIST_PERMISSION_PROFILE = CanonicalPermissionProfile(
         **_navigation_permissions(),
         "edit": "deny",
         "bash": REVIEW_SPECIALIST_BASH_RULES,
+        "task": "deny",
+        "webfetch": "deny",
+        "websearch": "deny",
+        "question": "allow",
+        "skill": (("*", "allow"),),
+    },
+)
+TECHNICAL_DEBT_AUDITOR_PERMISSION_PROFILE = CanonicalPermissionProfile(
+    "technical-debt-auditor",
+    {
+        "*": "deny",
+        "external_directory": EXTERNAL_DIRECTORY_ASK_RULES,
+        **_navigation_permissions(),
+        "edit": "deny",
+        "bash": TECHNICAL_DEBT_AUDITOR_BASH_RULES,
         "task": "deny",
         "webfetch": "deny",
         "websearch": "deny",
@@ -1406,6 +1494,7 @@ CANONICAL_PERMISSION_PROFILES = {
         },
     ),
     "review-specialist": REVIEW_SPECIALIST_PERMISSION_PROFILE,
+    "technical-debt-auditor": TECHNICAL_DEBT_AUDITOR_PERMISSION_PROFILE,
 }
 WORKER_DENY_COMMANDS = (
     "git add -- src/example.py",
@@ -2187,13 +2276,25 @@ class OpenCodeInstallService:
                         f"{kind}: '{name}' permission rules must use canonical key-value fields"
                     )
                     continue
-                rule_key = rule_match.group(1) or rule_match.group(2)
+                quoted_rule_key, named_rule_key, action = rule_match.groups()
+                if quoted_rule_key is not None:
+                    try:
+                        rule_key = json.loads(f'"{quoted_rule_key}"')
+                    except json.JSONDecodeError:
+                        errors.append(
+                            f"{kind}: '{name}' permission rules must use "
+                            "supported double-quoted escapes"
+                        )
+                        continue
+                else:
+                    assert named_rule_key is not None
+                    rule_key = named_rule_key
                 if any(existing_key == rule_key for existing_key, _ in permission_rules):
                     errors.append(
                         f"{kind}: '{name}' has duplicate permission rule '{rule_key}'"
                     )
                     continue
-                permission_rules.append((rule_key, rule_match.group(3)))
+                permission_rules.append((rule_key, action))
                 continue
 
             if line.startswith("  "):
