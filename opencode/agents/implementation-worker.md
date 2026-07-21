@@ -61,6 +61,7 @@ permission:
     "container-engineering": allow
     "create-agent-skill": allow
     "css-scss-styling": allow
+    "data-platform-engineering": allow
     "dependency-supply-chain-review": allow
     "documentation-engineering": allow
     "domain-driven-design": allow

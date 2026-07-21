@@ -1560,6 +1560,7 @@ ALL_FIRST_PARTY_SKILL_IDS = (
     "container-engineering",
     "create-agent-skill",
     "css-scss-styling",
+    "data-platform-engineering",
     "dependency-supply-chain-review",
     "documentation-engineering",
     "domain-driven-design",
