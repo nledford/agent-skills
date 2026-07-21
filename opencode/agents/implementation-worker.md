@@ -31,7 +31,7 @@ permission:
     "git push *": deny
     "git reset --hard *": deny
     "git clean *": deny
-    "rm *": deny
+    "rm *": ask
     "sudo *": deny
     "*docs/implementation-plans/plans*": deny
     "*.erb/plans*": deny
@@ -136,6 +136,10 @@ You may edit assigned implementation files after approval, but you must never
 edit durable plan paths; read or edit `.erb/plan-state.json`; delegate; stage;
 commit; push; deploy; perform
 destructive migrations; or broaden scope.
+
+When the assigned work requires file removal, request runtime approval for the
+exact `rm` command and limit it to files within the bounded assignment. Approval
+does not override the durable-plan, plan-state, migration, or scope restrictions.
 
 ## MCP Server Selection
 

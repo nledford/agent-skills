@@ -1057,7 +1057,7 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                     result.errors,
                 )
 
-    def test_checked_in_worker_git_permissions_resolve_to_effective_actions(self) -> None:
+    def test_checked_in_worker_bash_permissions_resolve_to_effective_actions(self) -> None:
         project_root = Path(__file__).parents[1]
         worker, errors = parse_frontmatter(
             "agents",
@@ -1087,6 +1087,10 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             ("push", "git push origin main", "deny"),
             ("destructive reset", "git reset --hard HEAD", "deny"),
             ("destructive clean", "git clean -fd", "deny"),
+            ("file removal", "rm file.txt", "ask"),
+            ("legacy plan removal", "rm docs/implementation-plans/plans/example.md", "deny"),
+            ("canonical plan removal", "rm .erb/plans/example.md", "deny"),
+            ("plan state removal", "rm .erb/plan-state.json", "deny"),
             ("state redirection", "git diff > .erb/plan-state.json", "deny"),
         )
         for label, command, expected in cases:
@@ -1173,7 +1177,6 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
             ("git push*", "ask"),
             ("git reset*", "ask"),
             ("git clean*", "ask"),
-            ("rm*", "ask"),
             ("sudo*", "ask"),
             ("*plans/*", "ask"),
             ("*.erb/plans/*", "ask"),
@@ -1206,6 +1209,27 @@ class CanonicalAgentTopologyTests(unittest.TestCase):
                     any("complete Worker deny surface" in error for error in result.errors),
                     result.errors,
                 )
+
+    def test_validate_rejects_worker_rm_approval_bypass(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_canonical_active_workflow_repo(root)
+            worker = repo / "opencode" / "agents" / "implementation-worker.md"
+            original = worker.read_text(encoding="utf-8")
+            rule = '    "rm *": ask\n'
+            self.assertIn(rule, original)
+            worker.write_text(
+                original.replace(rule, f'{rule}    "rm*": allow\n', 1),
+                encoding="utf-8",
+            )
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertFalse(result.ok)
+            self.assertTrue(
+                any("permission profile" in error for error in result.errors),
+                result.errors,
+            )
 
     def test_checked_in_plan_workflow_uses_explicit_commands_and_pointer_state(self) -> None:
         project_root = Path(__file__).parents[1]

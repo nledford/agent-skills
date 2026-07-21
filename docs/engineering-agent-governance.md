@@ -350,8 +350,9 @@ particular:
 - the browser-evidence collector may request only configured browser MCP tools,
   remains repository-edit and Task denied, and returns sanitized observations
   rather than findings;
-- the Worker's staging, commit, push, destructive Git, deletion, privilege,
-  plan, and state denies remain effective against later overrides; and
+- the Worker's staging, commit, push, destructive Git, privilege, plan, and
+  state denies remain effective against later overrides; ordinary `rm` commands
+  are ask-gated and cannot override those restrictions; and
 - bare Worker `git status`, `git diff`, `git log`, and `git show` are allowed,
   while argument-bearing forms require approval.
 
