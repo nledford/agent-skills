@@ -3,6 +3,7 @@ set shell := ["sh", "-cu"]
 python := "python3"
 manager := "tools/skills_manager.py"
 opencode_manager := "tools/opencode_manager.py"
+routing_evaluator := "tools/routing_evaluator.py"
 
 # Show available commands.
 [group('docs')]
@@ -149,14 +150,24 @@ test:
 lint:
     @{{python}} -m compileall -q tools tests
 
+# Validate the versioned synthetic routing corpus without invoking a model.
+[group('quality')]
+validate-routing-evals:
+    @{{python}} {{routing_evaluator}} validate evals/routing/v1.json
+
+# Run routing evals using ROUTING_EVAL_RUNNER, ROUTING_EVAL_MODEL, and ROUTING_EVAL_CONFIGURATION.
+[group('quality')]
+eval-routing:
+    @{{python}} {{routing_evaluator}} run evals/routing/v1.json
+
 # Report formatter status.
 [group('quality')]
 format:
     @echo "No formatter is configured; Python code uses the standard library only."
 
-# Run the source quality gate without inspecting global installations.
+# Run the source quality gate without inspecting global installations or invoking a model.
 [group('quality')]
-check: lint test validate validate-opencode
+check: lint test validate validate-opencode validate-routing-evals
 
 # Remove Python cache files.
 [group('quality')]

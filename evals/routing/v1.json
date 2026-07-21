@@ -1,0 +1,214 @@
+{
+  "version": 1,
+  "suite": "engineering-review-board-routing-v1",
+  "minimum_score": 1.0,
+  "cases": [
+    {
+      "id": "repository-technical-debt-audit",
+      "synthetic": true,
+      "prompt": "Perform a repository-wide technical debt audit with evidence, risk and effort rankings, quick wins, and scaling blockers. Do not edit anything.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "command": "audit-technical-debt",
+        "skills": [
+          "technical-debt-audit",
+          "review-verification-protocol"
+        ],
+        "handoffs": [
+          "technical-debt-auditor"
+        ]
+      },
+      "forbidden": {
+        "skills": [
+          "find-skills"
+        ],
+        "handoffs": [
+          "implementation-worker"
+        ]
+      }
+    },
+    {
+      "id": "active-regression-before-root-cause",
+      "synthetic": true,
+      "prompt": "A synthetic service started returning intermittent 500s after a change. Reproduce and narrow the active regression; the direct cause is not known yet.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "command": "investigate-regression",
+        "skills": [
+          "systematic-debugging",
+          "review-verification-protocol"
+        ]
+      },
+      "forbidden": {
+        "skills": [
+          "root-cause-analysis"
+        ],
+        "handoffs": [
+          "implementation-worker"
+        ]
+      }
+    },
+    {
+      "id": "confirmed-recurring-root-cause",
+      "synthetic": true,
+      "prompt": "The direct cause of a recurring synthetic outage is already verified. Perform a read-only root-cause analysis and propose systemic prevention.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "command": "root-cause-analysis",
+        "skills": [
+          "root-cause-analysis",
+          "brainstorming",
+          "review-verification-protocol"
+        ],
+        "handoffs": [
+          "adversarial-reviewer"
+        ]
+      },
+      "forbidden": {
+        "handoffs": [
+          "implementation-worker"
+        ]
+      }
+    },
+    {
+      "id": "clean-architecture-use-case-boundary",
+      "synthetic": true,
+      "prompt": "Refactor a synthetic long-lived application so use cases and business policy no longer depend on controllers, ORM rows, or UI types. Focus on entities, interactors, and interface adapters.",
+      "expected": {
+        "agent": "engineering-lead",
+        "skills": [
+          "clean-architecture"
+        ]
+      },
+      "forbidden": {
+        "skills": [
+          "hexagonal-architecture",
+          "onion-architecture"
+        ]
+      }
+    },
+    {
+      "id": "hexagonal-external-actor-boundary",
+      "synthetic": true,
+      "prompt": "Design explicit inbound and outbound ports around a synthetic application's external actors, then adapt HTTP, a queue, and persistence without leaking those mechanisms into the core.",
+      "expected": {
+        "agent": "engineering-lead",
+        "skills": [
+          "hexagonal-architecture"
+        ]
+      },
+      "forbidden": {
+        "skills": [
+          "clean-architecture",
+          "onion-architecture"
+        ]
+      }
+    },
+    {
+      "id": "onion-domain-rings",
+      "synthetic": true,
+      "prompt": "Reorganize a synthetic domain-centered system into explicit domain, application, and infrastructure rings with all dependencies pointing inward. The team explicitly uses Onion Architecture terminology.",
+      "expected": {
+        "agent": "engineering-lead",
+        "skills": [
+          "onion-architecture"
+        ]
+      },
+      "forbidden": {
+        "skills": [
+          "clean-architecture",
+          "hexagonal-architecture"
+        ]
+      }
+    },
+    {
+      "id": "rendered-ui-review-evidence",
+      "synthetic": true,
+      "prompt": "Review a running local synthetic preview for responsive layout, keyboard focus, and loading/error states. Collect sanitized browser observations; do not change the application or create tests.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "skills": [
+          "ux-accessibility-review"
+        ],
+        "handoffs": [
+          "browser-evidence-collector",
+          "accessibility-critic"
+        ]
+      },
+      "forbidden": {
+        "skills": [
+          "playwright-e2e",
+          "playwright-cli"
+        ],
+        "handoffs": [
+          "implementation-worker"
+        ]
+      }
+    },
+    {
+      "id": "checked-in-playwright-test-change",
+      "synthetic": true,
+      "prompt": "Add a durable checked-in Playwright regression test for a synthetic checkout flow and update its Playwright configuration.",
+      "expected": {
+        "agent": "engineering-lead",
+        "skills": [
+          "playwright-e2e",
+          "test-driven-development"
+        ],
+        "handoffs": [
+          "implementation-worker"
+        ]
+      },
+      "forbidden": {
+        "skills": [
+          "playwright-cli",
+          "agent-browser"
+        ],
+        "handoffs": [
+          "browser-evidence-collector"
+        ]
+      }
+    },
+    {
+      "id": "dependency-supply-chain-audit",
+      "synthetic": true,
+      "prompt": "Audit a synthetic lockfile and dependency graph for vulnerable packages, provenance gaps, install-script risk, and unsafe evidence handling. Keep the review read-only.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "skills": [
+          "dependency-supply-chain-review",
+          "security-review",
+          "security-review-evidence"
+        ],
+        "handoffs": [
+          "security-critic"
+        ]
+      },
+      "forbidden": {
+        "handoffs": [
+          "implementation-worker"
+        ]
+      }
+    },
+    {
+      "id": "ordinary-code-review-not-skill-discovery",
+      "synthetic": true,
+      "prompt": "Review the current synthetic repository diff for correctness and regressions, with evidence for every finding.",
+      "expected": {
+        "agent": "engineering-review-board",
+        "skills": [
+          "code-review",
+          "review-verification-protocol"
+        ]
+      },
+      "forbidden": {
+        "skills": [
+          "find-skills"
+        ],
+        "handoffs": [
+          "implementation-worker"
+        ]
+      }
+    }
+  ]
+}
