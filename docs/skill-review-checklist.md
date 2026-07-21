@@ -15,6 +15,9 @@ tables or skill bodies here.
 - [ ] **Links and resources:** optional `references/`, `scripts/`, `templates/`,
   or `assets/` files are useful, linked from `SKILL.md`, and reachable; no empty
   resource folders or placeholders remain.
+- [ ] **Progressive disclosure:** `SKILL.md` keeps the always-needed workflow and
+  routes version-specific matrices, migrations, large examples, or uncommon
+  variants to a directly linked reference with an explicit load condition.
 - [ ] **Taxonomy inventory:** update the taxonomy inventory, coverage, and
   boundary notes when a skill is added, removed, renamed, split, merged, or
   materially re-scoped.
@@ -27,6 +30,9 @@ tables or skill bodies here.
   Task delegation, commands, durable plans, implementation, or review treats
   skills as procedures rather than runtime IDs and matches the
   [engineering agent governance guide](engineering-agent-governance.md).
+- [ ] **Host metadata:** `hidden`, `user-invocable`, and `allowed-tools` are
+  treated as cross-host hints, never as OpenCode enforcement. Any OpenCode skill
+  or tool boundary is encoded in the exact agent permission map and validator.
 - [ ] **Examples:** examples and counterexamples are short, transferable,
   sanitized, and maintained by tests or easy manual validation where practical.
 - [ ] **Project neutrality:** instructions derive repository names, paths,

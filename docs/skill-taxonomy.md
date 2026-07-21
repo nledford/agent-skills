@@ -414,7 +414,7 @@ reading the code, making a small change, and running the relevant check is enoug
 | `behavior-driven-development` | Behavior examples, acceptance criteria, workflows, and executable specifications. | Focuses on behavior discovery and examples; `gherkin` owns formal feature-file syntax. |
 | `brainstorming` | Structured option generation for ambiguous engineering choices before implementation. | Activates only when multiple credible paths and meaningful tradeoffs exist. |
 | `ci-release-engineering` | Checked-in CI and release-provider workflows for triggers, refs, jobs, matrices, services, caches, artifacts, permissions, concurrency, environments, automated versioning, tags, releases, and package or binary publication. | Owns hosted pipeline implementation while language/test skills own invoked commands, supply-chain and security skills own trust review, Git owns manual operations, and release readiness owns ship decisions. |
-| `clean-architecture` | Clean Architecture, dependency rule, entities, use cases/interactors, interface adapters, framework/database/UI independence, and Clean vs Hexagonal/Onion/layered tradeoffs. | Owns use-case and interface-adapter framing without duplicating ports/adapters or domain-ring guidance. |
+| `clean-architecture` | Clean Architecture dependency-rule work centered on entities, use cases/interactors, interface adapters, and business-policy independence from frameworks, databases, and UI. | Owns use-case and interface-adapter policy flow; routes external-actor port classification to Hexagonal, explicit concentric rings to Onion, and read-only audits to architecture review. |
 | `code-review` | General repository-local audit and review workflow, severity, and finding format. | Owns general review reporting while specialist skills add narrow evidence lenses. |
 | `container-engineering` | Dockerfile, Containerfile, `.dockerignore`, BuildKit/OCI image, and Docker Compose implementation, including stages, artifact transfer, runtime users, entrypoints, health, ports, networks, volumes, secrets/config, lifecycle, resources, and privileges. | Owns container build and Compose behavior while language skills own application commands, supply-chain and security skills own trust review, and CI/release engineering owns hosted pipelines. |
 | `create-agent-skill` | Creating, updating, validating, and maintaining reusable `SKILL.md` skills. | Owns reusable skill contracts and repository-specific skill governance. |
@@ -427,13 +427,13 @@ reading the code, making a small change, and running the relevant check is enoug
 | `git-commit` | Atomic commits, logical grouping, staged diff review, and commit messages. | Keeps authorization, staging, grouping, and commit-message decisions in one workflow. |
 | `git-workflows` | Safe branch, remote, history-inspection, integration, rewrite, conflict, recovery, tag, and worktree workflows. | Owns repository-state operations beyond constructing a new commit while routing commit composition, security-sensitive Git incidents, and supply-chain provenance to their focused skills. |
 | `github-mcp-operations` | Structured evidence and authorized operations through GitHub's official MCP server for repositories, commits, issues, pull requests, reviews, Actions, releases, security findings, organizations, and users. | Owns official-server provenance, GitHub object selection, read-versus-mutation boundaries, and GitHub/Hound combination rules while local Git, public-web research, browser interaction, credentials, and security review remain with their dedicated workflows. |
-| `hexagonal-architecture` | Ports and Adapters, use cases, application services, dependency inversion, inbound/outbound adapters, and Clean/Onion-style core isolation. | Owns external-actor and port/adapter decisions without making indirection mandatory. |
+| `hexagonal-architecture` | Ports and Adapters work centered on external actors, inbound/outbound ports, adapters, swappable mechanisms, and core tests through those seams. | Owns external-actor and port/adapter decisions; routes use-case/interactor policy flow to Clean, explicit concentric rings to Onion, and read-only audits to architecture review. |
 | `hound-web-research` | Public web research with the Hound MCP server, including source discovery, known-URL and PDF retrieval, bounded same-domain crawling, OCR, visual evidence, cache/version diagnostics, and source verification. | Owns safe Hound tool choice and external-evidence handling while structured GitHub platform objects, repository-local facts, signed-in browser interaction, checked-in Playwright tests, private resources, security review, and Hound installation remain with their dedicated workflows. |
 | `internationalization-localization` | Internationalization, localization, Project Fluent, Fluent Translation List (`.ftl`) authoring, locale fallback, multilingual catalogs, localized formatting, and cross-stack Fluent integration guidance. | Owns locale and message behavior while delegating stack mechanics, styling, security, testing, and documentation. |
 | `javascript-typescript-engineering` | JS/TS source, TypeScript, package managers, scripts, tests, lint/format/build, dependencies, workspaces, and CLIs. | Covers JS/TS broadly with Node/npm defaults and other runtimes only when local evidence requires them. |
 | `justfiles` | Designing, refactoring, auditing, and validating Justfiles and `just` workflows. | Keeps version-sensitive recipe syntax, portability, and safety in one focused workflow. |
 | `observability-engineering` | Observability, telemetry, production diagnostics, structured logs, metrics, traces, context propagation, correlation/request IDs, dashboards, alerts, SLO/SLI/error-budget signals, runbooks, incident visibility, and telemetry safety. | Owns signal design and operational visibility while other skills own implementation and active debugging. |
-| `onion-architecture` | Onion Architecture, domain/application rings, inward dependencies, infrastructure-at-the-edge design, and Clean/Hexagonal/Onion tradeoffs. | Owns direct domain/application-ring framing and cross-routes to adjacent architectures. |
+| `onion-architecture` | Onion Architecture work centered on explicit concentric domain, application, and infrastructure rings with dependencies pointing inward. | Owns ring membership and infrastructure-at-the-edge decisions; routes external-actor ports to Hexagonal, use-case/interactor policy flow to Clean, and read-only audits to architecture review. |
 | `performance-review` | Cross-stack performance and scalability review using workload, baseline, profiling, query-plan, rendering, concurrency, resource, and measurement evidence. | Provides a measurement-driven review lens while implementation remains with language, runtime, browser, SQL, and observability skills. |
 | `playwright-e2e` | Checked-in Playwright tests, configs, helpers, traces, lanes, and browser-visible behavior. | Remains distinct from one-off browser automation and lower-level domain tests. |
 | `postgresql-sql-engineering` | PostgreSQL schema, migrations, SQL, transactions, indexes, JSONB, RLS, privileges, plans, maintenance, and review. | Owns PostgreSQL-native behavior while Rust adapter details stay in `rust-persistence-sql`. |
@@ -553,6 +553,17 @@ Scenario: Third-party lock sync stays separate from updates
 ```
 
 ```gherkin
+Scenario: Third-party installed content retains reviewed provenance
+  Given ignored or lockfile-owned third-party skills are installed under skills/
+  When third-party validation runs
+  Then third-party-skills.json covers every installed skill
+  And reviewed records may remain when optional ignored runtime installs are absent
+  And each entry records an HTTPS source, repository-relative source path, full Git revision, license, review date, and deterministic content digest
+  And changed installed content fails validation until a maintainer reviews the upstream change and updates the provenance record
+  And host-specific frontmatter such as allowed-tools, hidden, or user-invocable emits a warning because OpenCode authority comes from agent permission maps
+```
+
+```gherkin
 Scenario: First-party resources are reachable
   Given a first-party skill contains a reference, script, template, or asset
   When repository validation runs
@@ -578,6 +589,24 @@ Scenario: Technical-debt audits separate systemic debt from defects
   And uses qualitative test coverage unless observed tooling provides numeric coverage
   And verifies current dependency status before claiming deprecation, abandonment, or vulnerability
   And prioritizes quick wins, strategic blockers, and longer-term remediation without padding categories
+```
+
+```gherkin
+Scenario: Tool-backed debt audits select the detected ecosystem lane
+  Given a user explicitly requests shell-backed technical-debt evidence
+  When the auditor detects Just, Rust/Cargo, Python, JavaScript/TypeScript, Ruby, or a mixed repository from checked-in configuration
+  Then it requests only applicable exact allowlisted evidence commands
+  And it never runs every ecosystem lane as a generic checklist
+  And installs, updates, executors, automatic fixes, redirection, shell composition, and arbitrary scripts remain denied
+```
+
+```gherkin
+Scenario: Natural-language routing is evaluated separately from static contracts
+  Given the versioned routing corpus contains only synthetic positive, near-miss, overlap, and forbidden cases
+  When static repository validation runs
+  Then the corpus schema is validated without invoking a model or writing traces
+  And an explicit live eval records the model and configuration and scores agent, command, skill, and handoff selections
+  And any requested trace contains only bounded synthetic routing fields
 ```
 
 ```gherkin

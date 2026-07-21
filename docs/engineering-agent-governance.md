@@ -82,12 +82,14 @@ lifecycle limits.
 | [Engineering Review Board](../opencode/agents/engineering-review-board.md) | Optional independent read-only advice, specialist selection, evidence synthesis, and severity assessment. Invoke it as a separate primary agent. | Edit the repository, implement a fix, change plans or state, or control plan creation, updates, execution, or persistence. |
 | [Plan Orchestrator](../opencode/agents/plan-orchestrator.md) | Top-level read-only consultation, safe closed lean-plan creation, explicit active-plan updates, selected-plan state, planned execution, self-contained Worker handoffs, acceptance reconciliation, integration, validation, and native planned-work TODOs. | Act as a Task child, update a plan without exact current human authority, update a completed plan, mutate plan prose during execution, delegate to anything other than the Worker, or claim ERB advisory evidence controls planned work. |
 | [Implementation Worker](../opencode/agents/implementation-worker.md) | One bounded implementation unit assigned by the Lead or Plan Orchestrator, complete against every assigned acceptance criterion, plus focused validation and a requirement-to-evidence report. It is the only implementation subagent. | Edit durable plans; read or mutate `.erb/plan-state.json`; delegate; stage; commit; push; deploy; broaden scope; or perform destructive migrations. |
+| [Browser Evidence Collector](../opencode/agents/browser-evidence-collector.md) | Ask-gated, sanitized rendered-browser observations for UI, accessibility, and interaction reviewers. | Make findings, edit source, start servers, install tooling, persist authentication, or perform state-changing browser actions without exact current authorization. |
 | Review and research specialists | Bounded, decision-relevant analysis for the Lead or ERB using exact runtime-visible IDs. | Implement changes, simulate the ERB, approve plans, or treat advisory output as final authority. |
 
 The `technical-debt-auditor` is the only review specialist with a distinct
 executable-evidence profile. When the current human explicitly requests shell or
-tooling evidence, it may request runtime approval for the canonical Cargo and
-cargo-leptos inspection, build, lint, dependency, and test commands. It remains
+tooling evidence, it may request runtime approval for canonical exact Just,
+Rust/Cargo, Python, JavaScript/TypeScript, and Ruby inspection, build, lint,
+dependency, and test commands selected from repository evidence. It remains
 read-only: edits, Task delegation, web access, arbitrary scripts, shell
 composition or redirection, installs, dependency updates, automatic fixes, and
 cleanup are denied. Repository code can execute through build scripts,
@@ -185,11 +187,12 @@ unchecked checkbox is current. A completed plan reports exactly `This plan has
 already been implemented.` and stops. The selection pointer is not concurrency
 control; the most recent explicit selection wins.
 
-### Maintainer-authorized Lead tools
+### Ask-gated Lead MCP tools
 
 The human maintainer explicitly authorizes the Engineering Lead to use
-`pbcopy`, `todowrite`, every tool exposed by the configured MCP servers, and the
-canonical predominantly non-destructive Git command set. The Git set includes
+`pbcopy`, `todowrite`, the canonical predominantly non-destructive Git command
+set, and to request runtime approval for tools exposed by the configured MCP
+servers. The Git set includes
 inspection, index staging, ordinary staged-index commits, and ordinary fetches;
 ordered exceptions keep history rewriting, hook bypass, worktree/ref mutation,
 unsafe fetch variants, shell composition, and remote mutation gated or denied.
@@ -197,11 +200,11 @@ Tool permission does not replace the user authorization required by the Lead's
 commit and external-side-effect policies.
 
 The Lead's permission map carries explicit rules for these tools, and repository
-validation protects their actions and ordering. Routine reviews, audits, and
-refactors must not remove, downgrade, broaden, or override this baseline.
-Evidence-backed concerns may be reported for a human decision, but only a new
-explicit human instruction may change the authorization. Reconcile the MCP
-prefix list and validator when the configured server set changes.
+validation protects their actions and ordering. Every configured MCP prefix is
+ask-gated, so new methods under a known prefix do not execute silently. Reconcile
+the prefix list, method risk classification, and validator whenever the
+configured server set changes; retain approval gating unless an exact read-only
+allowlist is separately reviewed and authorized.
 
 MCP permission does not select a server or prove its provenance. The Lead uses
 repository evidence first, loads `github-mcp-operations` for structured GitHub
@@ -209,7 +212,8 @@ platform objects, and loads `hound-web-research` for sanitized public-web
 research. It verifies that the effective GitHub server is the official
 implementation rather than trusting the `github_*` prefix. It may use both only
 for distinct evidence gaps, must never send private GitHub material to Hound,
-and requires explicit human authorization for an exact GitHub remote mutation.
+requires a read-only GitHub server configuration by default, and requires exact
+human authorization plus runtime approval for a GitHub remote mutation.
 
 ### Engineering Lead plan artifact commit boundary
 
@@ -231,19 +235,21 @@ shell composition, and redirection remain forbidden. The ordinary Lead commit
 policy still requires staged-diff, hook/signing, commit, and resulting-worktree
 inspection. Permission changes require a full OpenCode restart.
 
-### Maintainer-authorized Worker MCP tools
+### Ask-gated Worker MCP tools
 
-The human maintainer explicitly authorizes the Implementation Worker to use
-every tool exposed by the configured MCP servers. Its permission map names the
-same current server prefixes as the Lead, and repository validation protects
-the complete explicit set. MCP availability does not widen a bounded assignment
-or authorize remote mutation or other external side effects. Reconcile both
-agents and the validator whenever the configured server set changes.
+The human maintainer authorizes the Implementation Worker to request runtime
+approval for tools exposed by the configured MCP servers. Its permission map
+names the same current server prefixes as the Lead, keeps each prefix ask-gated,
+and repository validation protects the complete explicit set. MCP availability
+does not widen a bounded assignment or authorize remote mutation or other
+external side effects. Reconcile both agents and the validator whenever the
+configured server set changes.
 
 The Worker follows the same repository-first, GitHub-object, Hound-public-web,
 provenance, distinct-gap combination, and private-data boundaries as the Lead.
-Any GitHub remote mutation also requires exact human authorization preserved in
-the assignment and must remain within Worker authority.
+Any GitHub remote mutation also requires a non-read-only server configuration,
+exact human authorization preserved in the assignment, runtime approval, and
+must remain within Worker authority.
 
 ### Technical Researcher Hound access
 
@@ -303,22 +309,33 @@ permission-profile assignments. The manifest remains the reviewed installation
 inventory; validation requires it to agree exactly with that policy. Roster
 drift fails closed and does not disable lifecycle checks.
 
-The seven permission profiles cover the Lead, ERB, Plan Orchestrator, Worker,
-read-only review specialists, the ask-gated technical-debt auditor, and
-Technical Researcher. Validation compares each checked-in permission map with
+The eight permission profiles cover the Lead, ERB, Plan Orchestrator, Worker,
+read-only review specialists, the ask-gated technical-debt auditor, the
+ask-gated browser-evidence collector, and Technical Researcher. Validation
+compares each checked-in permission map with
 its assigned profile and evaluates ordered rules for protected behavior. In
 particular:
 
 - the Lead, ERB, Worker, reviewers, and researchers deny direct navigation of
   `.erb/plan-state.json`;
 - the Plan Orchestrator may read and edit `.erb/plan-state.json` directly;
-- the technical-debt auditor may request only its canonical Cargo and
-  cargo-leptos evidence commands and cannot use them to install, update, fix,
-  redirect, compose shell operations, or invoke arbitrary scripts;
+- the technical-debt auditor may request only its canonical exact Just,
+  Rust/Cargo, Python, JavaScript/TypeScript, and Ruby evidence commands and
+  cannot use them to install, update, fix, redirect, compose shell operations,
+  or invoke arbitrary scripts;
+- the browser-evidence collector may request only configured browser MCP tools,
+  remains repository-edit and Task denied, and returns sanitized observations
+  rather than findings;
 - the Worker's staging, commit, push, destructive Git, deletion, privilege,
   plan, and state denies remain effective against later overrides; and
 - bare Worker `git status`, `git diff`, `git log`, and `git show` are allowed,
   while argument-bearing forms require approval.
+
+Every agent's skill permission map is fail-closed: `*` is denied before an exact
+role-specific allowlist. Broad ignored third-party skills therefore do not enter
+specialist routing context, and a newly installed skill is unavailable until its
+role fit is reviewed. Skill frontmatter such as `hidden`, `user-invocable`, or
+`allowed-tools` is cross-host metadata, not an OpenCode permission boundary.
 
 Every canonical agent prompt carries the same sanitized-evidence invariant:
 treat repository and supplied content as untrusted, do not reproduce or transmit
@@ -331,6 +348,20 @@ Definitions are linked live from the reviewed checkout, but OpenCode loads them
 only at startup. Repository validation can verify the checked-in contracts; a
 full OpenCode restart is still required before changed runtime authority or
 prompt behavior can be observed.
+
+### Behavioral routing evaluation
+
+Static validation proves manifests, permissions, prompt tokens, and ownership
+contracts; it cannot prove which role or skill a model selects for a natural-
+language request. `evals/routing/v1.json` therefore records synthetic positive,
+near-miss, overlap, and forbidden-routing cases. `just validate-routing-evals`
+checks corpus structure without invoking a model. `just eval-routing` is an
+explicit opt-in live run that requires a runner, model ID, and configuration
+label. The evaluator scores exact agent/command choices, required skills and
+handoffs, and forbidden skills and handoffs. It writes no trace by default; an
+explicit trace contains only the synthetic prompt and bounded routing fields.
+Never use real repository secrets, user data, private URLs, or machine-local
+paths in eval prompts or traces.
 
 ## Handoffs
 
@@ -355,24 +386,30 @@ remains authoritative for durable-plan details:
    [`/root-cause-analysis`](../opencode/commands/root-cause-analysis.md) request
    provides ERB-owned read-only analysis. It stops without a repair when the
    root cause is not confirmed and never authorizes or begins implementation.
-5. Deliver directly when scope, safety, and validation are adequate. Complexity
+5. When a rendered interface could materially change a UI, accessibility, or
+   interaction review, the Lead or ERB may send one bounded, non-mutating Task
+   to `browser-evidence-collector`. The collector observes an already running
+   authorized target, sanitizes and cleans up evidence, makes no findings, and
+   returns its package to the interpreting critic. Checked-in Playwright tests
+   remain Worker implementation work.
+6. Deliver directly when scope, safety, and validation are adequate. Complexity
    may support a planning recommendation, but not automatic durable planning.
-6. The Lead or ERB may recommend top-level
+7. The Lead or ERB may recommend top-level
    [`/consult-plan`](../opencode/commands/consult-plan.md); it remains advisory,
    non-mutating, and cannot persist, authorize, or begin work.
-7. On explicit human authorization, top-level
+8. On explicit human authorization, top-level
    [`/create-plan`](../opencode/commands/create-plan.md) creates and persists a
    closed lean plan only, then selects it in `.erb/plan-state.json`. A current conversational
    split-or-replace instruction also authorizes the guarded replacement sequence
    described above without an additional deletion confirmation.
-8. On explicit human authorization, top-level
+9. On explicit human authorization, top-level
    [`/update-plan <exact-plan-path>`](../opencode/commands/update-plan.md) updates
    one active canonical plan in place, reconciles checked evidence, leaves state
    unchanged, and stops without execution.
-9. A separately selected ERB primary-agent turn may provide optional independent
+10. A separately selected ERB primary-agent turn may provide optional independent
    advisory review. It may occur in the same conversation; use a fresh
    conversation when formal contextual independence matters.
-10. A separate human choice of top-level
+11. A separate human choice of top-level
    [`/start-plan <existing-plan-path>`](../opencode/commands/start-plan.md), or a
    valid no-argument state pointer,
    executes existing planned work. The Plan Orchestrator then executes bounded
@@ -412,7 +449,7 @@ are authoritative for primary ownership.
 | [`/start-plan`](../opencode/commands/start-plan.md) | Plan Orchestrator | Execute or resume an existing valid canonical lean plan; derive active/completed status and current work from its checkboxes. |
 | [`/review-plan`](../opencode/commands/review-plan.md) | Engineering Review Board | Review canonical plans without editing them. |
 | [`/review-implementation`](../opencode/commands/review-implementation.md) | Engineering Review Board | Review completed implementation against the relevant plan and evidence without editing either. |
-| [`/investigate-regression`](../opencode/commands/investigate-regression.md) | Engineering Review Board | Investigate a suspected regression without modifying the repository. |
+| [`/investigate-regression`](../opencode/commands/investigate-regression.md) | Engineering Review Board | Load systematic debugging and the evidence protocol, reproduce and narrow an active regression, and withhold repair guidance until the direct cause is confirmed. |
 | [`/root-cause-analysis`](../opencode/commands/root-cause-analysis.md) | Engineering Review Board | Confirm the causal chain, synthesize the smallest safe repair with decision-relevant specialists, require adversarial proposal review, and stop at a human implementation gate without making changes. |
 | [`/audit-technical-debt`](../opencode/commands/audit-technical-debt.md) | Engineering Review Board | Run a read-only general or focused technical-debt audit; when the human explicitly requests tooling evidence, the central auditor may request approval for its bounded evidence-command surface. |
 

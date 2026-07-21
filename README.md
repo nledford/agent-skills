@@ -78,8 +78,10 @@ recipe.
 | `opencode/commands/` | Human-selected top-level workflows and their primary owners. |
 | `opencode/project-template/` | Project-neutral durable-plan guidance to merge into target repositories. |
 | `docs/` | Skill taxonomy, routing, governance, review, and plan contracts. |
+| `evals/` | Versioned synthetic routing corpora for optional live agent-selection evaluation. |
 | `tools/` | Standard-library Python installers and validators. |
 | `tests/` | Unit tests for skill and OpenCode management behavior. |
+| `third-party-skills.json` | Reviewed source, revision, license, date, and deterministic digest for installed third-party skills. |
 | `Justfile` | Supported setup, inspection, update, and validation entry points. |
 
 The reviewed OpenCode inventory is
@@ -117,7 +119,11 @@ First-party skills are tracked, or intended to be tracked, as repository
 source. Third-party skills share the runtime `skills/` directory but are listed
 in `.skill-lock.json` or ignored as skill directories by `.gitignore`. A missing
 `.skill-lock.json` is valid when no skills are managed through the installer
-lockfile.
+lockfile. Every installed third-party skill must also have an exact entry in
+[`third-party-skills.json`](third-party-skills.json); `just validate-third-party`
+fails when installed contents drift from the reviewed digest. Reviewed records
+may remain when an ignored, optional runtime install is absent, so validation
+also works in a fresh clone.
 
 Edit only first-party skills as repository source. Do not force-add ignored
 runtime installs or copy raw third-party artifacts into first-party skills
@@ -130,6 +136,13 @@ Update third-party installs only as an explicit maintainer action:
 just update-third-party-dry-run
 just update-third-party
 ```
+
+After an update, review the upstream source, full Git commit, source path,
+license, and changed content before editing `third-party-skills.json`. Use
+`just third-party-digests` to calculate the deterministic installed-tree digest,
+then run `just validate-third-party`. A passing digest verifies reviewed content
+identity; it does not make third-party instructions trusted or grant runtime
+authority.
 
 `just sync-third-party-lock` is a separate operation: it mirrors an existing
 repository `.skill-lock.json` to `~/.agents/.skill-lock.json` for installer
@@ -145,12 +158,20 @@ execution. The
 Implementation Worker receives one bounded implementation unit and cannot
 delegate, edit plan state, stage, commit, push, or deploy.
 
+For reviews where rendered behavior materially changes the answer, the Lead or
+ERB may delegate a non-mutating observation packet to
+`browser-evidence-collector`. Every browser call is approval-gated; the collector
+uses an already running target, retains no artifacts by default, sanitizes the
+evidence package, and makes no findings. Accessibility, design, or frontend
+critics interpret the observations. Durable checked-in browser tests remain
+Worker implementation using `playwright-e2e`.
+
 | Workflow | Primary owner | Result |
 | --- | --- | --- |
 | `/brainstorm` | ERB | Compares credible options and returns read-only advisory guidance. |
 | `/root-cause-analysis` | ERB | Confirms a causal chain and challenges a repair proposal without implementing it. |
 | `/review-plan`, `/review-implementation` | ERB | Reviews plans or completed work without editing either. |
-| `/investigate-regression`, `/audit-technical-debt` | ERB | Performs focused read-only investigation or audit; an explicitly tool-backed technical-debt audit may request approval-gated evidence commands without gaining edit or installation authority. |
+| `/investigate-regression`, `/audit-technical-debt` | ERB | Performs focused read-only investigation or audit; regression investigation reproduces and narrows before root-cause analysis, while an explicitly tool-backed debt audit selects only applicable exact Just, Rust/Cargo, Python, JavaScript/TypeScript, or Ruby evidence commands without gaining edit or installation authority. |
 | `/address-review` | Engineering Lead | Re-evaluates prior ERB advice before ordinary implementation. |
 | `/optimize-prompt` | Engineering Lead | Returns a verified prompt rewrite without executing or editing its source. |
 | `/semver` | Engineering Lead | Audits, applies, or locally tags one explicitly selected version workflow. |
@@ -216,6 +237,14 @@ operating-system, container, or sandbox controls.
 - Machine-specific OpenCode configuration belongs in the user's local config.
   [`opencode/config/opencode.merge-fragment.jsonc`](opencode/config/opencode.merge-fragment.jsonc)
   is a merge reference, not an installer or live configuration file.
+- Agent skill access is fail-closed: every role denies `*` and then allows an
+  exact first-party catalog. `hidden`, `user-invocable`, and `allowed-tools` in
+  skill frontmatter are cross-host metadata and are not OpenCode permission
+  boundaries; `just validate` warns when they appear.
+- Configured MCP prefixes for the Lead, Worker, and browser collector are
+  approval-gated. Use the official GitHub MCP server in read-only mode by default
+  in machine-local configuration; an exact remote mutation still needs current
+  human authorization and runtime approval.
 
 ## Maintain the Repository
 
@@ -233,6 +262,16 @@ or OpenCode definitions. For first-party skill work:
    or link changes.
 6. Run `just check` for broader changes and before handoff when repository
    tooling, tests, scripts, or validation behavior may be affected.
+
+`just validate-routing-evals` validates the versioned synthetic corpus without
+calling a model. Live routing measurement is opt-in: set
+`ROUTING_EVAL_RUNNER`, `ROUTING_EVAL_MODEL`, and
+`ROUTING_EVAL_CONFIGURATION`, then run `just eval-routing`. The runner receives
+one synthetic prompt as JSON on standard input and returns selected `agent`,
+`command`, `skills`, and `handoffs` as JSON. No trace is written by default; use
+the evaluator's explicit `--trace-out` only for a bounded synthetic trace. Never
+place private repository text, credentials, user data, or machine-local paths in
+the corpus or trace. Compare results under the same model and configuration.
 
 OpenCode definition changes must preserve project-neutral prompts, exact command
 ownership, one-level Task topology, permission profiles, and synchronized plan
