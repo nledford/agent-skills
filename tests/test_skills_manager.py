@@ -5,12 +5,16 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from tools.skills_manager import (
     GlobalInstallService,
+    OperationResult,
     SkillRegistry,
     ValidationResult,
     emit_validation,
+    main,
+    run_third_party_update,
     skill_tree_sha256,
 )
 
@@ -951,6 +955,165 @@ class GlobalInstallServiceTests(unittest.TestCase):
             self.assertFalse(result.ok)
             self.assertFalse((global_link.parent / ".skill-lock.json").exists())
             self.assertIn("does not exist", result.errors[0])
+
+
+class ThirdPartyUpdateTests(unittest.TestCase):
+    def test_update_requires_verified_global_install(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_repo(root)
+            global_path = root / ".agents" / "skills"
+
+            with (
+                patch("tools.skills_manager.shutil.which") as which,
+                patch("tools.skills_manager.subprocess.run") as run,
+            ):
+                result = run_third_party_update(repo, global_path)
+
+            self.assertFalse(result.ok)
+            self.assertIn("does not exist", result.errors[0])
+            which.assert_not_called()
+            run.assert_not_called()
+
+    def test_update_rejects_empty_command(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, global_path, service = create_configured_global_install(Path(temp_dir))
+
+            with (
+                patch.dict(os.environ, {"SKILLS_UPDATE_COMMAND": ""}),
+                patch("tools.skills_manager.shutil.which") as which,
+            ):
+                result = run_third_party_update(service.repo_root, global_path)
+
+            self.assertEqual(["SKILLS_UPDATE_COMMAND is empty"], result.errors)
+            which.assert_not_called()
+
+    def test_update_rejects_malformed_command_text(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, global_path, service = create_configured_global_install(Path(temp_dir))
+
+            with (
+                patch.dict(
+                    os.environ,
+                    {"SKILLS_UPDATE_COMMAND": "runner --label 'unterminated"},
+                ),
+                patch("tools.skills_manager.shutil.which") as which,
+                patch("tools.skills_manager.subprocess.run") as run,
+            ):
+                result = run_third_party_update(service.repo_root, global_path)
+
+            self.assertEqual(
+                ["SKILLS_UPDATE_COMMAND is not valid shell-like argument text"],
+                result.errors,
+            )
+            which.assert_not_called()
+            run.assert_not_called()
+
+    def test_update_reports_missing_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, global_path, service = create_configured_global_install(Path(temp_dir))
+
+            with (
+                patch.dict(os.environ, {"SKILLS_UPDATE_COMMAND": "missing update"}),
+                patch("tools.skills_manager.shutil.which", return_value=None),
+            ):
+                result = run_third_party_update(service.repo_root, global_path)
+
+            self.assertEqual(["Required command not found: missing"], result.errors)
+
+    def test_update_dry_run_does_not_start_process(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, global_path, service = create_configured_global_install(Path(temp_dir))
+            command_text = 'runner --label "two words"'
+
+            with (
+                patch.dict(os.environ, {"SKILLS_UPDATE_COMMAND": command_text}),
+                patch("tools.skills_manager.shutil.which", return_value="/test/runner"),
+                patch("tools.skills_manager.subprocess.run") as run,
+            ):
+                result = run_third_party_update(
+                    service.repo_root,
+                    global_path,
+                    dry_run=True,
+                )
+
+            self.assertTrue(result.ok, result.errors)
+            self.assertEqual([f"Would run: {command_text}"], result.messages)
+            run.assert_not_called()
+
+    def test_update_runs_structured_arguments_from_global_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, global_path, service = create_configured_global_install(Path(temp_dir))
+            command_text = 'runner --label "two words"'
+            completed = Mock(returncode=0)
+
+            with (
+                patch.dict(os.environ, {"SKILLS_UPDATE_COMMAND": command_text}),
+                patch("tools.skills_manager.shutil.which", return_value="/test/runner"),
+                patch(
+                    "tools.skills_manager.subprocess.run",
+                    return_value=completed,
+                ) as run,
+            ):
+                result = run_third_party_update(service.repo_root, global_path)
+
+            self.assertTrue(result.ok, result.errors)
+            run.assert_called_once_with(
+                ["runner", "--label", "two words"],
+                cwd=global_path.parent,
+                check=False,
+            )
+
+    def test_update_reports_nonzero_process_status(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, global_path, service = create_configured_global_install(Path(temp_dir))
+
+            with (
+                patch.dict(os.environ, {"SKILLS_UPDATE_COMMAND": "runner update"}),
+                patch("tools.skills_manager.shutil.which", return_value="/test/runner"),
+                patch(
+                    "tools.skills_manager.subprocess.run",
+                    return_value=Mock(returncode=7),
+                ),
+            ):
+                result = run_third_party_update(service.repo_root, global_path)
+
+            self.assertEqual(["runner update exited with 7"], result.errors)
+
+    def test_update_cli_routes_dry_run_to_orchestrator(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo = create_repo(root)
+            global_path = root / ".agents" / "skills"
+            stdout = io.StringIO()
+
+            with (
+                patch(
+                    "tools.skills_manager.run_third_party_update",
+                    return_value=OperationResult(messages=["Would update"]),
+                ) as update,
+                redirect_stdout(stdout),
+            ):
+                exit_code = main(
+                    [
+                        "--repo-root",
+                        str(repo),
+                        "--global-path",
+                        str(global_path),
+                        "update-third-party",
+                        "--dry-run",
+                    ]
+                )
+
+            self.assertEqual(0, exit_code)
+            self.assertEqual("Would update\n", stdout.getvalue())
+            update.assert_called_once_with(
+                repo.resolve(),
+                global_path,
+                dry_run=True,
+            )
+
+
 class ThirdPartyProvenanceContractTests(unittest.TestCase):
     @staticmethod
     def _write_provenance(repo: Path, skill_name: str, digest: str) -> None:

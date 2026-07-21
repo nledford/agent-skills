@@ -6,20 +6,21 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import date
 from pathlib import Path
-from pathlib import PurePosixPath
 from typing import Iterable, Sequence
 from urllib.parse import unquote, urlsplit
 
 try:
     from .project_neutrality import project_neutrality_errors
+    from .skill_provenance import validate_provenance_entry
 except ImportError:  # Direct script execution.
     from project_neutrality import project_neutrality_errors
+    from skill_provenance import validate_provenance_entry
 
 
 GLOBAL_SKILLS_PATH = Path.home() / ".agents" / "skills"
@@ -225,7 +226,7 @@ class SkillRegistry:
         return ValidationResult.combine(
             [
                 self._validate_lockfile(),
-                self._validate_skills(self.all(), label="skill"),
+                self._validate_skills(self.all()),
                 self._validate_required_related_skill_links(),
                 self._validate_taxonomy_inventory(),
                 self._validate_locked_installs(),
@@ -237,7 +238,7 @@ class SkillRegistry:
     def validate_first_party(self) -> ValidationResult:
         return ValidationResult.combine(
             [
-                self._validate_skills(self.first_party(), label="first-party skill"),
+                self._validate_skills(self.first_party()),
                 self._validate_required_related_skill_links(),
                 self._validate_taxonomy_inventory(),
                 self._validate_non_empty(kind="first-party"),
@@ -248,7 +249,7 @@ class SkillRegistry:
         return ValidationResult.combine(
             [
                 self._validate_lockfile(),
-                self._validate_skills(self.third_party(), label="third-party skill"),
+                self._validate_skills(self.third_party()),
                 self._validate_locked_installs(),
                 self._validate_third_party_provenance(),
             ]
@@ -274,7 +275,6 @@ class SkillRegistry:
             if name not in present_names
         ]
         return ValidationResult(errors=errors)
-
     def _validate_third_party_provenance(self) -> ValidationResult:
         provenance_path = self.repo_root / THIRD_PARTY_PROVENANCE_NAME
         third_party = {skill.name: skill for skill in self.third_party()}
@@ -294,85 +294,51 @@ class SkillRegistry:
         assert data is not None
 
         entries = data["skills"]
-        errors: list[str] = []
         installed_names = set(third_party)
         entry_names = set(entries)
-        errors.extend(
+        errors = [
             f"{THIRD_PARTY_PROVENANCE_NAME}: installed third-party skill missing provenance: {name}"
             for name in sorted(installed_names - entry_names)
-        )
-
+        ]
         for name in sorted(entry_names):
-            entry = entries[name]
-            prefix = f"{THIRD_PARTY_PROVENANCE_NAME}: {name}"
-            if not isinstance(entry, dict):
-                errors.append(f"{prefix}: entry must be an object")
-                continue
-            required = (
-                "source",
-                "source_path",
-                "revision",
-                "license",
-                "reviewed_on",
-                "sha256",
+            digest, entry_errors = validate_provenance_entry(
+                name,
+                entries[name],
+                manifest_name=THIRD_PARTY_PROVENANCE_NAME,
             )
-            missing = [field for field in required if not isinstance(entry.get(field), str) or not entry[field]]
-            if missing:
-                errors.append(f"{prefix}: missing non-empty string fields: {', '.join(missing)}")
-                continue
-
-            source = entry["source"]
-            parsed_source = urlsplit(source)
-            if (
-                parsed_source.scheme != "https"
-                or not parsed_source.netloc
-                or parsed_source.username is not None
-                or parsed_source.password is not None
-            ):
-                errors.append(
-                    f"{prefix}: source must be an HTTPS URL without embedded credentials"
+            errors.extend(entry_errors)
+            if digest is not None and name in third_party:
+                errors.extend(
+                    self._installed_digest_errors(
+                        name,
+                        third_party[name].path,
+                        digest,
+                    )
                 )
-
-            source_path = PurePosixPath(entry["source_path"])
-            if (
-                not source_path.parts
-                or entry["source_path"] == "."
-                or "\\" in entry["source_path"]
-                or source_path.is_absolute()
-                or any(part in ("", ".", "..") for part in source_path.parts)
-            ):
-                errors.append(f"{prefix}: source_path must be a safe repository-relative POSIX path")
-
-            revision = entry["revision"]
-            if re.fullmatch(r"[0-9a-f]{40}", revision) is None:
-                errors.append(f"{prefix}: revision must be a full lowercase 40-character Git commit")
-
-            try:
-                date.fromisoformat(entry["reviewed_on"])
-            except ValueError:
-                errors.append(f"{prefix}: reviewed_on must be an ISO date")
-
-            expected_digest = entry["sha256"]
-            if re.fullmatch(r"[0-9a-f]{64}", expected_digest) is None:
-                errors.append(f"{prefix}: sha256 must be 64 lowercase hexadecimal characters")
-                continue
-            if name not in third_party:
-                continue
-            try:
-                actual_digest = skill_tree_sha256(third_party[name].path)
-            except (OSError, ValueError) as digest_error:
-                errors.append(f"{prefix}: cannot hash installed content: {digest_error}")
-                continue
-            if actual_digest != expected_digest:
-                errors.append(
-                    f"{prefix}: content digest mismatch; expected {expected_digest}, "
-                    f"found {actual_digest}"
-                )
-
         return ValidationResult(errors=errors)
 
-    def _validate_skills(self, skills: Sequence[Skill], *, label: str) -> ValidationResult:
-        results = [validate_skill(skill, label=label) for skill in skills]
+    @staticmethod
+    def _installed_digest_errors(
+        name: str,
+        path: Path,
+        expected_digest: str,
+    ) -> list[str]:
+        prefix = f"{THIRD_PARTY_PROVENANCE_NAME}: {name}"
+        try:
+            actual_digest = skill_tree_sha256(path)
+        except (OSError, ValueError) as error:
+            return [f"{prefix}: cannot hash installed content: {error}"]
+        if actual_digest == expected_digest:
+            return []
+        return [
+            f"{prefix}: content digest mismatch; expected {expected_digest}, "
+            f"found {actual_digest}"
+        ]
+
+
+
+    def _validate_skills(self, skills: Sequence[Skill]) -> ValidationResult:
+        results = [validate_skill(skill) for skill in skills]
         return ValidationResult.combine(results)
 
     def _validate_taxonomy_inventory(self) -> ValidationResult:
@@ -525,7 +491,7 @@ class GlobalInstallService:
             return self.global_path.resolve(strict=False)
 
 
-def validate_skill(skill: Skill, *, label: str) -> ValidationResult:
+def validate_skill(skill: Skill) -> ValidationResult:
     skill_file = skill.path / "SKILL.md"
     if not skill_file.is_file():
         return ValidationResult(errors=[f"{skill.name}: missing SKILL.md"])
@@ -648,42 +614,64 @@ def _read_linked_skill_names(skill_file: Path, *, skill_root: Path) -> set[str]:
 
 
 def _validate_skill_resources(skill: Skill) -> ValidationResult:
-    resource_files = [
+    resource_files = {
         path
         for path in skill.path.rglob("*")
-        if path.is_file() and path.name != "SKILL.md" and not _is_hidden_path(path, skill.path)
-    ]
-    errors: list[str] = []
-    reachable = {skill.path / "SKILL.md"}
-    pending = [skill.path / "SKILL.md"]
+        if path.is_file()
+        and path.name != "SKILL.md"
+        and not _is_hidden_path(path, skill.path)
+    }
+    reachable, errors = _reachable_skill_resources(skill)
+    errors.extend(
+        f"{skill.name}: resource file is not reachable from SKILL.md: "
+        f"{resource_file.relative_to(skill.path)}"
+        for resource_file in sorted(resource_files - reachable)
+    )
+    return ValidationResult(errors=errors)
 
+
+def _reachable_skill_resources(skill: Skill) -> tuple[set[Path], list[str]]:
+    skill_file = skill.path / "SKILL.md"
+    reachable = {skill_file}
+    pending = [skill_file]
+    errors: list[str] = []
     while pending:
         source = pending.pop()
-        if source.suffix.lower() != ".md":
-            continue
-        for raw_link in _read_local_markdown_links(source):
-            target = _resolve_local_link(source, raw_link)
-            if target is None:
-                continue
-            if not target.exists():
-                relative_source = source.relative_to(skill.path)
-                errors.append(f"{skill.name}: broken local link in {relative_source}: {raw_link}")
-                continue
-            if target.is_dir():
-                continue
-            if target not in reachable:
-                reachable.add(target)
-                if _is_relative_to(target, skill.path):
-                    pending.append(target)
-
-    for resource_file in resource_files:
-        if resource_file not in reachable:
-            relative_path = resource_file.relative_to(skill.path)
-            errors.append(
-                f"{skill.name}: resource file is not reachable from SKILL.md: {relative_path}"
+        if source.suffix.lower() == ".md":
+            errors.extend(
+                _collect_linked_resources(
+                    skill,
+                    source,
+                    reachable,
+                    pending,
+                )
             )
+    return reachable, errors
 
-    return ValidationResult(errors=errors)
+
+def _collect_linked_resources(
+    skill: Skill,
+    source: Path,
+    reachable: set[Path],
+    pending: list[Path],
+) -> list[str]:
+    errors: list[str] = []
+    for raw_link in _read_local_markdown_links(source):
+        target = _resolve_local_link(source, raw_link)
+        if target is None:
+            continue
+        if not target.exists():
+            relative_source = source.relative_to(skill.path)
+            errors.append(
+                f"{skill.name}: broken local link in {relative_source}: {raw_link}"
+            )
+            continue
+        if target.is_dir() or target in reachable:
+            continue
+        reachable.add(target)
+        if _is_relative_to(target, skill.path):
+            pending.append(target)
+    return errors
 
 
 def _read_local_markdown_links(path: Path) -> list[str]:
@@ -820,31 +808,34 @@ def _read_skill_metadata(path: Path) -> tuple[dict[str, str], str | None]:
         lines = path.read_text(encoding="utf-8").splitlines()
     except UnicodeDecodeError as error:
         return {}, f"SKILL.md must be UTF-8: {error}"
-
     if not lines:
         return {}, "SKILL.md is empty"
     if lines[0].strip() != "---":
         return {}, "SKILL.md must start with YAML front matter"
 
-    end_index = None
-    for index, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":
-            end_index = index
-            break
+    end_index = next(
+        (
+            index
+            for index, line in enumerate(lines[1:], start=1)
+            if line.strip() == "---"
+        ),
+        None,
+    )
     if end_index is None:
         return {}, "SKILL.md front matter is not closed"
+    return _parse_skill_metadata_lines(lines[1:end_index]), None
 
+
+def _parse_skill_metadata_lines(lines: Sequence[str]) -> dict[str, str]:
     metadata: dict[str, str] = {}
-    for line in lines[1:end_index]:
-        if not line.strip() or line.startswith((" ", "\t", "-")):
-            continue
-        if ":" not in line:
+    for line in lines:
+        if not line.strip() or line.startswith((" ", "\t", "-")) or ":" not in line:
             continue
         key, value = line.split(":", 1)
         key = key.strip()
         if key:
             metadata[key] = value.strip().strip("\"'")
-    return metadata, None
+    return metadata
 
 
 def _read_taxonomy_category_skill_names(
@@ -859,36 +850,53 @@ def _read_taxonomy_category_skill_names(
     except ValueError:
         return {}, f"{TAXONOMY_DOC}: missing {TAXONOMY_CATEGORY_HEADING!r} table"
 
-    table_lines = []
-    for line in lines[start_index + 1 :]:
+    table_lines = _taxonomy_table_lines(lines[start_index + 1 :])
+    malformed_error = f"{TAXONOMY_DOC}: malformed {TAXONOMY_CATEGORY_HEADING!r} table"
+    if not _valid_taxonomy_table_header(table_lines):
+        return {}, malformed_error
+    categories = _parse_taxonomy_category_rows(table_lines[2:])
+    if categories is None:
+        return {}, malformed_error
+    return categories, None
+
+
+def _taxonomy_table_lines(lines: Sequence[str]) -> list[str]:
+    table_lines: list[str] = []
+    for line in lines:
         if line.startswith("## "):
             break
         if line.strip():
             table_lines.append(line)
+    return table_lines
 
-    def table_cells(line: str) -> tuple[str, ...] | None:
-        if not line.startswith("|") or not line.endswith("|"):
-            return None
-        return tuple(cell.strip() for cell in line.strip("|").split("|"))
 
-    malformed_error = f"{TAXONOMY_DOC}: malformed {TAXONOMY_CATEGORY_HEADING!r} table"
-    if (
-        len(table_lines) < 3
-        or table_cells(table_lines[0]) != TAXONOMY_CATEGORY_TABLE_HEADER
-        or table_cells(table_lines[1]) != TAXONOMY_CATEGORY_TABLE_DIVIDER
-    ):
-        return {}, malformed_error
+def _taxonomy_table_cells(line: str) -> tuple[str, ...] | None:
+    if not line.startswith("|") or not line.endswith("|"):
+        return None
+    return tuple(cell.strip() for cell in line.strip("|").split("|"))
 
+
+def _valid_taxonomy_table_header(table_lines: Sequence[str]) -> bool:
+    return (
+        len(table_lines) >= 3
+        and _taxonomy_table_cells(table_lines[0]) == TAXONOMY_CATEGORY_TABLE_HEADER
+        and _taxonomy_table_cells(table_lines[1]) == TAXONOMY_CATEGORY_TABLE_DIVIDER
+    )
+
+
+def _parse_taxonomy_category_rows(
+    lines: Sequence[str],
+) -> dict[str, set[str]] | None:
     categories: dict[str, set[str]] = {}
-    for line in table_lines[2:]:
-        cells = table_cells(line)
+    for line in lines:
+        cells = _taxonomy_table_cells(line)
         if cells is None or len(cells) != 3 or not all(cells):
-            return {}, malformed_error
+            return None
         skill_names = set(TAXONOMY_SKILL_REFERENCE_RE.findall(cells[1]))
         if not skill_names or cells[0] in categories:
-            return {}, malformed_error
+            return None
         categories[cells[0]] = skill_names
-    return categories, None
+    return categories
 
 
 def _read_taxonomy_inventory_names(path: Path) -> tuple[set[str], str | None]:
@@ -993,13 +1001,23 @@ def clean(root: Path) -> OperationResult:
     return OperationResult(messages=[f"Removed {len(removed)} Python cache paths."])
 
 
-def run_third_party_update(repo_root: Path, global_path: Path, *, dry_run: bool = False) -> OperationResult:
+def run_third_party_update(
+    repo_root: Path,
+    global_path: Path,
+    *,
+    dry_run: bool = False,
+) -> OperationResult:
     verify_result = GlobalInstallService(repo_root, global_path).verify()
     if not verify_result.ok:
         return verify_result
 
     command_text = os.environ.get("SKILLS_UPDATE_COMMAND", "npx skills update")
-    command = command_text.split()
+    try:
+        command = shlex.split(command_text)
+    except ValueError:
+        return OperationResult(
+            errors=["SKILLS_UPDATE_COMMAND is not valid shell-like argument text"]
+        )
     if not command:
         return OperationResult(errors=["SKILLS_UPDATE_COMMAND is empty"])
     if shutil.which(command[0]) is None:
@@ -1087,34 +1105,48 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     repo_root = args.repo_root.expanduser().resolve()
-    global_path = args.global_path.expanduser()
     registry = SkillRegistry.load(repo_root)
+    registry_result = _run_registry_command(args, registry)
+    if registry_result is not None:
+        return registry_result
+    service = GlobalInstallService(repo_root, args.global_path.expanduser())
+    return _run_service_command(args, registry, service)
 
+
+def _run_registry_command(
+    args: argparse.Namespace,
+    registry: SkillRegistry,
+) -> int | None:
     if args.command == "list":
-        if args.kind == "first-party":
-            return print_skills(registry.first_party())
-        if args.kind == "third-party":
-            return print_skills(registry.third_party())
-        return print_skills(registry.all())
-
+        selected = {
+            "first-party": registry.first_party,
+            "third-party": registry.third_party,
+            "all": registry.all,
+        }[args.kind]()
+        return print_skills(selected)
     if args.command == "inspect":
         skill = registry.find(args.name)
         if skill is None:
             print(f"error: skill not found: {args.name}", file=sys.stderr)
             return 1
         return print_inspection(skill)
-
     if args.command == "third-party-digests":
         return print_third_party_digests(registry.third_party())
-
     if args.command == "validate":
-        if args.kind == "first-party":
-            return emit_validation(registry.validate_first_party())
-        if args.kind == "third-party":
-            return emit_validation(registry.validate_third_party())
-        return emit_validation(registry.validate_all())
+        validator = {
+            "first-party": registry.validate_first_party,
+            "third-party": registry.validate_third_party,
+            "all": registry.validate_all,
+        }[args.kind]
+        return emit_validation(validator())
+    return None
 
-    service = GlobalInstallService(repo_root, global_path)
+
+def _run_service_command(
+    args: argparse.Namespace,
+    registry: SkillRegistry,
+    service: GlobalInstallService,
+) -> int:
     if args.command == "setup":
         return emit_operation(service.setup(dry_run=args.dry_run))
     if args.command == "verify":
@@ -1122,17 +1154,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "uninstall":
         return emit_operation(service.uninstall(dry_run=args.dry_run))
     if args.command == "doctor":
-        validation = registry.validate_all()
-        validation_code = emit_validation(validation)
+        validation_code = emit_validation(registry.validate_all())
         operation_code = emit_operation(service.verify())
         return 0 if validation_code == 0 and operation_code == 0 else 1
     if args.command == "sync-third-party-lock":
         return emit_operation(service.sync_lockfile(dry_run=args.dry_run))
     if args.command == "update-third-party":
-        return emit_operation(run_third_party_update(repo_root, global_path, dry_run=args.dry_run))
+        return emit_operation(
+            run_third_party_update(
+                service.repo_root,
+                service.global_path,
+                dry_run=args.dry_run,
+            )
+        )
     if args.command == "clean":
-        return emit_operation(clean(repo_root))
-
+        return emit_operation(clean(service.repo_root))
     print(f"error: unsupported command: {args.command}", file=sys.stderr)
     return 2
 

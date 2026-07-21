@@ -14,10 +14,12 @@ top-level workflows. These concepts are intentionally separate.
 
 ## Quick Start
 
-The repository tooling requires Python 3 and
-[`just`](https://github.com/casey/just). OpenCode is required only when using
-the definitions under `opencode/`. Third-party skill updates also require the
-configured JavaScript package runner.
+The repository tooling requires Python 3.10 or later and
+[`just`](https://github.com/casey/just). The Python tools use only the standard
+library, so no virtual environment, package installation, or `uv sync` step is
+required. OpenCode is required only when using the definitions under
+`opencode/`. Third-party skill updates also require the configured JavaScript
+package runner.
 
 ### Install Skills
 
@@ -136,6 +138,11 @@ Update third-party installs only as an explicit maintainer action:
 just update-third-party-dry-run
 just update-third-party
 ```
+
+Override the updater with `SKILLS_UPDATE_COMMAND` using POSIX shell-like
+argument quoting. The manager parses the value into an argument vector and does
+not invoke a shell, so shell expansion, pipelines, and redirection are not
+supported.
 
 After an update, review the upstream source, full Git commit, source path,
 license, and changed content before editing `third-party-skills.json`. Use
