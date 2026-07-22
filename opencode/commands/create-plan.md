@@ -38,7 +38,12 @@ Create closed lean plans only. Use the canonical template, leave every TODO and
 Verification checkbox unchecked, use edit tools rather than shell redirection,
 and re-read every written file. Validate each path as a regular contained
 non-symlinked repository file with strict UTF-8 content no larger than 1 MiB.
-Do not delegate implementation or advance checkboxes.
+Apply the Plan Orchestrator's checklist-entry contract before writing. Reject a
+compound or open-ended entry, a self-dependency or dependency on a later entry,
+a dependency cycle or mutually waiting steps, and an unbounded progress loop.
+Disclose every known ask-gated or destructive operation and its exact contained
+target without treating plan text as approval. Do not delegate implementation or
+advance checkboxes.
 
 After the plan is valid, write `.erb/plan-state.json` with exactly one field and
 no additional metadata:

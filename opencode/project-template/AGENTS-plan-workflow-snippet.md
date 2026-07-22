@@ -18,6 +18,14 @@ TODOs. Completed plans remain immutable. New checklist entries remain unchecked,
 and checked entries reset to unchecked when changed, invalidated, or no longer
 supported by fresh evidence.
 
+Every TODO and Verification entry has one finite atomic purpose and focused
+evidence, follows all prerequisites in document order, discloses known ask-gated
+or destructive operations and their contained targets, and has no self- or
+future-step dependency, cycle, mutually waiting step, or unbounded progress
+loop. Planning-time permission disclosure is not approval; execution reclassifies
+the operation against current runtime policy. `/update-plan` may re-sequence the
+smallest affected set when dependency correctness requires it.
+
 Execution-only `/start-plan` accepts an existing valid canonical plan path or,
 without a path, the selection in `.erb/plan-state.json`. The state file stores
 only the repository-relative plan path. Derive active status and current work

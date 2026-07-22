@@ -193,6 +193,9 @@ a durable plan automatically. Plan creation, active-plan updates, and execution
 require separate, explicit human choices. The canonical lifecycle, format, state
 schema, and mutation rules live in
 [`Implementation Plans`](docs/implementation-plans/README.md).
+That contract also requires atomic checklist purposes, permission-gate
+visibility, prerequisite-before-dependent ordering, finite progress, and safe
+re-sequencing through `/update-plan` when ordering is invalid.
 
 Four human-controlled lifecycle paths keep delivery separate from durable
 planning:

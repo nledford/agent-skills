@@ -44,6 +44,13 @@ entire resulting plan after the edit. If the exact-content patch no longer
 matches fresh content, stop instead of overwriting concurrent or unexpected
 changes.
 
+Revalidate every TODO and Verification entry against the Plan Orchestrator's
+checklist-entry contract. When ordering violates that contract, re-sequence the
+smallest affected set. Dependency correctness outranks preserving existing
+order. Keep all TODOs before dedicated Verification steps, keep each checklist
+sequentially numbered, and report the old-to-new ordering and the reason for each
+move.
+
 Reconcile every plan checkbox conservatively:
 
 - New TODO and Verification entries must be unchecked.
@@ -52,9 +59,8 @@ Reconcile every plan checkbox conservatively:
   contract remain materially unchanged and fresh evidence still supports it.
 - Reset every changed, invalidated, or insufficiently evidenced checked item to
   unchecked.
-- Preserve existing numbering and order where practical; when the requested
-  update requires structural changes, keep all TODO and Verification entries
-  sequentially numbered in their section.
+- Reordering alone does not justify retaining checked state; apply the same
+  evidence rules after every move.
 
 Do not write or change `.erb/plan-state.json`. Do not delegate, implement,
 validate implementation work, stage, commit, or execute TODOs. Do not update

@@ -292,7 +292,12 @@ Recommended**, or **Material Remediation Required**.
 For each reviewed plan, verify its contained canonical path and layout, the
 canonical template's exact title and ordered headings, its fixed Context labels
 and numbered TODO and Verification checklist grammar, scope, guardrails,
-deliverables, definition of done, sequencing, and supplied validation evidence.
+deliverables, definition of done, and supplied validation evidence. Verify that
+each checklist entry has one atomic purpose and focused completion evidence;
+expected permission gates and contained targets are disclosed without treating
+that disclosure as approval; prerequisite-before-dependent ordering is explicit;
+and there are no self-dependencies, dependencies on later entries, dependency
+cycles, mutually waiting steps, or unbounded progress loops.
 Do not require frontmatter, lifecycle status, revision, dependency fields,
 history, provenance, approvals, review records, or an `Open Decisions` section.
 A multi-plan review returns an independent record for each plan. Do not infer

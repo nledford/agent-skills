@@ -1077,8 +1077,8 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             template = repo / "opencode" / SUPPORT_FILES[-1]
             template.write_text(
                 template.read_text(encoding="utf-8").replace(
-                    "1. [ ] <bounded implementation step>",
-                    "- [ ] <bounded implementation step>",
+                    "1. [ ] <one atomic implementation outcome; include prerequisites and expected permission gates when applicable>",
+                    "- [ ] <one atomic implementation outcome; include prerequisites and expected permission gates when applicable>",
                 ),
                 encoding="utf-8",
             )
@@ -1089,14 +1089,18 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             self.assertIn("template is not the canonical lean format", result.errors[0])
 
     def test_validate_rejects_missing_or_non_numbered_verification_checkbox(self) -> None:
-        for replacement in ("", "- [ ] <verification step>"):
+        for replacement in (
+            "",
+            "- [ ] <one atomic verification outcome with focused evidence>",
+        ):
             with self.subTest(replacement=replacement), tempfile.TemporaryDirectory() as temp_dir:
                 root = Path(temp_dir)
                 repo = create_opencode_repo(root)
                 template = repo / "opencode" / SUPPORT_FILES[-1]
                 template.write_text(
                     template.read_text(encoding="utf-8").replace(
-                        "1. [ ] <verification step>", replacement
+                        "1. [ ] <one atomic verification outcome with focused evidence>",
+                        replacement,
                     ),
                     encoding="utf-8",
                 )

@@ -63,6 +63,11 @@ evidenced checkbox advancement. A current explicit `/update-plan` request may
 apply the smallest exact-content update to one active plan; completed plans
 remain immutable, new work stays unchecked, and changed or invalidated checked
 items reset to unchecked.
+Every TODO and Verification entry follows the canonical atomic-purpose,
+permission-disclosure, prerequisite-ordering, and finite-progress contract.
+`/update-plan` may re-sequence the smallest affected set when dependency
+correctness requires it; planning-time permission disclosure never grants
+runtime approval.
 A current conversational split-or-replace request may create at least two
 successors and retire one unambiguous source after every successor is re-read;
 no registry or retained contract history is required. The Plan Orchestrator is

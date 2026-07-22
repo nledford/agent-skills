@@ -42,6 +42,29 @@ an update, and checked entries remain checked only when their obligation and the
 surrounding acceptance contract are materially unchanged and fresh evidence
 still supports them.
 
+## Checklist Entry Contract
+
+This contract applies whenever a plan is created, reviewed, updated, or
+executed.
+
+- Every TODO or Verification entry has one atomic purpose: one finite,
+  observable outcome with focused completion evidence. Tightly coupled actions
+  may share an entry only when they are inseparable from that outcome; split
+  unrelated, multi-phase, or independently verifiable work.
+- Every entry must be executable from satisfied external dependencies,
+  repository state, and completed earlier entries. Put prerequisites before
+  dependents. An entry must not depend on itself or a later checklist entry, and
+  the plan must contain no dependency cycle or mutually waiting steps.
+- Disclose any known ask-gated or destructive operation and its exact contained
+  target in the entry text when repository evidence supports it. If none is
+  disclosed, no special permission is expected. This planning disclosure is not
+  approval; execution reclassifies the actual operation against current runtime
+  policy.
+- Give every entry a finite completion or stop condition. Do not encode an
+  unbounded retry, polling, or correction loop. Blocked, denied, pending, failed,
+  or replay-uncertain work remains unchecked and follows the execution rules
+  below.
+
 ## Human-Controlled Lifecycle
 
 The workflow has four routes:
@@ -93,10 +116,10 @@ creation or execution.
 
 ## Creation
 
-Validate the request against repository evidence, choose the smallest layout,
-write the plan with all boxes unchecked, and re-read it. Then write the selected
-canonical path to `.erb/plan-state.json` and re-read both files. Stop without
-implementation.
+Validate the request against repository evidence and the checklist-entry
+contract, choose the smallest layout, write the plan with all boxes unchecked,
+and re-read it. Then write the selected canonical path to
+`.erb/plan-state.json` and re-read both files. Stop without implementation.
 
 A current explicit split-or-replace request may create at least two successors
 and retire one unambiguous source. Create and re-read every successor, re-read
@@ -115,8 +138,8 @@ human-authorized `/create-plan` request.
 Re-read and validate the exact plan plus fresh repository evidence immediately
 before mutation. Apply the smallest exact-content edit patch that satisfies the
 human's instructions, keep the same path and canonical format, then re-read and
-validate the whole result. If the patch no longer matches fresh content, stop
-instead of overwriting unexpected changes.
+validate the whole result against the checklist-entry contract. If the patch no
+longer matches fresh content, stop instead of overwriting unexpected changes.
 
 Reconcile checklist evidence conservatively:
 
@@ -127,8 +150,13 @@ Reconcile checklist evidence conservatively:
   supports it.
 - A changed, invalidated, or insufficiently evidenced checked entry resets to
   unchecked.
-- Preserve numbering and order where practical; after structural changes, keep
-  entries sequentially numbered within each checklist.
+- When ordering violates the checklist-entry contract, re-sequence the smallest
+  affected set. Dependency correctness outranks preserving existing order. Keep
+  all TODOs before dedicated Verification steps and keep entries sequentially
+  numbered within each checklist.
+- Reordering alone does not justify retaining checked state. Apply the same
+  evidence rules after every move, and report the old-to-new ordering plus the
+  reason for each move.
 
 Do not write `.erb/plan-state.json`, delegate, implement, run implementation
 validation, stage, commit, execute TODOs, or update native planned-work TODOs in
@@ -153,9 +181,9 @@ shell composition, and redirection remain forbidden.
 
 ## Execution And Resume
 
-Validate the selected path and canonical plan format before mutation. Resume the
-first unchecked checkbox. Finish TODOs in document order before Verification
-steps.
+Validate the selected path, canonical plan format, and the whole checklist-entry
+contract before mutation. Resume the first unchecked checkbox. Finish TODOs in
+document order before Verification steps.
 
 Check a TODO only after observed implementation or individual-validation
 evidence. Check a Verification step only after its own observed evidence. A

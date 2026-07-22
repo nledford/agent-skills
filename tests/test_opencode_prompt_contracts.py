@@ -759,6 +759,9 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             "Never change an unchecked checkbox to checked during an update.",
             "Retain a checked item only when its obligation and the surrounding acceptance contract remain materially unchanged and fresh evidence still supports it.",
             "Reset every changed, invalidated, or insufficiently evidenced checked item to unchecked.",
+            "Revalidate every TODO and Verification entry against the Plan Orchestrator's checklist-entry contract.",
+            "Dependency correctness outranks preserving existing order.",
+            "old-to-new ordering and the reason for each move",
             "Do not write or change `.erb/plan-state.json`.",
             "Do not delegate, implement, validate implementation work, stage, commit, or execute TODOs.",
             "A later explicit `/start-plan <existing-plan-path>` request is required to execute or resume the updated plan.",
@@ -1415,6 +1418,10 @@ class CanonicalPromptSectionTests(unittest.TestCase):
             "contained canonical path and layout",
             "canonical template's exact title and ordered headings",
             "fixed Context labels and numbered TODO and Verification checklist grammar",
+            "one atomic purpose",
+            "expected permission gates and contained targets",
+            "prerequisite-before-dependent ordering",
+            "dependency cycles, mutually waiting steps, or unbounded progress loops",
             "Do not require frontmatter, lifecycle status, revision, dependency fields, history, provenance, approvals, review records, or an `Open Decisions` section.",
             "Do not infer dependencies from filename order.",
         ):
@@ -1427,6 +1434,75 @@ class CanonicalPromptSectionTests(unittest.TestCase):
             with self.subTest(stale_requirement=stale_requirement):
                 self.assertNotIn(stale_requirement, section)
 
+    def test_checked_in_plan_checklist_contract_is_atomic_permission_aware_and_ordered(
+        self,
+    ) -> None:
+        project_root = Path(__file__).parents[1]
+        sources = {
+            "guide": project_root / "docs/implementation-plans/README.md",
+            "orchestrator": project_root / "opencode/agents/plan-orchestrator.md",
+            "create": project_root / "opencode/commands/create-plan.md",
+            "update": project_root / "opencode/commands/update-plan.md",
+            "board": project_root / "opencode/agents/engineering-review-board.md",
+        }
+        normalized = {
+            name: " ".join(path.read_text(encoding="utf-8").split())
+            for name, path in sources.items()
+        }
+
+        requirements = {
+            "guide": (
+                "## Checklist Entry Contract",
+                "one atomic purpose",
+                "must not depend on itself or a later checklist entry",
+                "known ask-gated or destructive operation and its exact contained target",
+                "planning disclosure is not approval",
+                "finite completion or stop condition",
+            ),
+            "orchestrator": (
+                "## Checklist Entry Contract",
+                "Do not use Worker slicing to make a compound checklist entry acceptable.",
+                "validate the whole plan against this contract",
+            ),
+            "create": (
+                "Apply the Plan Orchestrator's checklist-entry contract before writing.",
+            ),
+            "update": (
+                "Dependency correctness outranks preserving existing order.",
+                "old-to-new ordering and the reason for each move",
+            ),
+            "board": (
+                "one atomic purpose",
+                "expected permission gates and contained targets",
+                "prerequisite-before-dependent ordering",
+                "dependency cycles, mutually waiting steps, or unbounded progress loops",
+            ),
+        }
+
+        for source, required_phrases in requirements.items():
+            for phrase in required_phrases:
+                with self.subTest(source=source, phrase=phrase):
+                    self.assertIn(phrase, normalized[source])
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            repo, definition = create_plan_orchestrator_repo(root)
+            prompt = definition.read_text(encoding="utf-8")
+            required = "Do not use Worker slicing to make a compound checklist entry acceptable."
+            self.assertIn(required, prompt)
+            definition.write_text(
+                prompt.replace(required, "removed checklist-entry gate", 1),
+                encoding="utf-8",
+            )
+
+            result = OpenCodeInstallService(repo, root / "config").validate()
+
+            self.assertFalse(result.ok)
+            self.assertTrue(
+                any("prompt contract is incomplete" in error for error in result.errors),
+                result.errors,
+            )
+
     def test_validate_rejects_board_plan_review_contract_drift(self) -> None:
         mutations = (
             (
@@ -1438,6 +1514,11 @@ class CanonicalPromptSectionTests(unittest.TestCase):
                 "restored legacy dependency field",
                 "Do not infer",
                 "`depends_on` remains authoritative; do not infer",
+            ),
+            (
+                "missing atomic checklist criterion",
+                "one atomic purpose",
+                "synthetic removed criterion",
             ),
         )
         for label, old, new in mutations:

@@ -196,6 +196,12 @@ format, and leaves state unchanged. New entries remain unchecked; checked items
 remain checked only when their obligation and surrounding acceptance contract
 are materially unchanged and fresh evidence still supports them. Changed,
 invalidated, or insufficiently evidenced checked items reset to unchecked.
+Checklist entries must retain one finite atomic purpose, disclose known
+ask-gated or destructive operations without granting approval, and place every
+prerequisite before its dependents without cycles or mutually waiting steps.
+When ordering is invalid, dependency correctness outranks preserving order and
+the update may re-sequence the smallest affected set while reconciling checked
+evidence conservatively.
 Completed plans remain immutable. Updating never delegates, implements,
 validates implementation work, stages, commits, executes TODOs, or resumes
 execution; a later explicit `/start-plan` request is required.
@@ -208,7 +214,10 @@ explicit path and stops. Plan activity and current work are derived from the
 plan: any unchecked TODO or Verification checkbox means active, and the first
 unchecked checkbox is current. A completed plan reports exactly `This plan has
 already been implemented.` and stops. The selection pointer is not concurrency
-control; the most recent explicit selection wins.
+control; the most recent explicit selection wins. Execution revalidates the
+whole checklist-entry contract and current runtime permissions before mutation;
+an invalid contract remains unchecked and routes to a separate `/update-plan`
+decision.
 
 ### Ask-gated Lead MCP tools
 

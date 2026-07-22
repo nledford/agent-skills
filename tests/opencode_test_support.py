@@ -120,9 +120,9 @@ def write_support_files(repo: Path) -> None:
             "## Deliverables\n\n"
             "## Definition of Done\n\n"
             "## TODOs\n\n"
-            "1. [ ] <bounded implementation step>\n\n"
+            "1. [ ] <one atomic implementation outcome; include prerequisites and expected permission gates when applicable>\n\n"
             "## Verification\n\n"
-            "1. [ ] <verification step>\n"
+            "1. [ ] <one atomic verification outcome with focused evidence>\n"
         ),
         "cleanup/weave-cleanup-checklist.md": "# Cleanup\n",
     }

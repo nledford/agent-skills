@@ -183,6 +183,31 @@ authority.
   `/update-plan <exact-plan-path>` request is the only in-place prose or
   structure update authority. Completed plans remain immutable.
 
+## Checklist Entry Contract
+
+Apply this contract during plan creation, active-plan updates, and execution or
+resume:
+
+- Every TODO or Verification entry has one atomic purpose: one finite,
+  observable outcome with focused completion evidence. Tightly coupled actions
+  may share an entry only when they are inseparable from that outcome; split
+  unrelated, multi-phase, or independently verifiable work.
+- Every entry must be executable from satisfied external dependencies,
+  repository state, and completed earlier entries. Put prerequisites before
+  dependents. An entry must not depend on itself or a later checklist entry, and
+  the plan must contain no dependency cycle or mutually waiting steps.
+- Disclose any known ask-gated or destructive operation and its exact contained
+  target in the entry text when fresh evidence supports it. This planning
+  disclosure is not approval and never satisfies an `ask` permission; execution
+  must reclassify the actual operation against current runtime policy.
+- Every entry needs a finite completion or stop condition. Do not permit an
+  unbounded retry, polling, or correction loop.
+
+Before persisting a created or updated plan or beginning or resuming execution,
+validate the whole plan against this contract. If an existing plan fails it,
+leave the current checkbox unchecked and use the material-plan-change stop rule.
+Do not use Worker slicing to make a compound checklist entry acceptable.
+
 Use this exact lean template. Do not add frontmatter or any other heading,
 section, lifecycle field, history, provenance, review record, approval field,
 status, dependency field, or metadata.
@@ -210,11 +235,11 @@ status, dependency field, or metadata.
 
 ## TODOs
 
-1. [ ] <bounded implementation step>
+1. [ ] <one atomic implementation outcome; include prerequisites and expected permission gates when applicable>
 
 ## Verification
 
-1. [ ] <verification step>
+1. [ ] <one atomic verification outcome with focused evidence>
 ```
 
 ## Simple Plan State
@@ -274,18 +299,23 @@ New TODO and Verification entries must be unchecked. Never change an unchecked
 checkbox to checked during an update. Retain a checked item only when its
 obligation and the surrounding acceptance contract remain materially unchanged
 and fresh evidence still supports it. Reset every changed, invalidated, or
-insufficiently evidenced checked item to unchecked. Preserve numbering and order
-where practical and keep each checklist sequentially numbered after structural
-changes. Report retained and reset checked items plus added, removed, reordered,
-or renumbered entries. A later explicit `/start-plan <existing-plan-path>`
-request is required to execute or resume the updated plan.
+insufficiently evidenced checked item to unchecked. When ordering violates the
+checklist-entry contract, re-sequence the smallest affected set. Dependency
+correctness outranks preserving existing order. Keep all TODOs before dedicated
+Verification steps and keep each checklist sequentially numbered after
+structural changes. Reordering alone does not justify retaining checked state;
+apply the same evidence rules after every move. Report retained and reset checked
+items, added or removed entries, and the old-to-new ordering plus the reason for
+each move. A later explicit `/start-plan <existing-plan-path>` request is
+required to execute or resume the updated plan.
 
 ## Execution And Resume
 
 Before every mutable phase, freshly reload the selected plan, checkbox state,
-and worktree evidence; never rely on stale evidence. Execute the first unchecked
-checkbox; you must complete every planned TODO before beginning any dedicated
-Verification step.
+and worktree evidence; never rely on stale evidence. Revalidate the whole plan
+against the checklist-entry contract before execution or resume. Execute the
+first unchecked checkbox; you must complete every planned TODO before beginning
+any dedicated Verification step.
 
 When fresh evidence shows that the active plan contract requires a material
 change, leave the current checkbox unchecked, stop execution, report the exact

@@ -451,6 +451,10 @@ BOARD_PLAN_REVIEW_PROMPT_CONTRACT = (
         "contained canonical path and layout",
         "canonical template's exact title and ordered headings",
         "fixed Context labels and numbered TODO and Verification checklist grammar",
+        "one atomic purpose",
+        "expected permission gates and contained targets",
+        "prerequisite-before-dependent ordering",
+        "dependency cycles, mutually waiting steps, or unbounded progress loops",
         "Do not require frontmatter, lifecycle status, revision, dependency fields, history, provenance, approvals, review records, or an `Open Decisions` section.",
         "Do not infer dependencies from filename order.",
     ),
@@ -567,10 +571,20 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "replay-uncertain actions stop for reconciliation",
         "Plan and Task scope never satisfy an `ask` permission",
         "pending approval retains one waiting child",
+        "Plan checklist quality",
+        "one finite atomic purpose",
+        "may re-sequence the smallest affected set",
     ),
     "docs/implementation-plans/README.md": (
         "## Human-Controlled Lifecycle",
         "## Active Plan Updates",
+        "## Checklist Entry Contract",
+        "one atomic purpose",
+        "must not depend on itself or a later checklist entry",
+        "known ask-gated or destructive operation and its exact contained target",
+        "planning disclosure is not approval",
+        "finite completion or stop condition",
+        "Dependency correctness outranks preserving existing order.",
         "`/update-plan <exact-plan-path>`",
         "Completed plans remain immutable.",
         ".erb/plans/<slug>.md",
@@ -606,10 +620,20 @@ HUMAN_CONTROLLED_LIFECYCLE_DOC_TOKENS = {
         "stops when prior result or replay safety is uncertain",
         "Plan and Task scope never satisfy an `ask` permission.",
         "pending approval retains one waiting child",
+        "Every TODO and Verification entry has one finite atomic purpose",
+        "Planning-time permission disclosure is not approval",
+        "may re-sequence the smallest affected set",
     ),
     "opencode/project-template/docs/implementation-plans/README.md": (
         "## Human-Controlled Lifecycle",
         "## Active Plan Updates",
+        "## Checklist Entry Contract",
+        "one atomic purpose",
+        "must not depend on itself or a later checklist entry",
+        "known ask-gated or destructive operation and its exact contained target",
+        "planning disclosure is not approval",
+        "finite completion or stop condition",
+        "Dependency correctness outranks preserving existing order.",
         "`/update-plan <exact-plan-path>`",
         "Completed plans remain immutable.",
         ".erb/plans/<slug>.md",
@@ -788,6 +812,8 @@ COMMAND_PROMPT_CONTRACTS = {
         "Direct replacement needs no registry or history",
         "No additional deletion confirmation is required",
         "If successor creation or verification fails, do not delete the source.",
+        "Apply the Plan Orchestrator's checklist-entry contract before writing.",
+        "known ask-gated or destructive operation and its exact contained target",
     ),
     "investigate-regression.md": (
         "Load `systematic-debugging` and `review-verification-protocol`.",
@@ -845,6 +871,9 @@ COMMAND_PROMPT_CONTRACTS = {
         "Never change an unchecked checkbox to checked during an update.",
         "Retain a checked item only when its obligation and the surrounding acceptance contract remain materially unchanged and fresh evidence still supports it.",
         "Reset every changed, invalidated, or insufficiently evidenced checked item to unchecked.",
+        "Revalidate every TODO and Verification entry against the Plan Orchestrator's checklist-entry contract.",
+        "Dependency correctness outranks preserving existing order.",
+        "old-to-new ordering and the reason for each move",
         "Do not write or change `.erb/plan-state.json`.",
         "Do not delegate, implement, validate implementation work, stage, commit, or execute TODOs.",
         "A later explicit `/start-plan <existing-plan-path>` request is required to execute or resume the updated plan.",
@@ -2161,8 +2190,8 @@ PLAN_TEMPLATE_TOKENS = (
     "**Original request:**",
     "**Key repository findings:**",
     "**Dependencies:**",
-    "1. [ ] <bounded implementation step>",
-    "1. [ ] <verification step>",
+    "1. [ ] <one atomic implementation outcome; include prerequisites and expected permission gates when applicable>",
+    "1. [ ] <one atomic verification outcome with focused evidence>",
 )
 PLAN_PATH_TOKENS = (
     ".erb/plans/<slug>.md",
@@ -2201,9 +2230,9 @@ LEAN_PLAN_TEMPLATE = """# <Title>
 
 ## TODOs
 
-1. [ ] <bounded implementation step>
+1. [ ] <one atomic implementation outcome; include prerequisites and expected permission gates when applicable>
 
 ## Verification
 
-1. [ ] <verification step>
+1. [ ] <one atomic verification outcome with focused evidence>
 """
