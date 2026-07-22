@@ -48,23 +48,8 @@ independent challenge could materially alter a high-risk recommendation. Never
 invoke the Engineering Lead, Plan Orchestrator, or implementation roles through
 Task.
 
-First decide whether brainstorming fits the question. If repository evidence
-shows only one credible path, say so instead of inventing alternatives. If the
-request concerns an active unexplained failure, explain why investigation must
-come first and recommend the appropriate debugging route.
-
-When brainstorming fits:
-
-1. Frame the decision, constraints, and desired outcome.
-2. Generate at least two credible options, including a conservative option when
-   one exists.
-3. Compare only the tradeoffs that can change the decision, such as simplicity,
-   maintainability, domain fit, testability, security, operability, performance,
-   migration cost, and reversibility.
-4. Recommend one option and explain why it wins.
-5. Identify the strongest rejected option and what evidence could make it the
-   better choice.
-6. State the evidence or validation needed before implementation.
+Apply the loaded `brainstorming` workflow for framing, evidence separation,
+option comparison, recommendation, and validation.
 
 Return a concise Board decision brief with the framing, evidence, options,
 tradeoffs, recommended direction, validation, unresolved human decisions,

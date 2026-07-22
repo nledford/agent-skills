@@ -348,6 +348,56 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
             self.assertEqual(parsed.fields["agent"], owner)
             self.assertEqual(parsed.fields["subtask"], "false")
 
+    def test_prompt_commands_delegate_methodology_to_loaded_skills(self) -> None:
+        """Keep command-specific authority while loading reusable methodology once."""
+        project_root = Path(__file__).parents[1]
+        cases = {
+            "brainstorm.md": {
+                "skill": "brainstorming",
+                "required": (
+                    "Apply the loaded `brainstorming` workflow for framing, evidence "
+                    "separation, option comparison, recommendation, and validation."
+                ),
+                "removed": "Generate at least two credible options",
+                "owned": (
+                    "tasks with an obvious single correct implementation",
+                    "Route active unexplained symptoms to",
+                    "Produce at least two credible candidate approaches",
+                ),
+            },
+            "optimize-prompt.md": {
+                "skill": "prompt-engineering-review",
+                "required": (
+                    "Apply the loaded `prompt-engineering-review` workflow for "
+                    "objective, scope, autonomy, evidence, sequencing, verification, "
+                    "and unresolved decisions."
+                ),
+                "removed": (
+                    "Identify the intended agent, objective, inputs, scope, non-goals"
+                ),
+                "owned": (
+                    "Identify the intended agent, objective, inputs, scope, non-goals",
+                ),
+            },
+        }
+
+        for command_name, case in cases.items():
+            with self.subTest(command=command_name):
+                command = " ".join(
+                    (project_root / "opencode/commands" / command_name)
+                    .read_text(encoding="utf-8")
+                    .split()
+                )
+                skill = " ".join(
+                    (project_root / "skills" / case["skill"] / "SKILL.md")
+                    .read_text(encoding="utf-8")
+                    .split()
+                )
+                self.assertIn(case["required"], command)
+                self.assertNotIn(case["removed"], command)
+                for owned_requirement in case["owned"]:
+                    self.assertIn(owned_requirement, skill)
+
     def test_checked_in_semver_routes_explicit_modes_and_guards_tagging(self) -> None:
         """Pin SemVer mode authority, fresh evidence, and local-tag safety."""
         project_root = Path(__file__).parents[1]

@@ -59,19 +59,8 @@ version-sensitive claims for research. Remove any instruction that conflicts
 with active higher-priority policy and explain that correction without
 reproducing unsafe or sensitive content.
 
-For the optimized prompt:
-
-1. Identify the intended agent, objective, inputs, scope, non-goals,
-   deliverables, autonomy, and success criteria.
-2. Resolve ambiguity, contradiction, missing context, unsafe authority, and
-   unverifiable completion claims without changing the intended outcome.
-3. Add ordering only where sequence matters; require evidence instead of
-   invented context.
-4. State editing boundaries, validation, failure reporting, and escalation
-   conditions when they affect execution.
-5. Remove duplicated rules, filler, and instructions that do not change agent
-   behavior.
-6. Keep unresolved material choices explicit rather than choosing for the human.
+Apply the loaded `prompt-engineering-review` workflow for objective, scope,
+autonomy, evidence, sequencing, verification, and unresolved decisions.
 
 Return, in order:
 
