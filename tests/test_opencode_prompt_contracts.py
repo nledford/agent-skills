@@ -1226,6 +1226,44 @@ class OpenCodeInstallServiceTests(unittest.TestCase):
 
 
 class CanonicalPromptSectionTests(unittest.TestCase):
+    def test_checked_in_prompt_critic_agent_system_review_is_bounded_and_reusable(
+        self,
+    ) -> None:
+        project_root = Path(__file__).parents[1]
+        prompt = (
+            project_root / "opencode/agents/prompt-critic.md"
+        ).read_text(encoding="utf-8")
+        section = single_markdown_section(prompt, "## Agent-System Review")
+
+        self.assertIsNotNone(section)
+        assert section is not None
+        normalized_section = " ".join(section.split())
+        for required in (
+            "explicitly identifies a bounded coordination surface",
+            "Adjacent definitions are evidence only",
+            "Agent-system review: applicable",
+            "instruction interfaces, not application architecture",
+            "Static prompt contracts do not prove runtime behavior",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, normalized_section)
+
+        skill = (
+            project_root / "skills/prompt-engineering-review/SKILL.md"
+        ).read_text(encoding="utf-8")
+        skill_section = single_markdown_section(skill, "## Agent-System Review")
+        self.assertIsNotNone(skill_section)
+        assert skill_section is not None
+        normalized_skill_section = " ".join(skill_section.split())
+        for required in (
+            "two or more interacting prompt artifacts",
+            "Do not infer a repository-wide review",
+            "entry point, nodes, handoff edges, and state owners",
+            "Distinguish instruction defects from application architecture",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, normalized_skill_section)
+
     def test_validate_rejects_mcp_selection_prompt_contract_drift(self) -> None:
         for name, (heading, semantics) in MCP_SELECTION_PROMPT_CONTRACTS.items():
             for semantic in semantics:

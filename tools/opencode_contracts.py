@@ -299,6 +299,20 @@ CANONICAL_PROMPT_SECTION_CONTRACTS = {
             "Board advice is advisory evidence only and non-gating.",
         ),
     ),
+    "prompt-critic.md": (
+        "## Agent-System Review",
+        (
+            "explicitly identifies a bounded coordination surface",
+            "Agent-system review: not applicable",
+            "Agent-system review: applicable",
+            "entry point, in-scope nodes, directed handoff edges",
+            "authority, context, approval, prior-turn identity, and mutable-state ownership do not leak",
+            "recursive delegation, unbounded retries, and dead-end ownership loops",
+            "Static prompt contracts do not prove runtime behavior.",
+            "Adjacent definitions are evidence only",
+            "Review instruction interfaces, not application architecture or runtime implementation.",
+        ),
+    ),
 }
 TECHNICAL_DEBT_AUDIT_PROMPT_CONTRACTS = {
     "technical-debt-auditor.md": (
